@@ -21,6 +21,7 @@ import 'package:nusa_kasir/features/products/product_form_screen.dart';
 import 'package:nusa_kasir/features/stock/stock_screen.dart';
 import 'package:nusa_kasir/features/pos/pos_screen.dart';
 import 'package:nusa_kasir/features/checkout/checkout_screen.dart';
+import 'package:nusa_kasir/features/transactions/transactions_screen.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 final authProvider = StateProvider<String?>((ref) => null);
@@ -53,8 +54,7 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(path: '/produk/edit/:id', builder: (_, state) => ProductFormScreen(productId: int.parse(state.pathParameters['id']!))),
         GoRoute(path: '/stok', builder: (_, __) => const StockScreen()),
         GoRoute(
-            path: '/transaksi',
-            builder: (_, __) => const PlaceholderScreen('Transaksi')),
+            path: '/transaksi', builder: (_, __) => const TransactionsScreen()),
         GoRoute(
             path: '/pelanggan',
             builder: (_, __) => const PlaceholderScreen('Pelanggan')),
