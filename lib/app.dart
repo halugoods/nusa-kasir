@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/theme/nusa_theme.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
+import 'package:nusa_kasir/data/repositories/customer_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/data/repositories/transaction_repository.dart';
 import 'package:nusa_kasir/core/activation/activation_repository.dart';
@@ -22,6 +23,7 @@ import 'package:nusa_kasir/features/stock/stock_screen.dart';
 import 'package:nusa_kasir/features/pos/pos_screen.dart';
 import 'package:nusa_kasir/features/checkout/checkout_screen.dart';
 import 'package:nusa_kasir/features/transactions/transactions_screen.dart';
+import 'package:nusa_kasir/features/customers/customers_screen.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 final authProvider = StateProvider<String?>((ref) => null);
@@ -29,6 +31,8 @@ final settingsRepoProvider =
     Provider((ref) => SettingsRepository(ref.watch(databaseProvider)));
 final transactionRepoProvider =
     Provider((ref) => TransactionRepository(ref.watch(databaseProvider)));
+final customerRepoProvider =
+    Provider((ref) => CustomerRepository(ref.watch(databaseProvider)));
 final activationRepoProvider = Provider<ActivationRepository>((ref) {
   try {
     return ActivationRepository(Supabase.instance.client);
@@ -56,8 +60,7 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/transaksi', builder: (_, __) => const TransactionsScreen()),
         GoRoute(
-            path: '/pelanggan',
-            builder: (_, __) => const PlaceholderScreen('Pelanggan')),
+            path: '/pelanggan', builder: (_, __) => const CustomersScreen()),
         GoRoute(path: '/promo', builder: (_, __) => const PlaceholderScreen('Promo')),
         GoRoute(
             path: '/laporan',
