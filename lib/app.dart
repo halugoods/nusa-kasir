@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/theme/nusa_theme.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
+import 'package:nusa_kasir/data/repositories/transaction_repository.dart';
 import 'package:nusa_kasir/core/activation/activation_repository.dart';
 // activation_screen already defines activationRepoProvider; hide it so the
 // local definition below is the single source of truth.
@@ -19,11 +20,14 @@ import 'package:nusa_kasir/features/products/products_screen.dart';
 import 'package:nusa_kasir/features/products/product_form_screen.dart';
 import 'package:nusa_kasir/features/stock/stock_screen.dart';
 import 'package:nusa_kasir/features/pos/pos_screen.dart';
+import 'package:nusa_kasir/features/checkout/checkout_screen.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 final authProvider = StateProvider<String?>((ref) => null);
 final settingsRepoProvider =
     Provider((ref) => SettingsRepository(ref.watch(databaseProvider)));
+final transactionRepoProvider =
+    Provider((ref) => TransactionRepository(ref.watch(databaseProvider)));
 final activationRepoProvider = Provider<ActivationRepository>((ref) {
   try {
     return ActivationRepository(Supabase.instance.client);
@@ -43,6 +47,7 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
             path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
         GoRoute(path: '/home', builder: (_, __) => const DashboardScreen()),
         GoRoute(path: '/kasir', builder: (_, __) => const PosScreen()),
+        GoRoute(path: '/checkout', builder: (_, __) => const CheckoutScreen()),
         GoRoute(path: '/produk', builder: (_, __) => const ProductsScreen()),
         GoRoute(path: '/produk/tambah', builder: (_, __) => const ProductFormScreen()),
         GoRoute(path: '/produk/edit/:id', builder: (_, state) => ProductFormScreen(productId: int.parse(state.pathParameters['id']!))),
