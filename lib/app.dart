@@ -18,6 +18,7 @@ import 'package:nusa_kasir/features/common/placeholder_screen.dart';
 import 'package:nusa_kasir/features/products/products_screen.dart';
 import 'package:nusa_kasir/features/products/product_form_screen.dart';
 import 'package:nusa_kasir/features/stock/stock_screen.dart';
+import 'package:nusa_kasir/features/pos/pos_screen.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 final authProvider = StateProvider<String?>((ref) => null);
@@ -41,7 +42,7 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
         GoRoute(path: '/home', builder: (_, __) => const DashboardScreen()),
-        GoRoute(path: '/kasir', builder: (_, __) => const PlaceholderScreen('Kasir')),
+        GoRoute(path: '/kasir', builder: (_, __) => const PosScreen()),
         GoRoute(path: '/produk', builder: (_, __) => const ProductsScreen()),
         GoRoute(path: '/produk/tambah', builder: (_, __) => const ProductFormScreen()),
         GoRoute(path: '/produk/edit/:id', builder: (_, state) => ProductFormScreen(productId: int.parse(state.pathParameters['id']!))),
