@@ -25,6 +25,7 @@ dependencies:
   esc_pos_bluetooth: ^0.4.1
   esc_pos_utils: ^1.1.0
   barcode: ^2.2.8
+  barcode_widget: ^2.0.0
   qr_flutter: ^4.1.0
   google_sign_in: ^6.2.1
   extension_google_sign_in_as_googleapis_auth: ^2.0.8
