@@ -100,6 +100,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       onPressed: () async {
+                        final key = _activationKey ?? '';
+                        if (key.isNotEmpty) {
+                          await ref.read(activationRepoProvider).uploadBackup(key);
+                        }
                         await ref.read(activationRepoProvider).deactivate();
                         if (mounted) context.go('/activation');
                       },

@@ -152,3 +152,11 @@ class SyncQueue extends Table {
   TextColumn get errorMessage => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
+class CashierSessions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get employeeId => integer()();
+  DateTimeColumn get openedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get closedAt => dateTime().nullable()();
+  IntColumn get startingCash => integer().withDefault(const Constant(0))();
+  IntColumn get branchId => integer().nullable()();
+}

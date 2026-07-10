@@ -5,7 +5,7 @@ abstract class NusaConfig {
   static const String brandName = "NUSA";
   static const String appSubtitle = "Aplikasi Kasir untuk Toko Kelontong";
   static const String appVersion = "1.0.0";
-  static const int appBuildNumber = 4;
+  static const int appBuildNumber = 5;
   static const String githubRepo = "halugoods/nusa-kasir";
   static const String applicationId = "com.nusa.kasir";
   static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://sakeuhcbcnueplzlkltm.supabase.co');
@@ -47,10 +47,10 @@ abstract class NusaConfig {
   static const List<String> categories = ["Makanan", "Minuman", "Sembako", "Lainnya"];
   static const List<String> roles = ["Owner", "Manager", "Kasir", "Gudang", "Finance"];
   static const Map<String, List<String>> roleAccess = {
-    "Owner": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","keuangan","pengaturan","supplier","spreadsheet"],
-    "Manager": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","keuangan","pengaturan","supplier","spreadsheet"],
+    "Owner": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet"],
+    "Manager": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet"],
     "Kasir": ["home","kasir","produk","transaksi","pelanggan"],
     "Gudang": ["home","produk","stok","laporan","supplier"],
-    "Finance": ["home","transaksi","keuangan","laporan","presensi","supplier"],
+    "Finance": ["home","transaksi","keuangan","laporan","presensi","karyawan","supplier"],
   };
 }

@@ -5,7 +5,6 @@ import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
@@ -18,7 +17,6 @@ class AttendanceScreen extends ConsumerStatefulWidget {
 }
 
 class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
-  final _roles = const ['Owner', 'Manager', 'Kasir', 'Gudang', 'Finance'];
   List<Employee> _employees = [];
   Map<int, AttendanceData?> _today = {};
 
@@ -92,96 +90,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     );
   }
 
-  void _addEmployee() {
-    final nameC = TextEditingController();
-    final pinC = TextEditingController();
-    String role = _roles.first;
-    String? error;
-    showDialog(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Tambah Karyawan',
-              style: TextStyle(fontWeight: FontWeight.w700)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              NusaInput('Nama', controller: nameC),
-              const SizedBox(height: 12),
-              NusaInput('PIN (4-6 digit)',
-                  controller: pinC,
-                  type: TextInputType.number,
-                  obscure: true),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: role,
-                decoration: InputDecoration(
-                  labelText: 'Role',
-                  filled: true,
-                  fillColor: NusaConfig.backgroundColor,
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide:
-                          const BorderSide(color: NusaConfig.borderColor)),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide:
-                          const BorderSide(color: NusaConfig.borderColor)),
-                  focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(
-                          color: NusaConfig.primaryColor, width: 1.5)),
-                ),
-                items: _roles
-                    .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-                    .toList(),
-                onChanged: (v) => setSt(() => role = v!),
-              ),
-              if (error != null) ...[
-                const SizedBox(height: 8),
-                Text(error!, style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13)),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Batal',
-                    style: TextStyle(color: NusaConfig.textSecondary))),
-            ElevatedButton(
-              onPressed: () async {
-                final name = nameC.text.trim();
-                final pin = pinC.text.trim();
-                if (name.isEmpty || pin.isEmpty) {
-                  setSt(() => error = 'Nama dan PIN wajib diisi');
-                  return;
-                }
-                if (pin.length < 4 || pin.length > 6 || int.tryParse(pin) == null) {
-                  setSt(() => error = 'PIN harus 4-6 digit angka');
-                  return;
-                }
-                final repo = AttendanceRepository(ref.read(databaseProvider));
-                await repo.addEmployee(name: name, pin: pin, role: role);
-                if (mounted) Navigator.of(context).pop();
-                _load();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: NusaConfig.primaryColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Simpan'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -208,15 +116,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                 ),
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: NusaConfig.primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah Karyawan',
-            style: TextStyle(fontWeight: FontWeight.w600)),
-        onPressed: _addEmployee,
-      ),
+      floatingActionButton: null,
     );
   }
 }

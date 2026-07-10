@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 
-/// Red gradient profile card with avatar, user info,
-/// left-right action buttons & 4 stats.
+/// Red gradient profile card — DISPLAY ONLY.
+/// Shows who opened the cashier last (no action buttons).
 ///
-/// Button layout (horizontal):
-///   🟣 Presensi (left) | 🟢 Masuk / 🔴 Pulang (right)
-///
-/// States:
-///   - No session: avatar "?", name "--", role "Belum login"
-///   - Logged in: avatar initials, real name + role + attendance status
+/// Fields:
+///   - initials: avatar initials of last cashier
+///   - userName: last cashier name
+///   - role: role + branch
+///   - attendanceStatus: "Kasir terakhir • [jam]" or "Belum ada sesi kasir"
 class ProfileStatsCard extends StatelessWidget {
   final String initials;
   final String userName;
@@ -20,30 +19,18 @@ class ProfileStatsCard extends StatelessWidget {
   final String transactionCount;
   final String avgValue;
   final String topProduct;
-  final VoidCallback? onPresensiTap;
-  final VoidCallback? onActionTap; // Masuk or Pulang
-  final String actionLabel; // "Masuk" or "Pulang"
-  final IconData actionIcon; // Icons.login or Icons.logout
-  final Color actionColor; // Green or Red
-  final bool hasSession; // whether an employee is logged in
 
   const ProfileStatsCard({
     super.key,
     this.initials = '?',
-    this.userName = '--',
-    this.role = 'Belum login',
+    this.userName = 'Belum ada sesi kasir',
+    this.role = '',
     this.branch = '',
-    this.attendanceStatus = 'Silakan absen masuk',
+    this.attendanceStatus = 'Buka Kasir untuk memulai',
     this.salesValue = 'Rp 0',
     this.transactionCount = '0',
     this.avgValue = 'Rp 0',
     this.topProduct = '—',
-    this.onPresensiTap,
-    this.onActionTap,
-    this.actionLabel = 'Masuk',
-    this.actionIcon = Icons.login,
-    this.actionColor = NusaConfig.accentGreen,
-    this.hasSession = false,
   });
 
   @override
@@ -171,11 +158,9 @@ class ProfileStatsCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    hasSession ? Icons.check_circle : Icons.access_time,
+                    Icons.access_time,
                     size: 12,
-                    color: hasSession
-                        ? Colors.white70
-                        : Colors.white.withValues(alpha: 0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                   const SizedBox(width: 4),
                   Text(
@@ -190,54 +175,7 @@ class ProfileStatsCard extends StatelessWidget {
             ],
           ),
         ),
-
-        // Action buttons — left-right layout
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _actionBtn(
-              icon: Icons.calendar_month,
-              color: NusaConfig.accentPurple,
-              shadowColor: NusaConfig.accentPurple,
-              onTap: onPresensiTap,
-            ),
-            const SizedBox(width: 8),
-            _actionBtn(
-              icon: actionIcon,
-              color: actionColor,
-              shadowColor: actionColor,
-              onTap: onActionTap,
-            ),
-          ],
-        ),
       ],
-    );
-  }
-
-  Widget _actionBtn({
-    required IconData icon,
-    required Color color,
-    required Color shadowColor,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: color,
-          boxShadow: [
-            BoxShadow(
-              color: shadowColor.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(icon, size: 18, color: Colors.white),
-      ),
     );
   }
 

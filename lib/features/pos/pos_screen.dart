@@ -6,6 +6,7 @@ import 'package:nusa_kasir/app.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
+import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/features/pos/cart.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
@@ -15,7 +16,8 @@ import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 
 class PosScreen extends ConsumerStatefulWidget {
-  const PosScreen({super.key});
+  final int? sessionId;
+  const PosScreen({super.key, this.sessionId});
   @override
   ConsumerState<PosScreen> createState() => _PosScreenState();
 }
@@ -23,8 +25,30 @@ class PosScreen extends ConsumerStatefulWidget {
 class _PosScreenState extends ConsumerState<PosScreen> {
   final _search = TextEditingController();
   String _category = 'Semua';
+  String _cashierName = '';
 
   List<String> get _chips => ['Semua', ...NusaConfig.categories];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCashier();
+  }
+
+  Future<void> _loadCashier() async {
+    if (widget.sessionId == null) return;
+    final repo = CashierSessionRepository(ref.read(databaseProvider));
+    final session = await repo.getLast();
+    if (session != null && mounted) {
+      final emps = await (ref.read(databaseProvider).select(
+              ref.read(databaseProvider).employees)
+            ..where((t) => t.id.equals(session.employeeId)))
+          .get();
+      if (emps.isNotEmpty) {
+        setState(() => _cashierName = emps.first.name);
+      }
+    }
+  }
 
   Future<List<Product>> _loadProducts() async {
     final repo = ProductRepository(ref.read(databaseProvider));
@@ -90,6 +114,24 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     }
   }
 
+  Future<void> _closeKasir() async {
+    if (widget.sessionId == null) {
+      if (mounted) context.go('/home');
+      return;
+    }
+    final repo = CashierSessionRepository(ref.read(databaseProvider));
+    await repo.close(widget.sessionId!);
+    if (mounted) {
+      context.go('/home');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kasir ditutup. Sampai jumpa! 👋'),
+          backgroundColor: NusaConfig.accentGreen,
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _search.dispose();
@@ -103,6 +145,38 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       'Kasir',
       Column(
         children: [
+          // Cashier info banner
+          if (_cashierName.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: NusaConfig.primarySoft,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.person, size: 18,
+                      color: NusaConfig.primaryColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Kasir: $_cashierName',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: NusaConfig.primaryColor,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _closeKasir,
+                    child: const Text('Tutup Kasir',
+                        style: TextStyle(fontSize: 13)),
+                  ),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: NusaInput('Cari produk...',
@@ -191,12 +265,12 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                               fontSize: 14, color: NusaConfig.textSecondary)),
                       const SizedBox(height: 2),
                       Text(
-                        formatRupiah(
-                            cart.fold(0, (s, e) => s + e.subtotal)),
+                        formatRupiah(cart.fold(0, (s, e) => s + e.subtotal)),
                         style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: NusaConfig.primaryColor),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: NusaConfig.primaryColor,
+                        ),
                       ),
                     ],
                   ),
@@ -207,7 +281,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                     'Bayar',
                     onPressed: cart.isEmpty
                         ? null
-                        : () => context.go('/checkout'),
+                        : () => context.go(
+                            '/checkout?sessionId=${widget.sessionId ?? ''}'),
                   ),
                 ),
               ],

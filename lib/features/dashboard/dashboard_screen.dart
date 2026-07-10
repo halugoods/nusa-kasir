@@ -6,6 +6,7 @@ import 'package:nusa_kasir/core/auth/employee_session.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
+import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
 import 'package:nusa_kasir/data/repositories/report_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/features/auth/rbac.dart';
@@ -33,8 +34,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   List<Branche> _branches = [];
   Branche? _activeBranch;
 
-  // Attendance state
-  bool _checkedIn = false;
+  // Last cashier session (for display)
+  String? _lastCashierName;
+  String _lastCashierRole = '';
+  String _lastCashierTime = '';
   List<Employee> _employees = [];
 
   final List<Map<String, String>> _items = const [
@@ -45,6 +48,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     {'id': 'promo', 'label': 'Promo', 'icon': 'promotion'},
     {'id': 'laporan', 'label': 'Laporan', 'icon': 'finance'},
     {'id': 'presensi', 'label': 'Presensi', 'icon': 'notification'},
+    {'id': 'karyawan', 'label': 'Karyawan', 'icon': 'employee'},
     {'id': 'keuangan', 'label': 'Keuangan', 'icon': 'finance'},
     {'id': 'spreadsheet', 'label': 'Spreadsheet', 'icon': 'table'},
     {'id': 'supplier', 'label': 'Supplier', 'icon': 'supplier'},
@@ -72,15 +76,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final reportRepo = ReportRepository(ref.read(databaseProvider));
     final sum = await reportRepo.summary(from: today, to: now);
 
-    // Load employees & check attendance for current session
+    // Load employees
     final attRepo = AttendanceRepository(ref.read(databaseProvider));
     final emps = await attRepo.getEmployees();
 
-    bool checkedIn = false;
-    final session = ref.read(employeeSessionProvider);
-    if (session != null) {
-      final todayAtt = await attRepo.getToday(session.employeeId);
-      checkedIn = todayAtt?.checkIn != null;
+    // Load last cashier session for display
+    final cashierRepo =
+        CashierSessionRepository(ref.read(databaseProvider));
+    final lastSession = await cashierRepo.getLast();
+
+    String? lastCashierName;
+    String lastCashierRole = '';
+    String lastCashierTime = '';
+    if (lastSession != null) {
+      final emp = emps.cast<Employee?>().firstWhere(
+            (e) => e!.id == lastSession.employeeId,
+            orElse: () => null,
+          );
+      if (emp != null) {
+        lastCashierName = emp.name;
+        lastCashierRole = emp.role;
+        final t = lastSession.openedAt;
+        lastCashierTime =
+            '${t.hour.toString().padLeft(2, '0')}:'
+            '${t.minute.toString().padLeft(2, '0')}';
+      }
     }
 
     if (mounted) {
@@ -95,26 +115,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _trxCount = '${sum['count']}';
         _avg = formatRupiah(sum['avg'] as int);
         _employees = emps;
-        _checkedIn = checkedIn;
+        _lastCashierName = lastCashierName;
+        _lastCashierRole = lastCashierRole;
+        _lastCashierTime = lastCashierTime;
       });
-    }
-  }
-
-  Future<void> _handleActionTap() async {
-    final session = ref.read(employeeSessionProvider);
-
-    if (session == null) {
-      // No session → show employee picker then PIN
-      await _pickAndLogin();
-      return;
-    }
-
-    if (!_checkedIn) {
-      // Has session but not checked in → confirm check-in with PIN
-      await _confirmCheckIn(session);
-    } else {
-      // Checked in → check out
-      await _doCheckOut(session);
     }
   }
 
@@ -122,8 +126,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (_employees.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content:
-                Text('Belum ada karyawan. Tambah di menu Presensi.')),
+            content: Text('Belum ada karyawan. Tambah di menu Karyawan.')),
       );
       return;
     }
@@ -142,7 +145,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     if (result == null || !result.success || !mounted) return;
 
-    // Login
+    // Login (session only — check-in is for attendance, not cashier)
     final session = EmployeeSession(
       employeeId: emp.id,
       name: emp.name,
@@ -155,94 +158,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
     ref.read(authProvider.notifier).state = emp.role;
 
-    // Auto-check-in — PIN already verified, no need for presensi screen
-    final attRepo = AttendanceRepository(ref.read(databaseProvider));
-    final today = await attRepo.getToday(emp.id);
-    if (today?.checkIn == null) {
-      await attRepo.checkIn(emp.id);
-    }
-
-    setState(() => _checkedIn = true);
-
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Halo, ${emp.name}! Semua menu siap digunakan 🎉'),
+          content: Text('Halo, ${emp.name}! 👋'),
           backgroundColor: NusaConfig.accentGreen,
           duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  Future<void> _confirmCheckIn(EmployeeSession session) async {
-    // Find employee in list
-    final emp = _employees.cast<Employee?>().firstWhere(
-          (e) => e!.id == session.employeeId,
-          orElse: () => null,
-        );
-    if (emp == null) return;
-
-    final result = await PinDialog.show(
-      context: context,
-      employeeName: emp.name,
-      employeeRole: emp.role,
-      correctPin: emp.pin,
-    );
-
-    if (result == null || !result.success || !mounted) return;
-
-    // Auto-check-in
-    final attRepo = AttendanceRepository(ref.read(databaseProvider));
-    await attRepo.checkIn(emp.id);
-    setState(() => _checkedIn = true);
-
-    // Update remember state if changed
-    if (result.remember) {
-      ref.read(employeeSessionProvider.notifier).login(
-            session,
-            remember: true,
-          );
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Halo, ${emp.name}! Semua menu siap digunakan 🎉'),
-          backgroundColor: NusaConfig.accentGreen,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  Future<void> _doCheckOut(EmployeeSession session) async {
-    final attRepo = AttendanceRepository(ref.read(databaseProvider));
-    await attRepo.checkOut(session.employeeId);
-    setState(() => _checkedIn = false);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Absen pulang berhasil!'),
-          backgroundColor: NusaConfig.accentGreen,
         ),
       );
     }
   }
 
   Future<void> _handlePresensiTap() async {
-    final session = ref.read(employeeSessionProvider);
-    if (session == null) {
-      // Must login first — presensi is a management screen
-      await _pickAndLogin();
-      if (ref.read(employeeSessionProvider) == null) return;
-    }
-
-    // Go to presensi, then full-refresh on return
+    // Presensi is attendance management — no login gate needed
     await context.push('/presensi');
     if (mounted) {
-      await _load(); // full refresh: attendance + stats + employees
+      await _load();
     }
   }
 
@@ -250,19 +181,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final session = ref.read(employeeSessionProvider);
 
     if (session == null) {
-      // No session → login + auto-check-in
+      // No session → login first, then navigate
       await _pickAndLogin();
       if (ref.read(employeeSessionProvider) == null) return;
-    }
-
-    if (!_checkedIn) {
-      // Fast check-in via PIN (same as card button), not presensi screen
-      final currentSession = ref.read(employeeSessionProvider);
-      if (currentSession != null) {
-        await _confirmCheckIn(currentSession);
-      }
-      if (mounted) await _load();
-      if (!_checkedIn) return; // still not checked in, block
     }
 
     // Navigate to target route
@@ -323,7 +244,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               NusaConfig.primaryColor.withValues(alpha: 0.12),
                           child: Text(
                             e.name[0].toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w700,
                               color: NusaConfig.primaryColor,
                             ),
@@ -331,7 +252,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         title: Text(
                           e.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                         subtitle: Text(e.role,
                             style:
@@ -356,43 +277,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final session = ref.watch(employeeSessionProvider);
     final role = session?.role ?? 'Owner';
     final visible = _items.where((i) => hasAccess(role, i['id']!)).toList();
-    final hasSession = session != null;
 
-    // Build card props based on session state
+    // Build card props — show last cashier (from CashierSession)
     String initials, userName, roleText, attendanceText;
-    IconData actionIcon;
-    Color actionColor;
-    String actionLabel;
-
-    if (hasSession) {
-      initials = session.name.isNotEmpty
-          ? session.name[0].toUpperCase()
+    if (_lastCashierName != null) {
+      initials = _lastCashierName!.isNotEmpty
+          ? _lastCashierName![0].toUpperCase()
           : '?';
-      userName = session.name;
-      roleText = session.role;
-      attendanceText =
-          _checkedIn ? '🟢 Sudah absen hari ini' : 'Belum absen hari ini';
-      if (_checkedIn) {
-        actionIcon = Icons.logout;
-        actionColor = const Color(0xFFEF4444); // red
-        actionLabel = 'Pulang';
-      } else {
-        actionIcon = Icons.login;
-        actionColor = NusaConfig.accentGreen;
-        actionLabel = 'Masuk';
-      }
+      userName = _lastCashierName!;
+      roleText = _lastCashierRole;
+      attendanceText = 'Kasir terakhir • ${_lastCashierTime}';
     } else {
       initials = '?';
-      userName = '--';
-      roleText = 'Belum login';
-      attendanceText = 'Silakan absen masuk';
-      actionIcon = Icons.login;
-      actionColor = NusaConfig.accentGreen;
-      actionLabel = 'Masuk';
+      userName = 'Belum ada sesi kasir';
+      roleText = '';
+      attendanceText = 'Buka Kasir untuk memulai';
     }
 
     return Scaffold(
-      backgroundColor: NusaConfig.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -493,12 +396,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               transactionCount: _trxCount,
               avgValue: _avg,
               topProduct: _topProduct,
-              onPresensiTap: _handlePresensiTap,
-              onActionTap: _handleActionTap,
-              actionLabel: actionLabel,
-              actionIcon: actionIcon,
-              actionColor: actionColor,
-              hasSession: hasSession,
             ),
 
             const SizedBox(height: 20),
@@ -526,29 +423,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
               child: _BukaKasirCTA(
                 onTap: () async {
-                  // Same flow as menu: login if needed, check-in if needed
+                  // Need session first — pick employee + PIN
                   final session = ref.read(employeeSessionProvider);
                   if (session == null) {
                     await _pickAndLogin();
                     if (ref.read(employeeSessionProvider) == null) return;
                   }
-                  if (!_checkedIn) {
-                    await context.push('/presensi');
-                    if (mounted) await _load();
-                    if (!_checkedIn) return;
-                  }
                   if (!mounted) return;
+                  final s = ref.read(employeeSessionProvider)!;
                   BukaKasirSheet.show(
                     context: context,
                     storeName: _storeName,
-                    onConfirm: (saldo) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              'Kasir dibuka! Saldo awal: ${formatRupiah(saldo)}'),
-                          backgroundColor: NusaConfig.accentGreen,
-                        ),
-                      );
+                    employeeId: s.employeeId,
+                    employeeName: s.name,
+                    employeeRole: s.role,
+                    onConfirm: (sessionId, saldo) {
+                      // Navigate to POS with the cashier session
+                      if (mounted) {
+                        context.push('/kasir?sessionId=$sessionId');
+                      }
                     },
                   );
                 },
@@ -575,14 +468,15 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         decoration: BoxDecoration(
-          color: NusaConfig.surfaceColor,
+          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: NusaConfig.borderColor),
+          border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
           boxShadow: const [
             BoxShadow(
               color: Color(0x0A111827),
@@ -610,10 +504,10 @@ class _MenuItem extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: NusaConfig.textPrimary,
+                  color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 1,
@@ -643,6 +537,7 @@ class MenuIcon extends StatelessWidget {
     'notification': Icons.notifications_outlined,
     'table': Icons.table_chart_outlined,
     'supplier': Icons.local_shipping_outlined,
+    'employee': Icons.people_alt_outlined,
   };
 
   @override

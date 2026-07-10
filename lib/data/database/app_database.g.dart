@@ -7389,6 +7389,411 @@ class SyncQueueCompanion extends UpdateCompanion<SyncQueueData> {
   }
 }
 
+class $CashierSessionsTable extends CashierSessions
+    with TableInfo<$CashierSessionsTable, CashierSession> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CashierSessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _employeeIdMeta = const VerificationMeta(
+    'employeeId',
+  );
+  @override
+  late final GeneratedColumn<int> employeeId = GeneratedColumn<int>(
+    'employee_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _openedAtMeta = const VerificationMeta(
+    'openedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> openedAt = GeneratedColumn<DateTime>(
+    'opened_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _closedAtMeta = const VerificationMeta(
+    'closedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> closedAt = GeneratedColumn<DateTime>(
+    'closed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _startingCashMeta = const VerificationMeta(
+    'startingCash',
+  );
+  @override
+  late final GeneratedColumn<int> startingCash = GeneratedColumn<int>(
+    'starting_cash',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _branchIdMeta = const VerificationMeta(
+    'branchId',
+  );
+  @override
+  late final GeneratedColumn<int> branchId = GeneratedColumn<int>(
+    'branch_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    employeeId,
+    openedAt,
+    closedAt,
+    startingCash,
+    branchId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cashier_sessions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CashierSession> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('employee_id')) {
+      context.handle(
+        _employeeIdMeta,
+        employeeId.isAcceptableOrUnknown(data['employee_id']!, _employeeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_employeeIdMeta);
+    }
+    if (data.containsKey('opened_at')) {
+      context.handle(
+        _openedAtMeta,
+        openedAt.isAcceptableOrUnknown(data['opened_at']!, _openedAtMeta),
+      );
+    }
+    if (data.containsKey('closed_at')) {
+      context.handle(
+        _closedAtMeta,
+        closedAt.isAcceptableOrUnknown(data['closed_at']!, _closedAtMeta),
+      );
+    }
+    if (data.containsKey('starting_cash')) {
+      context.handle(
+        _startingCashMeta,
+        startingCash.isAcceptableOrUnknown(
+          data['starting_cash']!,
+          _startingCashMeta,
+        ),
+      );
+    }
+    if (data.containsKey('branch_id')) {
+      context.handle(
+        _branchIdMeta,
+        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CashierSession map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CashierSession(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      employeeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}employee_id'],
+      )!,
+      openedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}opened_at'],
+      )!,
+      closedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}closed_at'],
+      ),
+      startingCash: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}starting_cash'],
+      )!,
+      branchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}branch_id'],
+      ),
+    );
+  }
+
+  @override
+  $CashierSessionsTable createAlias(String alias) {
+    return $CashierSessionsTable(attachedDatabase, alias);
+  }
+}
+
+class CashierSession extends DataClass implements Insertable<CashierSession> {
+  final int id;
+  final int employeeId;
+  final DateTime openedAt;
+  final DateTime? closedAt;
+  final int startingCash;
+  final int? branchId;
+  const CashierSession({
+    required this.id,
+    required this.employeeId,
+    required this.openedAt,
+    this.closedAt,
+    required this.startingCash,
+    this.branchId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['employee_id'] = Variable<int>(employeeId);
+    map['opened_at'] = Variable<DateTime>(openedAt);
+    if (!nullToAbsent || closedAt != null) {
+      map['closed_at'] = Variable<DateTime>(closedAt);
+    }
+    map['starting_cash'] = Variable<int>(startingCash);
+    if (!nullToAbsent || branchId != null) {
+      map['branch_id'] = Variable<int>(branchId);
+    }
+    return map;
+  }
+
+  CashierSessionsCompanion toCompanion(bool nullToAbsent) {
+    return CashierSessionsCompanion(
+      id: Value(id),
+      employeeId: Value(employeeId),
+      openedAt: Value(openedAt),
+      closedAt: closedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(closedAt),
+      startingCash: Value(startingCash),
+      branchId: branchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branchId),
+    );
+  }
+
+  factory CashierSession.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CashierSession(
+      id: serializer.fromJson<int>(json['id']),
+      employeeId: serializer.fromJson<int>(json['employeeId']),
+      openedAt: serializer.fromJson<DateTime>(json['openedAt']),
+      closedAt: serializer.fromJson<DateTime?>(json['closedAt']),
+      startingCash: serializer.fromJson<int>(json['startingCash']),
+      branchId: serializer.fromJson<int?>(json['branchId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'employeeId': serializer.toJson<int>(employeeId),
+      'openedAt': serializer.toJson<DateTime>(openedAt),
+      'closedAt': serializer.toJson<DateTime?>(closedAt),
+      'startingCash': serializer.toJson<int>(startingCash),
+      'branchId': serializer.toJson<int?>(branchId),
+    };
+  }
+
+  CashierSession copyWith({
+    int? id,
+    int? employeeId,
+    DateTime? openedAt,
+    Value<DateTime?> closedAt = const Value.absent(),
+    int? startingCash,
+    Value<int?> branchId = const Value.absent(),
+  }) => CashierSession(
+    id: id ?? this.id,
+    employeeId: employeeId ?? this.employeeId,
+    openedAt: openedAt ?? this.openedAt,
+    closedAt: closedAt.present ? closedAt.value : this.closedAt,
+    startingCash: startingCash ?? this.startingCash,
+    branchId: branchId.present ? branchId.value : this.branchId,
+  );
+  CashierSession copyWithCompanion(CashierSessionsCompanion data) {
+    return CashierSession(
+      id: data.id.present ? data.id.value : this.id,
+      employeeId: data.employeeId.present
+          ? data.employeeId.value
+          : this.employeeId,
+      openedAt: data.openedAt.present ? data.openedAt.value : this.openedAt,
+      closedAt: data.closedAt.present ? data.closedAt.value : this.closedAt,
+      startingCash: data.startingCash.present
+          ? data.startingCash.value
+          : this.startingCash,
+      branchId: data.branchId.present ? data.branchId.value : this.branchId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CashierSession(')
+          ..write('id: $id, ')
+          ..write('employeeId: $employeeId, ')
+          ..write('openedAt: $openedAt, ')
+          ..write('closedAt: $closedAt, ')
+          ..write('startingCash: $startingCash, ')
+          ..write('branchId: $branchId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, employeeId, openedAt, closedAt, startingCash, branchId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CashierSession &&
+          other.id == this.id &&
+          other.employeeId == this.employeeId &&
+          other.openedAt == this.openedAt &&
+          other.closedAt == this.closedAt &&
+          other.startingCash == this.startingCash &&
+          other.branchId == this.branchId);
+}
+
+class CashierSessionsCompanion extends UpdateCompanion<CashierSession> {
+  final Value<int> id;
+  final Value<int> employeeId;
+  final Value<DateTime> openedAt;
+  final Value<DateTime?> closedAt;
+  final Value<int> startingCash;
+  final Value<int?> branchId;
+  const CashierSessionsCompanion({
+    this.id = const Value.absent(),
+    this.employeeId = const Value.absent(),
+    this.openedAt = const Value.absent(),
+    this.closedAt = const Value.absent(),
+    this.startingCash = const Value.absent(),
+    this.branchId = const Value.absent(),
+  });
+  CashierSessionsCompanion.insert({
+    this.id = const Value.absent(),
+    required int employeeId,
+    this.openedAt = const Value.absent(),
+    this.closedAt = const Value.absent(),
+    this.startingCash = const Value.absent(),
+    this.branchId = const Value.absent(),
+  }) : employeeId = Value(employeeId);
+  static Insertable<CashierSession> custom({
+    Expression<int>? id,
+    Expression<int>? employeeId,
+    Expression<DateTime>? openedAt,
+    Expression<DateTime>? closedAt,
+    Expression<int>? startingCash,
+    Expression<int>? branchId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (employeeId != null) 'employee_id': employeeId,
+      if (openedAt != null) 'opened_at': openedAt,
+      if (closedAt != null) 'closed_at': closedAt,
+      if (startingCash != null) 'starting_cash': startingCash,
+      if (branchId != null) 'branch_id': branchId,
+    });
+  }
+
+  CashierSessionsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? employeeId,
+    Value<DateTime>? openedAt,
+    Value<DateTime?>? closedAt,
+    Value<int>? startingCash,
+    Value<int?>? branchId,
+  }) {
+    return CashierSessionsCompanion(
+      id: id ?? this.id,
+      employeeId: employeeId ?? this.employeeId,
+      openedAt: openedAt ?? this.openedAt,
+      closedAt: closedAt ?? this.closedAt,
+      startingCash: startingCash ?? this.startingCash,
+      branchId: branchId ?? this.branchId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (employeeId.present) {
+      map['employee_id'] = Variable<int>(employeeId.value);
+    }
+    if (openedAt.present) {
+      map['opened_at'] = Variable<DateTime>(openedAt.value);
+    }
+    if (closedAt.present) {
+      map['closed_at'] = Variable<DateTime>(closedAt.value);
+    }
+    if (startingCash.present) {
+      map['starting_cash'] = Variable<int>(startingCash.value);
+    }
+    if (branchId.present) {
+      map['branch_id'] = Variable<int>(branchId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CashierSessionsCompanion(')
+          ..write('id: $id, ')
+          ..write('employeeId: $employeeId, ')
+          ..write('openedAt: $openedAt, ')
+          ..write('closedAt: $closedAt, ')
+          ..write('startingCash: $startingCash, ')
+          ..write('branchId: $branchId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7410,6 +7815,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $SyncQueueTable syncQueue = $SyncQueueTable(this);
+  late final $CashierSessionsTable cashierSessions = $CashierSessionsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7431,6 +7839,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     settings,
     activationsLocal,
     syncQueue,
+    cashierSessions,
   ];
 }
 
@@ -11238,6 +11647,229 @@ typedef $$SyncQueueTableProcessedTableManager =
       SyncQueueData,
       PrefetchHooks Function()
     >;
+typedef $$CashierSessionsTableCreateCompanionBuilder =
+    CashierSessionsCompanion Function({
+      Value<int> id,
+      required int employeeId,
+      Value<DateTime> openedAt,
+      Value<DateTime?> closedAt,
+      Value<int> startingCash,
+      Value<int?> branchId,
+    });
+typedef $$CashierSessionsTableUpdateCompanionBuilder =
+    CashierSessionsCompanion Function({
+      Value<int> id,
+      Value<int> employeeId,
+      Value<DateTime> openedAt,
+      Value<DateTime?> closedAt,
+      Value<int> startingCash,
+      Value<int?> branchId,
+    });
+
+class $$CashierSessionsTableFilterComposer
+    extends Composer<_$AppDatabase, $CashierSessionsTable> {
+  $$CashierSessionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get employeeId => $composableBuilder(
+    column: $table.employeeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get openedAt => $composableBuilder(
+    column: $table.openedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get closedAt => $composableBuilder(
+    column: $table.closedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startingCash => $composableBuilder(
+    column: $table.startingCash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CashierSessionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CashierSessionsTable> {
+  $$CashierSessionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get employeeId => $composableBuilder(
+    column: $table.employeeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get openedAt => $composableBuilder(
+    column: $table.openedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get closedAt => $composableBuilder(
+    column: $table.closedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startingCash => $composableBuilder(
+    column: $table.startingCash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get branchId => $composableBuilder(
+    column: $table.branchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CashierSessionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CashierSessionsTable> {
+  $$CashierSessionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get employeeId => $composableBuilder(
+    column: $table.employeeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get openedAt =>
+      $composableBuilder(column: $table.openedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get closedAt =>
+      $composableBuilder(column: $table.closedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get startingCash => $composableBuilder(
+    column: $table.startingCash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get branchId =>
+      $composableBuilder(column: $table.branchId, builder: (column) => column);
+}
+
+class $$CashierSessionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CashierSessionsTable,
+          CashierSession,
+          $$CashierSessionsTableFilterComposer,
+          $$CashierSessionsTableOrderingComposer,
+          $$CashierSessionsTableAnnotationComposer,
+          $$CashierSessionsTableCreateCompanionBuilder,
+          $$CashierSessionsTableUpdateCompanionBuilder,
+          (
+            CashierSession,
+            BaseReferences<
+              _$AppDatabase,
+              $CashierSessionsTable,
+              CashierSession
+            >,
+          ),
+          CashierSession,
+          PrefetchHooks Function()
+        > {
+  $$CashierSessionsTableTableManager(
+    _$AppDatabase db,
+    $CashierSessionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CashierSessionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CashierSessionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CashierSessionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> employeeId = const Value.absent(),
+                Value<DateTime> openedAt = const Value.absent(),
+                Value<DateTime?> closedAt = const Value.absent(),
+                Value<int> startingCash = const Value.absent(),
+                Value<int?> branchId = const Value.absent(),
+              }) => CashierSessionsCompanion(
+                id: id,
+                employeeId: employeeId,
+                openedAt: openedAt,
+                closedAt: closedAt,
+                startingCash: startingCash,
+                branchId: branchId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int employeeId,
+                Value<DateTime> openedAt = const Value.absent(),
+                Value<DateTime?> closedAt = const Value.absent(),
+                Value<int> startingCash = const Value.absent(),
+                Value<int?> branchId = const Value.absent(),
+              }) => CashierSessionsCompanion.insert(
+                id: id,
+                employeeId: employeeId,
+                openedAt: openedAt,
+                closedAt: closedAt,
+                startingCash: startingCash,
+                branchId: branchId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CashierSessionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CashierSessionsTable,
+      CashierSession,
+      $$CashierSessionsTableFilterComposer,
+      $$CashierSessionsTableOrderingComposer,
+      $$CashierSessionsTableAnnotationComposer,
+      $$CashierSessionsTableCreateCompanionBuilder,
+      $$CashierSessionsTableUpdateCompanionBuilder,
+      (
+        CashierSession,
+        BaseReferences<_$AppDatabase, $CashierSessionsTable, CashierSession>,
+      ),
+      CashierSession,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11274,4 +11906,6 @@ class $AppDatabaseManager {
       $$ActivationsLocalTableTableManager(_db, _db.activationsLocal);
   $$SyncQueueTableTableManager get syncQueue =>
       $$SyncQueueTableTableManager(_db, _db.syncQueue);
+  $$CashierSessionsTableTableManager get cashierSessions =>
+      $$CashierSessionsTableTableManager(_db, _db.cashierSessions);
 }

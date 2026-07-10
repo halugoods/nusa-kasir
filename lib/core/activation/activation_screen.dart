@@ -59,7 +59,11 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
 
   Future<void> _submit() async {
     setState(() => _loading = true);
-    final r = await ref.read(activationRepoProvider).activate(_ctrl.text);
+    final key = _ctrl.text.trim().toUpperCase();
+    final r = await ref.read(activationRepoProvider).activate(key);
+    if (r.ok) {
+      await ref.read(activationRepoProvider).downloadAndRestore(key);
+    }
     setState(() => _loading = false);
     if (r.ok) {
       if (mounted) context.go('/setup');

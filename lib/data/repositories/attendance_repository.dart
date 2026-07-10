@@ -27,6 +27,23 @@ class AttendanceRepository {
         ));
   }
 
+  Future<void> updateEmployee({
+    required int id,
+    required String name,
+    required String pin,
+    required String role,
+  }) =>
+      (db.update(db.employees)..where((t) => t.id.equals(id))).write(
+        EmployeesCompanion(
+          name: Value(name),
+          pin: Value(pin),
+          role: Value(role),
+        ),
+      );
+
+  Future<void> deleteEmployee(int id) =>
+      (db.delete(db.employees)..where((t) => t.id.equals(id))).go();
+
   // ---- Attendance ----
   Future<AttendanceData?> getToday(int employeeId) async {
     final now = DateTime.now();

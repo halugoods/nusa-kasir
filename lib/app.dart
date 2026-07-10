@@ -26,6 +26,7 @@ import 'package:nusa_kasir/features/customers/customers_screen.dart';
 import 'package:nusa_kasir/features/promo/promo_screen.dart';
 import 'package:nusa_kasir/features/reports/reports_screen.dart';
 import 'package:nusa_kasir/features/attendance/attendance_screen.dart';
+import 'package:nusa_kasir/features/employees/employees_screen.dart';
 import 'package:nusa_kasir/features/finance/finance_screen.dart';
 import 'package:nusa_kasir/features/suppliers/suppliers_screen.dart';
 import 'package:nusa_kasir/features/spreadsheet/spreadsheet_screen.dart';
@@ -68,7 +69,10 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
             path: '/home',
             pageBuilder: (_, __) => _slidePage(const DashboardScreen())),
         GoRoute(
-            path: '/kasir', pageBuilder: (_, __) => _slidePage(const PosScreen())),
+            path: '/kasir',
+            pageBuilder: (_, state) => _slidePage(PosScreen(
+                sessionId: int.tryParse(
+                    state.uri.queryParameters['sessionId'] ?? '')))),
         GoRoute(
             path: '/checkout',
             pageBuilder: (_, __) => _slidePage(const CheckoutScreen())),
@@ -95,6 +99,9 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/laporan',
             pageBuilder: (_, __) => _slidePage(const ReportsScreen())),
+        GoRoute(
+            path: '/karyawan',
+            pageBuilder: (_, __) => _slidePage(const EmployeesScreen())),
         GoRoute(
             path: '/presensi',
             pageBuilder: (_, __) => _slidePage(const AttendanceScreen())),

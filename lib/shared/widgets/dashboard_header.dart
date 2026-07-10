@@ -25,6 +25,7 @@ class DashboardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
@@ -34,7 +35,7 @@ class DashboardHeader extends StatelessWidget {
             child: Row(
               children: [
                 // NUSA wordmark + divider + app name
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -54,7 +55,7 @@ class DashboardHeader extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w500,
-                        color: NusaConfig.textTertiary,
+                        color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
                         height: 1.3,
                       ),
                     ),
@@ -65,7 +66,7 @@ class DashboardHeader extends StatelessWidget {
                   height: 20,
                   width: 1,
                   margin: const EdgeInsets.symmetric(horizontal: 12),
-                  color: NusaConfig.dividerColor,
+                  color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
                 ),
                 // User info
                 Expanded(
@@ -75,10 +76,10 @@ class DashboardHeader extends StatelessWidget {
                     children: [
                       Text(
                         userName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: NusaConfig.textPrimary,
+                          color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                           height: 1.3,
                         ),
                         maxLines: 1,
@@ -86,9 +87,9 @@ class DashboardHeader extends StatelessWidget {
                       ),
                       Text(
                         '$role • $branch',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: NusaConfig.textSecondary,
+                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                           height: 1.3,
                         ),
                         maxLines: 1,
@@ -113,10 +114,10 @@ class DashboardHeader extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.notifications_outlined,
                     size: 22,
-                    color: NusaConfig.textPrimary,
+                    color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                   ),
                   if (hasNotification)
                     Positioned(

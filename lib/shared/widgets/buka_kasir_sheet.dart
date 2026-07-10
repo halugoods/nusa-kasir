@@ -1,25 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
+import 'package:nusa_kasir/data/database/app_database.dart';
+import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
 
 /// Bottom sheet modal for "Buka Kasir" — asks for starting cash balance.
 ///
-/// Matches the reference BukaKasirButton:
-///   - Draggable handle bar at top
-///   - Calculator icon in red-soft circle + title + subtitle
-///   - Store info banner (red-50 bg, wallet icon)
-///   - Rp-prefixed numeric input, right-aligned, bold
-///   - Quick chips: Rp 50k / 100k / 200k / 500k
-///   - "Mulai Sesi Kasir" CTA button (full width, red, arrow icon)
+/// Flow:
+///   1. PIN is collected BEFORE this sheet (in dashboard) to authenticate cashier
+///   2. This sheet collects the starting cash balance (saldo awal)
+///   3. On confirm → creates a CashierSession row, returns (sessionId, saldo)
 ///
-/// Call `showBukaKasirSheet(context, storeName, onConfirm)` to display.
+/// Call `show(context, storeName, employeeId, employeeName, employeeRole, onConfirm)`.
 class BukaKasirSheet extends StatefulWidget {
   final String storeName;
-  final void Function(int saldo) onConfirm;
+  final int employeeId;
+  final String employeeName;
+  final String employeeRole;
+  final void Function(int sessionId, int saldo) onConfirm;
 
   const BukaKasirSheet({
     super.key,
     required this.storeName,
+    required this.employeeId,
+    required this.employeeName,
+    required this.employeeRole,
     required this.onConfirm,
   });
 
@@ -27,7 +32,10 @@ class BukaKasirSheet extends StatefulWidget {
   static void show({
     required BuildContext context,
     required String storeName,
-    required void Function(int saldo) onConfirm,
+    required int employeeId,
+    required String employeeName,
+    required String employeeRole,
+    required void Function(int sessionId, int saldo) onConfirm,
   }) {
     showModalBottomSheet(
       context: context,
@@ -38,6 +46,9 @@ class BukaKasirSheet extends StatefulWidget {
       ),
       builder: (_) => BukaKasirSheet(
         storeName: storeName,
+        employeeId: employeeId,
+        employeeName: employeeName,
+        employeeRole: employeeRole,
         onConfirm: onConfirm,
       ),
     );
@@ -50,6 +61,7 @@ class BukaKasirSheet extends StatefulWidget {
 class _BukaKasirSheetState extends State<BukaKasirSheet> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
+  bool _loading = false;
 
   String get _raw => _controller.text.replaceAll(RegExp(r'[^\d]'), '');
 
@@ -57,7 +69,6 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
   void initState() {
     super.initState();
     _controller.addListener(() => setState(() {}));
-    // Auto-focus after sheet opens
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) _focusNode.requestFocus();
     });
@@ -74,7 +85,7 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
     _controller.text = value.toString();
   }
 
-  void _confirm() {
+  Future<void> _confirm() async {
     final nilai = int.tryParse(_raw);
     if (nilai == null || nilai <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -85,8 +96,28 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
       );
       return;
     }
-    widget.onConfirm(nilai);
-    Navigator.of(context).pop();
+
+    setState(() => _loading = true);
+    try {
+      // Create cashier session
+      final db = AppDatabase();
+      final repo = CashierSessionRepository(db);
+      final sessionId = await repo.open(
+        employeeId: widget.employeeId,
+        startingCash: nilai,
+      );
+      if (mounted) {
+        widget.onConfirm(sessionId, nilai);
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal buka kasir: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -120,7 +151,6 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Icon
                 Container(
                   width: 44,
                   height: 44,
@@ -150,7 +180,7 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Mulai sesi penjualan hari ini',
+                        'Kasir: ${widget.employeeName} • ${widget.employeeRole}',
                         style: const TextStyle(
                           fontSize: 13,
                           color: NusaConfig.textSecondary,
@@ -159,7 +189,6 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                     ],
                   ),
                 ),
-                // Close button
                 GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
                   child: Container(
@@ -238,6 +267,7 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                       focusNode: _focusNode,
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.right,
+                      enabled: !_loading,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -268,7 +298,7 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
               runSpacing: 8,
               children: [50000, 100000, 200000, 500000].map((v) {
                 return GestureDetector(
-                  onTap: () => _setChip(v),
+                  onTap: _loading ? null : () => _setChip(v),
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -294,9 +324,18 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _confirm,
-                icon: const Icon(Icons.arrow_forward, size: 18),
-                label: const Text('Mulai Sesi Kasir'),
+                onPressed: _loading ? null : _confirm,
+                icon: _loading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.arrow_forward, size: 18),
+                label: Text(_loading ? 'Membuka...' : 'Mulai Sesi Kasir'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: NusaConfig.primaryColor,
                   foregroundColor: Colors.white,

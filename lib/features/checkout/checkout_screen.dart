@@ -16,7 +16,8 @@ import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/features/checkout/receipt_sheet.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
-  const CheckoutScreen({super.key});
+  final int? sessionId;
+  const CheckoutScreen({super.key, this.sessionId});
   @override
   ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
 }
@@ -120,6 +121,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           cashierName: cashierName,
         ),
       );
+      // Return to POS screen
+      if (mounted && widget.sessionId != null) {
+        context.go('/kasir?sessionId=${widget.sessionId}');
+      } else if (mounted) {
+        context.go('/home');
+      }
     } catch (e) {
       if (mounted) {
         NusaSnackbar.error(context, 'Gagal memproses pembayaran: $e');

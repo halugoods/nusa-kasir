@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/activation/activation_key.dart';
 import 'package:nusa_kasir/core/activation/activation_public_key.dart';
 import 'package:nusa_kasir/core/utils/device_id.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 class ActivationResult {
   final bool ok;
@@ -40,6 +43,41 @@ class ActivationRepository {
       }
     }
     return ActivationResult(true);
+  }
+
+  Future<bool> uploadBackup(String key) async {
+    if (client == null) return false;
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dir.path, 'nusa_kasir.sqlite'));
+      if (!await file.exists()) return false;
+      final sanitizedKey = key.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_');
+      await client!.storage.from('nusa-backups').upload(
+        '/backup.sqlite',
+        file,
+        fileOptions: const FileOptions(upsert: true),
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> downloadAndRestore(String key) async {
+    if (client == null) return false;
+    try {
+      final sanitizedKey = key.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_');
+      final bytes = await client!.storage
+          .from('nusa-backups')
+          .download('/backup.sqlite');
+      if (bytes.isEmpty) return false;
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dir.path, 'nusa_kasir.sqlite'));
+      await file.writeAsBytes(bytes, flush: true);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> deactivate() async => SecureStore.clearActivation();
