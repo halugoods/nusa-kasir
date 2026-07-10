@@ -74,6 +74,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       ref.read(employeeSessionProvider.notifier).login(session, remember: true);
       ref.read(authProvider.notifier).state = 'Owner';
 
+      // Auto check-in so Owner arrives at dashboard ready to use all features
+      await AttendanceRepository(db).checkIn(employeeId);
+
       if (mounted) context.go('/home');
     } catch (e) {
       setState(() {

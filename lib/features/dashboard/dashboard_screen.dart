@@ -256,14 +256,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     if (!_checkedIn) {
-      // Has session but not checked in — presensi screen, then reload
-      await context.push('/presensi');
+      // Fast check-in via PIN (same as card button), not presensi screen
+      final currentSession = ref.read(employeeSessionProvider);
+      if (currentSession != null) {
+        await _confirmCheckIn(currentSession);
+      }
       if (mounted) await _load();
       if (!_checkedIn) return; // still not checked in, block
     }
 
-    // Route "presensi" from menu grid goes to presensi screen
-    // (other routes go to their respective screens)
+    // Navigate to target route
     if (route == 'presensi') {
       await context.push('/$route');
       if (mounted) await _load();
