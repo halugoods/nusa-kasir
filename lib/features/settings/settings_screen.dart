@@ -8,6 +8,7 @@ import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
+import 'package:nusa_kasir/features/settings/backup_sheet.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -93,6 +94,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       child: const Text('Pindah Device'),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              NusaCard(
+                InkWell(
+                  onTap: () => showBackupSheet(context, ref),
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Icon(Icons.backup, color: NusaConfig.primaryColor),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Backup & Restore',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                              SizedBox(height: 4),
+                              Text('Simpan atau muat file database',
+                                  style: TextStyle(
+                                      fontSize: 13, color: NusaConfig.textSecondary)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                      ],
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
