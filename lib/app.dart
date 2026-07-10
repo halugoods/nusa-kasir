@@ -28,6 +28,7 @@ import 'package:nusa_kasir/features/reports/reports_screen.dart';
 import 'package:nusa_kasir/features/attendance/attendance_screen.dart';
 import 'package:nusa_kasir/features/finance/finance_screen.dart';
 import 'package:nusa_kasir/features/suppliers/suppliers_screen.dart';
+import 'package:nusa_kasir/features/spreadsheet/spreadsheet_screen.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 final authProvider = StateProvider<String?>((ref) => null);
@@ -76,6 +77,8 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
             path: '/pengaturan', builder: (_, __) => const SettingsScreen()),
         GoRoute(
             path: '/supplier', builder: (_, __) => const SuppliersScreen()),
+        GoRoute(
+            path: '/spreadsheet', builder: (_, __) => const SpreadsheetScreen()),
       ],
     );
 

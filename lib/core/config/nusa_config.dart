@@ -22,8 +22,8 @@ abstract class NusaConfig {
   static const List<String> categories = ["Makanan", "Minuman", "Sembako", "Lainnya"];
   static const List<String> roles = ["Owner", "Manager", "Kasir", "Gudang", "Finance"];
   static const Map<String, List<String>> roleAccess = {
-    "Owner": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","keuangan","pengaturan","supplier"],
-    "Manager": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","keuangan","pengaturan","supplier"],
+    "Owner": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","keuangan","pengaturan","supplier","spreadsheet"],
+    "Manager": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","keuangan","pengaturan","supplier","spreadsheet"],
     "Kasir": ["home","kasir","produk","transaksi","pelanggan"],
     "Gudang": ["home","produk","stok","laporan","supplier"],
     "Finance": ["home","transaksi","keuangan","laporan","presensi","supplier"],

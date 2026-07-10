@@ -26,6 +26,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     {'id': 'laporan', 'label': 'Laporan', 'icon': 'finance'},
     {'id': 'presensi', 'label': 'Presensi', 'icon': 'notification'},
     {'id': 'keuangan', 'label': 'Keuangan', 'icon': 'finance'},
+    {'id': 'spreadsheet', 'label': 'Spreadsheet', 'icon': 'table'},
     {'id': 'supplier', 'label': 'Supplier', 'icon': 'supplier'},
     {'id': 'pengaturan', 'label': 'Pengaturan', 'icon': 'settings'},
   ];
