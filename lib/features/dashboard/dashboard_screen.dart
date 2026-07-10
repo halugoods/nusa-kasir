@@ -121,7 +121,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Future<void> _pickAndLogin() async {
     if (_employees.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Belum ada karyawan. Tambah di menu Presensi.')),
+        const SnackBar(
+            content:
+                Text('Belum ada karyawan. Tambah di menu Presensi.')),
       );
       return;
     }
@@ -140,7 +142,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     if (result == null || !result.success || !mounted) return;
 
-    // Login & check attendance
+    // Login
     final session = EmployeeSession(
       employeeId: emp.id,
       name: emp.name,
@@ -153,18 +155,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
     ref.read(authProvider.notifier).state = emp.role;
 
+    // Auto-check-in — PIN already verified, no need for presensi screen
     final attRepo = AttendanceRepository(ref.read(databaseProvider));
     final today = await attRepo.getToday(emp.id);
-    final checkedIn = today?.checkIn != null;
+    if (today?.checkIn == null) {
+      await attRepo.checkIn(emp.id);
+    }
 
-    setState(() => _checkedIn = checkedIn);
+    setState(() => _checkedIn = true);
 
-    if (!checkedIn) {
-      // Redirect to presensi for check-in
-      final didCheckIn = await context.push<bool>('/presensi');
-      if (didCheckIn == true && mounted) {
-        setState(() => _checkedIn = true);
-      }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Halo, ${emp.name}! Semua menu siap digunakan 🎉'),
+          backgroundColor: NusaConfig.accentGreen,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -185,7 +192,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     if (result == null || !result.success || !mounted) return;
 
-    // Do check-in
+    // Auto-check-in
     final attRepo = AttendanceRepository(ref.read(databaseProvider));
     await attRepo.checkIn(emp.id);
     setState(() => _checkedIn = true);
@@ -196,6 +203,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             session,
             remember: true,
           );
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Halo, ${emp.name}! Semua menu siap digunakan 🎉'),
+          backgroundColor: NusaConfig.accentGreen,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -217,12 +234,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Future<void> _handlePresensiTap() async {
     final session = ref.read(employeeSessionProvider);
     if (session == null) {
-      // No session → go to presensi anyway (they'll need to login there)
-      context.push('/presensi');
-      return;
+      // Must login first — presensi is a management screen
+      await _pickAndLogin();
+      if (ref.read(employeeSessionProvider) == null) return;
     }
 
-    // Go to presensi, then full-refresh to pick up any attendance changes.
+    // Go to presensi, then full-refresh on return
     await context.push('/presensi');
     if (mounted) {
       await _load(); // full refresh: attendance + stats + employees
@@ -233,20 +250,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final session = ref.read(employeeSessionProvider);
 
     if (session == null) {
-      // No session → show login
+      // No session → login + auto-check-in
       await _pickAndLogin();
-      // Only proceed if login succeeded
       if (ref.read(employeeSessionProvider) == null) return;
     }
 
     if (!_checkedIn) {
-      // Not checked in → redirect to presensi, then reload
+      // Has session but not checked in — presensi screen, then reload
       await context.push('/presensi');
       if (mounted) await _load();
       if (!_checkedIn) return; // still not checked in, block
     }
 
-    context.push('/$route');
+    // Route "presensi" from menu grid goes to presensi screen
+    // (other routes go to their respective screens)
+    if (route == 'presensi') {
+      await context.push('/$route');
+      if (mounted) await _load();
+    } else {
+      context.push('/$route');
+    }
   }
 
   Future<Employee?> _showEmployeePicker() async {
@@ -500,15 +523,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
               child: _BukaKasirCTA(
-                onTap: () {
-                  if (!hasSession || !_checkedIn) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Silakan absen masuk terlebih dahulu'),
-                      ),
-                    );
-                    return;
+                onTap: () async {
+                  // Same flow as menu: login if needed, check-in if needed
+                  final session = ref.read(employeeSessionProvider);
+                  if (session == null) {
+                    await _pickAndLogin();
+                    if (ref.read(employeeSessionProvider) == null) return;
                   }
+                  if (!_checkedIn) {
+                    await context.push('/presensi');
+                    if (mounted) await _load();
+                    if (!_checkedIn) return;
+                  }
+                  if (!mounted) return;
                   BukaKasirSheet.show(
                     context: context,
                     storeName: _storeName,

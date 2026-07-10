@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:nusa_kasir/app.dart';
+import 'package:nusa_kasir/core/auth/employee_session.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/core/services/notification_service.dart';
@@ -29,6 +30,17 @@ void main() async {
   final db = AppDatabase();
   final persistedTheme =
       await SettingsRepository(db).getThemeMode() ?? 'system';
+
+  // Try to restore a remembered employee session.
+  String initialLocation;
+  if (!activated) {
+    initialLocation = '/activation';
+  } else {
+    final session = await EmployeeSession.restore();
+    initialLocation = (session != null && !session.isExpired)
+        ? '/home'   // valid session → skip login
+        : '/login';
+  }
   await db.close();
 
   runApp(
@@ -36,8 +48,7 @@ void main() async {
       overrides: [
         themeModeProvider.overrideWith((ref) => persistedTheme),
       ],
-      child: NusaApp(
-          initialLocation: activated ? '/login' : '/activation'),
+      child: NusaApp(initialLocation: initialLocation),
     ),
   );
 }
