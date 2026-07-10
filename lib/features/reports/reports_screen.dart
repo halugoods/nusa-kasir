@@ -12,6 +12,7 @@ import 'package:nusa_kasir/data/repositories/report_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
+import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -176,7 +177,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   padding: const EdgeInsets.all(16),
                   itemCount: list.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _TxCard(tx: list[i]),
+                  itemBuilder: (_, i) => StaggeredItem(index: i, child: _TxCard(tx: list[i])),
                 );
               },
             ),

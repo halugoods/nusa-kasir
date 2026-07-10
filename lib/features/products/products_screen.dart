@@ -9,6 +9,7 @@ import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
+import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
 
 class ProductsScreen extends ConsumerStatefulWidget {
   const ProductsScreen({super.key});
@@ -106,11 +107,14 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                         padding: const EdgeInsets.all(16),
                         itemCount: _products.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) => _ProductTile(
-                          product: _products[i],
-                          onTap: () => context
-                              .push('/produk/edit/${_products[i].id}'),
-                        ),
+                        itemBuilder: (_, i) => StaggeredItem(
+                              index: i,
+                              child: _ProductTile(
+                                product: _products[i],
+                                onTap: () =>
+                                    context.push('/produk/edit/${_products[i].id}'),
+                              ),
+                            ),
                       ),
           ),
         ],

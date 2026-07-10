@@ -7,6 +7,7 @@ import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
+import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -95,7 +96,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   padding: const EdgeInsets.all(16),
                   itemCount: list.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _TransactionCard(tx: list[i]),
+                  itemBuilder: (_, i) => StaggeredItem(index: i, child: _TransactionCard(tx: list[i])),
                 );
               },
             ),

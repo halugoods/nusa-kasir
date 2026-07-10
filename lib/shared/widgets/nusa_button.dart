@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:flutter/services.dart';
 
 class NusaButton extends StatelessWidget {
   final String label;
@@ -8,5 +8,10 @@ class NusaButton extends StatelessWidget {
   const NusaButton(this.label, {this.onPressed, this.fullWidth = true, super.key});
   @override
   Widget build(BuildContext c) => SizedBox(width: fullWidth ? double.infinity : null,
-    child: ElevatedButton(onPressed: onPressed, child: Text(label)));
+    child: ElevatedButton(
+      onPressed: onPressed == null ? null : () {
+        HapticFeedback.mediumImpact();
+        onPressed!();
+      },
+      child: Text(label)));
 }

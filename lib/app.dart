@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -51,35 +52,74 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
       routes: [
         GoRoute(
             path: '/activation',
-            builder: (_, __) => const ActivationScreen()),
-        GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+            pageBuilder: (_, __) => _slidePage(const ActivationScreen())),
         GoRoute(
-            path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
-        GoRoute(path: '/home', builder: (_, __) => const DashboardScreen()),
-        GoRoute(path: '/kasir', builder: (_, __) => const PosScreen()),
-        GoRoute(path: '/checkout', builder: (_, __) => const CheckoutScreen()),
-        GoRoute(path: '/produk', builder: (_, __) => const ProductsScreen()),
-        GoRoute(path: '/produk/tambah', builder: (_, __) => const ProductFormScreen()),
-        GoRoute(path: '/produk/edit/:id', builder: (_, state) => ProductFormScreen(productId: int.parse(state.pathParameters['id']!))),
-        GoRoute(path: '/stok', builder: (_, __) => const StockScreen()),
+            path: '/login', pageBuilder: (_, __) => _slidePage(const LoginScreen())),
         GoRoute(
-            path: '/transaksi', builder: (_, __) => const TransactionsScreen()),
+            path: '/onboarding',
+            pageBuilder: (_, __) => _slidePage(const OnboardingScreen())),
         GoRoute(
-            path: '/pelanggan', builder: (_, __) => const CustomersScreen()),
-        GoRoute(path: '/promo', builder: (_, __) => const PromoScreen()),
+            path: '/home',
+            pageBuilder: (_, __) => _slidePage(const DashboardScreen())),
         GoRoute(
-            path: '/laporan', builder: (_, __) => const ReportsScreen()),
+            path: '/kasir', pageBuilder: (_, __) => _slidePage(const PosScreen())),
         GoRoute(
-            path: '/presensi', builder: (_, __) => const AttendanceScreen()),
+            path: '/checkout',
+            pageBuilder: (_, __) => _slidePage(const CheckoutScreen())),
         GoRoute(
-            path: '/keuangan', builder: (_, __) => const FinanceScreen()),
+            path: '/produk',
+            pageBuilder: (_, __) => _slidePage(const ProductsScreen())),
         GoRoute(
-            path: '/pengaturan', builder: (_, __) => const SettingsScreen()),
+            path: '/produk/tambah',
+            pageBuilder: (_, __) => _slidePage(const ProductFormScreen())),
         GoRoute(
-            path: '/supplier', builder: (_, __) => const SuppliersScreen()),
+            path: '/produk/edit/:id',
+            pageBuilder: (_, state) => _slidePage(ProductFormScreen(
+                productId: int.parse(state.pathParameters['id']!)))),
         GoRoute(
-            path: '/spreadsheet', builder: (_, __) => const SpreadsheetScreen()),
+            path: '/stok', pageBuilder: (_, __) => _slidePage(const StockScreen())),
+        GoRoute(
+            path: '/transaksi',
+            pageBuilder: (_, __) => _slidePage(const TransactionsScreen())),
+        GoRoute(
+            path: '/pelanggan',
+            pageBuilder: (_, __) => _slidePage(const CustomersScreen())),
+        GoRoute(
+            path: '/promo', pageBuilder: (_, __) => _slidePage(const PromoScreen())),
+        GoRoute(
+            path: '/laporan',
+            pageBuilder: (_, __) => _slidePage(const ReportsScreen())),
+        GoRoute(
+            path: '/presensi',
+            pageBuilder: (_, __) => _slidePage(const AttendanceScreen())),
+        GoRoute(
+            path: '/keuangan',
+            pageBuilder: (_, __) => _slidePage(const FinanceScreen())),
+        GoRoute(
+            path: '/pengaturan',
+            pageBuilder: (_, __) => _slidePage(const SettingsScreen())),
+        GoRoute(
+            path: '/supplier',
+            pageBuilder: (_, __) => _slidePage(const SuppliersScreen())),
+        GoRoute(
+            path: '/spreadsheet',
+            pageBuilder: (_, __) => _slidePage(const SpreadsheetScreen())),
       ],
+    );
+
+CustomTransitionPage _slidePage(Widget child) => CustomTransitionPage(
+      child: child,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+          SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.3, 0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        )),
+        child: child,
+      ),
     );
 
 class NusaApp extends StatelessWidget {

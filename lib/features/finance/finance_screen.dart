@@ -11,6 +11,7 @@ import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
+import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
 
 class FinanceScreen extends ConsumerStatefulWidget {
   const FinanceScreen({super.key});
@@ -302,7 +303,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       padding: const EdgeInsets.all(16),
       itemCount: children.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (_, i) => children[i],
+      itemBuilder: (_, i) => StaggeredItem(index: i, child: children[i]),
     );
   }
 

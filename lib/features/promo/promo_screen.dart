@@ -10,6 +10,7 @@ import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
+import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
 
 class PromoScreen extends ConsumerStatefulWidget {
   const PromoScreen({super.key});
@@ -32,15 +33,6 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
     final all = await repo.getPromos();
     if (mounted) setState(() => _promos = all);
   }
-
-  String _discountLabel(Promo p) =>
-      p.type == 'persen' ? 'Diskon ${p.value}%' : 'Potongan ${formatRupiah(p.value)}';
-
-  String _fmtDate(DateTime? d) =>
-      d == null ? '-' : '${d.day}/${d.month}/${d.year}';
-
-  String _quotaLabel(Promo p) =>
-      p.maxUses == null ? 'Tanpa batas' : '${p.usedCount}/${p.maxUses}';
 
   Future<void> _toggle(Promo p) async {
     final repo = PromoRepository(ref.read(databaseProvider));
@@ -313,3 +305,12 @@ class _PromoTile extends StatelessWidget {
     );
   }
 }
+
+String _discountLabel(Promo p) =>
+    p.type == 'persen' ? 'Diskon ${p.value}%' : 'Potongan ${formatRupiah(p.value)}';
+
+String _fmtDate(DateTime? d) =>
+    d == null ? '-' : '${d.day}/${d.month}/${d.year}';
+
+String _quotaLabel(Promo p) =>
+    p.maxUses == null ? 'Tanpa batas' : '${p.usedCount}/${p.maxUses}';
