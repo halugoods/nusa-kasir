@@ -6,6 +6,7 @@ import 'package:nusa_kasir/core/utils/device_id.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:nusa_kasir/core/services/backup_crypto.dart';
 
 class ActivationResult {
   final bool ok;
@@ -51,11 +52,13 @@ class ActivationRepository {
       final dir = await getApplicationDocumentsDirectory();
       final file = File(p.join(dir.path, 'nusa_kasir.sqlite'));
       if (!await file.exists()) return false;
+      final raw = await file.readAsBytes();
+      final encrypted = await BackupCrypto.encrypt(raw, key);
       final sanitizedKey = key.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_');
-      await client!.storage.from('nusa-backups').upload(
-        '/backup.sqlite',
-        file,
-        fileOptions: const FileOptions(upsert: true),
+      await client!.storage.from('nusa-backups').uploadBinary(
+        '\$sanitizedKey/backup.sqlite.enc',
+        encrypted,
+        fileOptions: const FileOptions(upsert: true, contentType: 'application/octet-stream'),
       );
       return true;
     } catch (_) {
@@ -63,17 +66,23 @@ class ActivationRepository {
     }
   }
 
+  /// Download encrypted backup and stage it for restore on next launch.
+  /// We cannot write the live DB file while the app holds it open, so we
+  /// save to a .pending file and set a flag; main.dart swaps it before
+  /// the database is opened.
   Future<bool> downloadAndRestore(String key) async {
     if (client == null) return false;
     try {
       final sanitizedKey = key.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_');
       final bytes = await client!.storage
           .from('nusa-backups')
-          .download('/backup.sqlite');
+          .download('\$sanitizedKey/backup.sqlite.enc');
       if (bytes.isEmpty) return false;
+      final decrypted = await BackupCrypto.decrypt(bytes, key);
       final dir = await getApplicationDocumentsDirectory();
-      final file = File(p.join(dir.path, 'nusa_kasir.sqlite'));
-      await file.writeAsBytes(bytes, flush: true);
+      final pending = File(p.join(dir.path, 'nusa_kasir.sqlite.pending'));
+      await pending.writeAsBytes(decrypted, flush: true);
+      await SecureStore.savePendingRestore();
       return true;
     } catch (_) {
       return false;

@@ -19,6 +19,14 @@ class SecureStore {
   static Future<String?> getActivation() => _s.read(key: AppConstants.activationKey);
   static Future<void> clearActivation() => _s.delete(key: AppConstants.activationKey);
 
+  // -- Pending DB restore (device migration) --
+  static Future<void> savePendingRestore() =>
+      _s.write(key: 'nusa_pending_restore', value: '1');
+  static Future<bool> hasPendingRestore() async =>
+      (await _s.read(key: 'nusa_pending_restore')) == '1';
+  static Future<void> clearPendingRestore() =>
+      _s.delete(key: 'nusa_pending_restore');
+
   // -- Sheets tokens --
   static Future<void> saveSheetsTokens(String json) =>
       _s.write(key: AppConstants.sheetsTokenKey, value: json);

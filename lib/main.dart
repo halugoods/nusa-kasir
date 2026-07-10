@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:workmanager/workmanager.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:nusa_kasir/app.dart';
 import 'package:nusa_kasir/core/auth/employee_session.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
@@ -10,6 +13,25 @@ import 'package:nusa_kasir/core/services/notification_service.dart';
 import 'package:nusa_kasir/core/services/stok_alert_worker.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
+
+/// Swap a pending encrypted backup into place BEFORE the database opens.
+/// downloadAndRestore() stages a .pending file + flag; we commit it here
+/// while the app is still single-threaded and no DB handle exists.
+Future<void> _applyPendingRestore() async {
+  if (!await SecureStore.hasPendingRestore()) return;
+  try {
+    final dir = await getApplicationDocumentsDirectory();
+    final pending = File(p.join(dir.path, 'nusa_kasir.sqlite.pending'));
+    final target = File(p.join(dir.path, 'nusa_kasir.sqlite'));
+    if (await pending.exists()) {
+      await pending.copy(target.path); // atomic replace
+      await pending.delete();
+    }
+    await SecureStore.clearPendingRestore();
+  } catch (_) {
+    await SecureStore.clearPendingRestore();
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +47,9 @@ void main() async {
         url: NusaConfig.supabaseUrl, publishableKey: NusaConfig.supabaseAnon);
   }
   final activated = (await SecureStore.getActivation()) != null;
+
+  // Apply pending device-migration backup BEFORE opening the database.
+  await _applyPendingRestore();
 
   // Load persisted theme mode before app starts.
   final db = AppDatabase();

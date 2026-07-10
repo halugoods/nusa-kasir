@@ -101,6 +101,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       onPressed: () async {
                         final key = _activationKey ?? '';
+                        // Show progress
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Menyiapkan backup...')),
+                          );
+                        }
                         if (key.isNotEmpty) {
                           await ref.read(activationRepoProvider).uploadBackup(key);
                         }
