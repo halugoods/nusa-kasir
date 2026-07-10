@@ -34,7 +34,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
           const SizedBox(height: 40),
           Text('NUSA', style: Theme.of(context).textTheme.displaySmall?.copyWith(color: NusaConfig.primaryColor)),
           const SizedBox(height: 8),
-          Text('${NusaConfig.appName}\n${NusaConfig.tagline}', textAlign: TextAlign.center,
+          Text(NusaConfig.appSubtitle, textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 15, color: NusaConfig.textSecondary)),
           const SizedBox(height: 32),
           TextField(controller: _ctrl, textAlign: TextAlign.center,
@@ -62,7 +62,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     final r = await ref.read(activationRepoProvider).activate(_ctrl.text);
     setState(() => _loading = false);
     if (r.ok) {
-      if (mounted) context.go('/home');
+      if (mounted) context.go('/setup');
     } else {
       setState(() => _error = r.error);
     }

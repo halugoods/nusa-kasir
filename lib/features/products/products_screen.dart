@@ -9,7 +9,8 @@ import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
-import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
+import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
+import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 
 class ProductsScreen extends ConsumerStatefulWidget {
   const ProductsScreen({super.key});
@@ -97,24 +98,28 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const SkeletonList()
                 : _products.isEmpty
-                    ? const Center(
-                        child: Text('Belum ada produk',
-                            style: TextStyle(color: Colors.grey)),
+                    ? EmptyState(
+                        icon: Icons.inventory_2_outlined,
+                        message: 'Belum ada produk',
+                        actionLabel: 'Tambah Produk',
+                        onAction: () => context.push('/produk/tambah'),
                       )
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _products.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) => StaggeredItem(
-                              index: i,
-                              child: _ProductTile(
-                                product: _products[i],
-                                onTap: () =>
-                                    context.push('/produk/edit/${_products[i].id}'),
-                              ),
-                            ),
+                    : RefreshIndicator(
+                        onRefresh: _load,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _products.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (_, i) {
+                            return _ProductTile(
+                              product: _products[i],
+                              onTap: () =>
+                                  context.push('/produk/edit/${_products[i].id}'),
+                            );
+                          },
+                        ),
                       ),
           ),
         ],

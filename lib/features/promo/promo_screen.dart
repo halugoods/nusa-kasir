@@ -10,7 +10,8 @@ import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
-import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
+import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
+import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 
 class PromoScreen extends ConsumerStatefulWidget {
   const PromoScreen({super.key});
@@ -31,7 +32,7 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
   Future<void> _load() async {
     final repo = PromoRepository(ref.read(databaseProvider));
     final all = await repo.getPromos();
-    if (mounted) setState(() => _promos = all);
+    if (mounted) setState(() { _promos = all; _loading = false; });
   }
 
   Future<void> _toggle(Promo p) async {
@@ -157,7 +158,7 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();
-                  _confirmDelete(existing!);
+                  _confirmDelete(existing);
                 },
                 child: const Text('Hapus', style: TextStyle(color: Colors.red)),
               ),
@@ -184,7 +185,7 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
                   ? null
                   : int.tryParse(maxC.text.trim());
               if (isEdit) {
-                await repo.updatePromo(existing!.id,
+                await repo.updatePromo(existing.id,
                     name: name,
                     code: code,
                     type: type,
@@ -219,20 +220,23 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
     return ScreenScaffold(
       'Promo',
       _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const SkeletonList()
           : _promos.isEmpty
-              ? const Center(
-                  child: Text('Belum ada promo',
-                      style: TextStyle(color: Colors.grey)),
+              ? const EmptyState(
+                  icon: Icons.local_offer_outlined,
+                  message: 'Belum ada promo',
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _promos.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _PromoTile(
-                    promo: _promos[i],
-                    onTap: () => _showForm(existing: _promos[i]),
-                    onToggle: () => _toggle(_promos[i]),
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _promos.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) => _PromoTile(
+                      promo: _promos[i],
+                      onTap: () => _showForm(existing: _promos[i]),
+                      onToggle: () => _toggle(_promos[i]),
+                    ),
                   ),
                 ),
       floatingActionButton: FloatingActionButton.extended(

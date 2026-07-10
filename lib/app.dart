@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -30,9 +29,13 @@ import 'package:nusa_kasir/features/attendance/attendance_screen.dart';
 import 'package:nusa_kasir/features/finance/finance_screen.dart';
 import 'package:nusa_kasir/features/suppliers/suppliers_screen.dart';
 import 'package:nusa_kasir/features/spreadsheet/spreadsheet_screen.dart';
+import 'package:nusa_kasir/features/branches/branch_screen.dart';
+import 'package:nusa_kasir/features/setup/setup_screen.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 final authProvider = StateProvider<String?>((ref) => null);
+final themeModeProvider = StateProvider<String>((ref) => 'system');
+final activeBranchProvider = StateProvider<Branche?>((ref) => null);
 final settingsRepoProvider =
     Provider((ref) => SettingsRepository(ref.watch(databaseProvider)));
 final transactionRepoProvider =
@@ -58,6 +61,9 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/onboarding',
             pageBuilder: (_, __) => _slidePage(const OnboardingScreen())),
+        GoRoute(
+            path: '/setup',
+            pageBuilder: (_, __) => _slidePage(const SetupScreen())),
         GoRoute(
             path: '/home',
             pageBuilder: (_, __) => _slidePage(const DashboardScreen())),
@@ -104,6 +110,9 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/spreadsheet',
             pageBuilder: (_, __) => _slidePage(const SpreadsheetScreen())),
+        GoRoute(
+            path: '/cabang',
+            pageBuilder: (_, __) => _slidePage(const BranchScreen())),
       ],
     );
 
@@ -122,14 +131,31 @@ CustomTransitionPage _slidePage(Widget child) => CustomTransitionPage(
       ),
     );
 
-class NusaApp extends StatelessWidget {
+class NusaApp extends ConsumerWidget {
   final String initialLocation;
   const NusaApp({required this.initialLocation, super.key});
+
+  ThemeMode _toThemeMode(String mode) {
+    switch (mode) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
   @override
-  Widget build(BuildContext context) => MaterialApp.router(
-        title: 'NUSA Kasir',
-        theme: NusaTheme.light,
-        routerConfig: buildRouter(initialLocation),
-        debugShowCheckedModeBanner: false,
-      );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeModeStr = ref.watch(themeModeProvider);
+    return MaterialApp.router(
+      title: 'NUSA Kasir',
+      theme: NusaTheme.light,
+      darkTheme: NusaTheme.dark,
+      themeMode: _toThemeMode(themeModeStr),
+      routerConfig: buildRouter(initialLocation),
+      debugShowCheckedModeBanner: false,
+    );
+  }
 }

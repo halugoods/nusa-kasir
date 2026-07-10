@@ -10,7 +10,8 @@ import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
-import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
+import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
+import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 
 class CustomersScreen extends ConsumerStatefulWidget {
   const CustomersScreen({super.key});
@@ -46,7 +47,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
         : all.where((c) =>
             c.name.toLowerCase().contains(q) ||
             (c.phone?.toLowerCase().contains(q) ?? false)).toList();
-    if (mounted) setState(() => _customers = filtered);
+    if (mounted) setState(() { _customers = filtered; _loading = false; });
   }
 
   void _showAddDialog() {
@@ -156,19 +157,22 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const SkeletonList()
                 : _customers.isEmpty
-                    ? const Center(
-                        child: Text('Belum ada pelanggan',
-                            style: TextStyle(color: Colors.grey)),
+                    ? const EmptyState(
+                        icon: Icons.people_outline,
+                        message: 'Belum ada pelanggan',
                       )
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _customers.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) => _CustomerTile(
-                          customer: _customers[i],
-                          onTap: () => _showDetail(_customers[i]),
+                    : RefreshIndicator(
+                        onRefresh: _load,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _customers.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (_, i) => _CustomerTile(
+                            customer: _customers[i],
+                            onTap: () => _showDetail(_customers[i]),
+                          ),
                         ),
                       ),
           ),

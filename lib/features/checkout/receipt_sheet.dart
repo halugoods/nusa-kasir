@@ -171,7 +171,18 @@ class ReceiptSheet extends ConsumerWidget {
         }
         return;
       }
-      await printer.connect(devices.first);
+
+      // Try to use the saved printer by address first
+      final saved = await SettingsRepository(ref.read(databaseProvider))
+          .getPrinterAddress();
+      PrinterDevice target = devices.first;
+      if (saved != null && saved.contains('|')) {
+        final savedAddr = saved.split('|').last;
+        final found = devices.where((d) => d.address == savedAddr);
+        if (found.isNotEmpty) target = found.first;
+      }
+
+      await printer.connect(target);
       final ok = await printer.printReceipt(
         storeName: storeName,
         lines: items

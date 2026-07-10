@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:nusa_kasir/app.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/services/spreadsheet_service.dart';
@@ -18,7 +17,6 @@ class SpreadsheetScreen extends ConsumerStatefulWidget {
 
 class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
   SpreadsheetService? _svc;
-  GoogleSignInAccount? _account;
   String? _spreadsheetId;
   String _userEmail = '';
   bool _syncing = false;
@@ -47,7 +45,6 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
     final account = await _svc!.signIn();
     if (account != null && mounted) {
       setState(() {
-        _account = account;
         _userEmail = account.email;
       });
     }
@@ -58,7 +55,6 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
     await SecureStore.clearSheetsTokens();
     if (mounted) {
       setState(() {
-        _account = null;
         _userEmail = '';
         _spreadsheetId = null;
       });

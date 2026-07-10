@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
@@ -12,7 +10,8 @@ import 'package:nusa_kasir/data/repositories/report_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
-import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
+import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
+import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -158,7 +157,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               future: repo.getTransactions(from: from, to: to),
               builder: (context, snap) {
                 if (snap.connectionState != ConnectionState.done) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const SkeletonList();
                 }
                 if (snap.hasError) {
                   return Center(
@@ -168,16 +167,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 }
                 final list = snap.data ?? [];
                 if (list.isEmpty) {
-                  return const Center(
-                    child: Text('Belum ada transaksi',
-                        style: TextStyle(color: Colors.grey)),
+                  return const EmptyState(
+                    icon: Icons.bar_chart_outlined,
+                    message: 'Belum ada transaksi',
                   );
                 }
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: list.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => StaggeredItem(index: i, child: _TxCard(tx: list[i])),
+                return RefreshIndicator(
+                  onRefresh: () async => setState(() {}),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) => _TxCard(tx: list[i]),
+                  ),
                 );
               },
             ),

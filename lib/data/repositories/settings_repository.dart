@@ -30,4 +30,22 @@ class SettingsRepository {
 
   Future<String?> getQris() async =>
       (await db.select(db.settings).getSingleOrNull())?.qrisString;
+
+  Future<String?> getThemeMode() async =>
+      (await db.select(db.settings).getSingleOrNull())?.themeMode;
+
+  Future<void> setThemeMode(String mode) async {
+    await ensureRow();
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(themeMode: Value(mode)));
+  }
+
+  Future<String?> getPrinterAddress() async =>
+      (await db.select(db.settings).getSingleOrNull())?.posPrefix;
+
+  Future<void> setPrinterAddress(String address) async {
+    await ensureRow();
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(posPrefix: Value(address)));
+  }
 }

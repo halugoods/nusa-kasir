@@ -7,7 +7,8 @@ import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
-import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
+import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
+import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -77,7 +78,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               future: ref.watch(transactionRepoProvider).getTransactions(),
               builder: (context, snap) {
                 if (snap.connectionState != ConnectionState.done) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const SkeletonList();
                 }
                 if (snap.hasError) {
                   return Center(
@@ -87,16 +88,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 }
                 final list = _filter(snap.data ?? []);
                 if (list.isEmpty) {
-                  return const Center(
-                    child: Text('Belum ada transaksi',
-                        style: TextStyle(color: Colors.grey)),
+                  return const EmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    message: 'Belum ada transaksi',
                   );
                 }
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: list.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => StaggeredItem(index: i, child: _TransactionCard(tx: list[i])),
+                return RefreshIndicator(
+                  onRefresh: () async => setState(() {}),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) => _TransactionCard(tx: list[i]),
+                  ),
                 );
               },
             ),

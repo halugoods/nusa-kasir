@@ -9,7 +9,7 @@ import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
-import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
+import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 
 class AttendanceScreen extends ConsumerStatefulWidget {
   const AttendanceScreen({super.key});
@@ -133,16 +133,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     return ScreenScaffold(
       'Presensi',
       _employees.isEmpty
-          ? const Center(
-              child: Text('Belum ada karyawan. Tambah lewat tombol +',
-                  style: TextStyle(color: Colors.grey)),
+          ? const EmptyState(
+              icon: Icons.person_outline,
+              message: 'Belum ada karyawan. Tambah lewat tombol +',
             )
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: _employees.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (_, i) =>
-                  _EmployeeAttendance(employee: _employees[i], today: _today[_employees[i].id], onIn: () => _checkIn(_employees[i]), onOut: () => _checkOut(_employees[i]), onCash: () => _setPettyCash(_employees[i])),
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _employees.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (_, i) =>
+                    _EmployeeAttendance(employee: _employees[i], today: _today[_employees[i].id], onIn: () => _checkIn(_employees[i]), onOut: () => _checkOut(_employees[i]), onCash: () => _setPettyCash(_employees[i])),
+              ),
             ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: NusaConfig.primaryColor,

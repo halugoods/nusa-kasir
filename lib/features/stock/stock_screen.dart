@@ -11,6 +11,8 @@ import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
+import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
+import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 
 class StockScreen extends ConsumerStatefulWidget {
   const StockScreen({super.key});
@@ -88,7 +90,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
     return ScreenScaffold(
       'Stok',
       _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const SkeletonList()
           : DefaultTabController(
               length: 3,
               child: Column(
@@ -106,7 +108,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
                   Expanded(
                     child: TabBarView(
                       children: [
-                        _LowStockTab(products: _lowStock, onTap: (p) {
+                        _LowStockTab(products: _lowStock, onRefresh: _load, onTap: (p) {
                           context.push('/produk/edit/${p.id}');
                         }),
                         _InTab(
@@ -116,7 +118,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
                           onChanged: (id) => setState(() => _inProductId = id),
                           onSave: _addStock,
                         ),
-                        _HistoryTab(movements: _movements, products: _products),
+                        _HistoryTab(movements: _movements, products: _products, onRefresh: _load),
                       ],
                     ),
                   ),
@@ -130,14 +132,18 @@ class _StockScreenState extends ConsumerState<StockScreen> {
 class _LowStockTab extends StatelessWidget {
   final List<Product> products;
   final void Function(Product) onTap;
-  const _LowStockTab({required this.products, required this.onTap});
+  final Future<void> Function()? onRefresh;
+  const _LowStockTab({required this.products, required this.onTap, this.onRefresh});
 
   @override
   Widget build(BuildContext context) => products.isEmpty
-      ? const Center(
-          child: Text('Tidak ada stok menipis',
-              style: TextStyle(color: Colors.grey)))
-      : ListView.separated(
+      ? const EmptyState(
+          icon: Icons.inventory_outlined,
+          message: 'Tidak ada stok menipis',
+        )
+      : RefreshIndicator(
+          onRefresh: onRefresh ?? () async {},
+          child: ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: products.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -173,6 +179,7 @@ class _LowStockTab extends StatelessWidget {
               ),
             );
           },
+          ),
         );
 }
 
@@ -223,7 +230,8 @@ class _InTab extends StatelessWidget {
 class _HistoryTab extends StatelessWidget {
   final List<StockMovement> movements;
   final List<Product> products;
-  const _HistoryTab({required this.movements, required this.products});
+  final Future<void> Function()? onRefresh;
+  const _HistoryTab({required this.movements, required this.products, this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -231,11 +239,14 @@ class _HistoryTab extends StatelessWidget {
       for (final p in products) p.id: p.name,
     };
     return movements.isEmpty
-        ? const Center(
-            child: Text('Belum ada riwayat',
-                style: TextStyle(color: Colors.grey)))
-        : ListView.separated(
-            padding: const EdgeInsets.all(16),
+        ? const EmptyState(
+            icon: Icons.history,
+            message: 'Belum ada riwayat',
+          )
+        : RefreshIndicator(
+            onRefresh: onRefresh ?? () async {},
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
             itemCount: movements.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (_, i) {
@@ -272,6 +283,7 @@ class _HistoryTab extends StatelessWidget {
                 ),
               );
             },
-          );
+          ),
+        );
   }
 }

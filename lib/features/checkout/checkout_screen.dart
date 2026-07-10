@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:nusa_kasir/app.dart';
+import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/features/pos/cart.dart';
@@ -94,6 +95,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         cashGiven: cashGiven,
         cashReturn: cashReturn,
         cashierName: cashierName,
+        branchId: ref.read(activeBranchProvider)?.id,
       );
 
       // Clear cart
@@ -171,7 +173,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 label: Text(m),
                 selected: sel,
                 onSelected: (_) => setState(() => _paymentMethod = m),
-                selectedColor: Colors.red.shade100,
+                selectedColor: NusaConfig.primarySoft,
                 backgroundColor: Colors.grey.shade100,
               );
             }).toList(),
@@ -209,9 +211,36 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           TextField(
             controller: _cashCtrl,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Jumlah Dibayarkan',
-              border: OutlineInputBorder(),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: NusaConfig.textPrimary,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Jumlah Dibayarkan',
+              hintStyle: const TextStyle(
+                color: NusaConfig.textTertiary,
+                fontSize: 15,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide:
+                    const BorderSide(color: NusaConfig.dividerColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide:
+                    const BorderSide(color: NusaConfig.dividerColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                    color: NusaConfig.primaryColor, width: 1.5),
+              ),
             ),
             onChanged: (v) {
               setState(() {

@@ -11,7 +11,7 @@ import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
-import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
+import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 
 class FinanceScreen extends ConsumerStatefulWidget {
   const FinanceScreen({super.key});
@@ -295,15 +295,19 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
 
   Widget _listView(bool empty, List<Widget> children) {
     if (empty) {
-      return const Center(
-        child: Text('Belum ada data', style: TextStyle(color: Colors.grey)),
+      return const EmptyState(
+        icon: Icons.account_balance_wallet_outlined,
+        message: 'Belum ada data',
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: children.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (_, i) => StaggeredItem(index: i, child: children[i]),
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: children.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (_, i) => children[i],
+      ),
     );
   }
 

@@ -17,6 +17,7 @@ class TransactionRepository {
     int? cashGiven,
     int? cashReturn,
     String? cashierName,
+    int? branchId,
   }) async {
     final invoice = 'INV-${DateTime.now().millisecondsSinceEpoch}';
     final itemsJson = jsonEncode(items.map((e) => {
@@ -32,6 +33,7 @@ class TransactionRepository {
       cashGiven: Value(cashGiven),
       cashReturn: Value(cashReturn),
       cashierName: Value(cashierName),
+      branchId: Value(branchId),
     ));
   }
 

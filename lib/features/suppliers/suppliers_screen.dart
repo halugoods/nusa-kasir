@@ -8,7 +8,8 @@ import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
-import 'package:nusa_kasir/shared/widgets/staggered_list.dart';
+import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
+import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 
 class SuppliersScreen extends ConsumerStatefulWidget {
   const SuppliersScreen({super.key});
@@ -29,7 +30,7 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
   Future<void> _load() async {
     final repo = SupplierRepository(ref.read(databaseProvider));
     final all = await repo.getSuppliers();
-    if (mounted) setState(() => _list = all);
+    if (mounted) setState(() { _list = all; _loading = false; });
   }
 
   void _showForm({Supplier? existing}) {
@@ -65,7 +66,7 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                _confirmDelete(existing!);
+                _confirmDelete(existing);
               },
               child: const Text('Hapus', style: TextStyle(color: Colors.red)),
             ),
@@ -78,7 +79,7 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
             if (name.isEmpty) return;
             final repo = SupplierRepository(ref.read(databaseProvider));
             if (isEdit) {
-              await repo.updateSupplier(existing!.id,
+              await repo.updateSupplier(existing.id,
                   name: name,
                   phone: phoneC.text.trim(),
                   address: addrC.text.trim(),
@@ -127,19 +128,22 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
     return ScreenScaffold(
       'Supplier',
       _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const SkeletonList()
           : _list.isEmpty
-              ? const Center(
-                  child: Text('Belum ada supplier',
-                      style: TextStyle(color: Colors.grey)),
+              ? const EmptyState(
+                  icon: Icons.local_shipping_outlined,
+                  message: 'Belum ada supplier',
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _list.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _SupplierTile(
-                    supplier: _list[i],
-                    onTap: () => _showForm(existing: _list[i]),
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) => _SupplierTile(
+                      supplier: _list[i],
+                      onTap: () => _showForm(existing: _list[i]),
+                    ),
                   ),
                 ),
       floatingActionButton: FloatingActionButton.extended(
