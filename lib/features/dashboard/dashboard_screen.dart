@@ -222,13 +222,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       return;
     }
 
-    // Go to presensi, then refresh after returning
+    // Go to presensi, then full-refresh to pick up any attendance changes.
     await context.push('/presensi');
     if (mounted) {
-      // Re-check attendance status
-      final attRepo = AttendanceRepository(ref.read(databaseProvider));
-      final today = await attRepo.getToday(session.employeeId);
-      setState(() => _checkedIn = today?.checkIn != null);
+      await _load(); // full refresh: attendance + stats + employees
     }
   }
 
@@ -243,13 +240,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     if (!_checkedIn) {
-      // Not checked in → redirect to presensi
-      final didCheckIn = await context.push<bool>('/presensi');
-      if (didCheckIn == true && mounted) {
-        setState(() => _checkedIn = true);
-      } else {
-        return; // user didn't check in, block navigation
-      }
+      // Not checked in → redirect to presensi, then reload
+      await context.push('/presensi');
+      if (mounted) await _load();
+      if (!_checkedIn) return; // still not checked in, block
     }
 
     context.push('/$route');
@@ -496,8 +490,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   return _MenuItem(
                     label: item['label']!,
                     icon: item['icon']!,
-                    // Disable menu if no session
-                    enabled: hasSession && _checkedIn,
                     onTap: () => _handleMenuTap(item['id']!),
                   );
                 }).toList(),
@@ -544,47 +536,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 class _MenuItem extends StatelessWidget {
   final String label;
   final String icon;
-  final bool enabled;
   final VoidCallback? onTap;
 
   const _MenuItem({
     required this.label,
     required this.icon,
-    this.enabled = true,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Opacity(
-        opacity: enabled ? 1.0 : 0.45,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          decoration: BoxDecoration(
-            color: NusaConfig.surfaceColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: NusaConfig.borderColor),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0A111827),
-                blurRadius: 2,
-                offset: Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        decoration: BoxDecoration(
+          color: NusaConfig.surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: NusaConfig.borderColor),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0A111827),
+              blurRadius: 2,
+              offset: Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
               Container(
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: enabled
-                      ? NusaConfig.primaryColor
-                      : NusaConfig.textTertiary,
+                  color: NusaConfig.primaryColor,
                 ),
                 alignment: Alignment.center,
                 child: MenuIcon(
@@ -607,7 +593,6 @@ class _MenuItem extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }

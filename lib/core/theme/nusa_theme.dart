@@ -96,7 +96,7 @@ class NusaTheme {
       dialogTheme: DialogThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: surface,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         shape: const RoundedRectangleBorder(

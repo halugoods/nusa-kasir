@@ -3,8 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/app.dart';
+import 'package:nusa_kasir/core/auth/employee_session.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
+import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 
 /// Post-activation setup: store name, owner name, owner PIN.
@@ -56,12 +59,19 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       // Save store name
       await ref.read(settingsRepoProvider).setStoreName(store);
       // Create Owner employee
-      await AttendanceRepository(db).addEmployee(
+      final employeeId = await AttendanceRepository(db).addEmployee(
         name: name,
         pin: pin,
         role: 'Owner',
       );
-      // Auto-login as Owner
+      // Create session so Owner is already logged in on dashboard
+      final session = EmployeeSession(
+        employeeId: employeeId,
+        name: name,
+        role: 'Owner',
+        remember: true,
+      );
+      ref.read(employeeSessionProvider.notifier).login(session, remember: true);
       ref.read(authProvider.notifier).state = 'Owner';
 
       if (mounted) context.go('/home');

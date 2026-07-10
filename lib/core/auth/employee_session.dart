@@ -17,7 +17,9 @@ class EmployeeSession {
   }) : savedAt = savedAt ?? DateTime.now();
 
   bool get isExpired {
-    if (!remember) return false; // never expires if not marked as "remember"
+    // Only remembered sessions can survive app restart.
+    // Non-remembered sessions are in-memory only and should NOT be persisted.
+    if (!remember) return true; // not remembered → don't auto-restore
     return DateTime.now().difference(savedAt).inHours >= 8;
   }
 

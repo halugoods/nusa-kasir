@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/app.dart';
+import 'package:nusa_kasir/core/auth/employee_session.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
-import 'package:nusa_kasir/features/auth/rbac.dart';
+import 'package:nusa_kasir/data/database/app_database.dart';
+import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
+import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 
+/// POST-SETUP login: user enters their personal PIN to authenticate.
+///
+/// Queries the local Employees table instead of using a hardcoded map.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -17,17 +23,61 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _ctrl = TextEditingController();
   String? _error;
+  bool _loading = false;
 
   Future<void> _submit() async {
     final pin = _ctrl.text.trim();
-    final role = pinToRole[pin];
-    if (role == null) {
-      setState(() => _error = 'PIN salah');
+    if (pin.isEmpty) {
+      setState(() => _error = 'Masukkan PIN');
       return;
     }
-    ref.read(authProvider.notifier).state = role;
-    final name = await ref.read(settingsRepoProvider).getStoreName();
-    if (mounted) context.go(name.isEmpty ? '/onboarding' : '/home');
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final db = ref.read(databaseProvider);
+      final repo = AttendanceRepository(db);
+      final emps = await repo.getEmployees();
+
+      // Find employee with matching PIN
+      final emp = emps.cast<Employee?>().firstWhere(
+            (e) => e!.pin == pin,
+            orElse: () => null,
+          );
+
+      if (emp == null) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _error = 'PIN salah';
+          });
+        }
+        return;
+      }
+
+      // Create session (remembered by default for owner login screen)
+      final session = EmployeeSession(
+        employeeId: emp.id,
+        name: emp.name,
+        role: emp.role,
+        remember: true,
+      );
+      ref.read(employeeSessionProvider.notifier).login(session, remember: true);
+      ref.read(authProvider.notifier).state = emp.role;
+
+      final name = await ref.read(settingsRepoProvider).getStoreName();
+      if (mounted) context.go(name.isEmpty ? '/onboarding' : '/home');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Terjadi kesalahan';
+        });
+      }
+    }
   }
 
   @override
@@ -38,12 +88,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) => ScreenScaffold(
-        'Masuk sebagai',
+        'NUSA',
         Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const SizedBox(height: 32),
+              const Text(
+                'Masuk sebagai',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: NusaConfig.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Masukkan PIN karyawan kamu',
+                style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary),
+              ),
+              const SizedBox(height: 24),
               NusaInput('PIN',
                   controller: _ctrl,
                   type: TextInputType.number,
@@ -54,7 +119,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     style: const TextStyle(color: NusaConfig.primaryColor)),
               ],
               const SizedBox(height: 16),
-              NusaButton('Masuk', onPressed: _submit),
+              NusaButton(_loading ? 'Memeriksa...' : 'Masuk',
+                  onPressed: _loading ? null : _submit),
             ],
           ),
         ),

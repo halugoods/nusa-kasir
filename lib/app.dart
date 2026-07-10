@@ -131,9 +131,16 @@ CustomTransitionPage _slidePage(Widget child) => CustomTransitionPage(
       ),
     );
 
-class NusaApp extends ConsumerWidget {
+class NusaApp extends ConsumerStatefulWidget {
   final String initialLocation;
   const NusaApp({required this.initialLocation, super.key});
+
+  @override
+  ConsumerState<NusaApp> createState() => _NusaAppState();
+}
+
+class _NusaAppState extends ConsumerState<NusaApp> {
+  late final GoRouter _router = buildRouter(widget.initialLocation);
 
   ThemeMode _toThemeMode(String mode) {
     switch (mode) {
@@ -147,14 +154,14 @@ class NusaApp extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final themeModeStr = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'NUSA Kasir',
       theme: NusaTheme.light,
       darkTheme: NusaTheme.dark,
       themeMode: _toThemeMode(themeModeStr),
-      routerConfig: buildRouter(initialLocation),
+      routerConfig: _router,
       debugShowCheckedModeBanner: false,
     );
   }
