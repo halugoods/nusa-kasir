@@ -141,7 +141,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               ),
               if (error != null) ...[
                 const SizedBox(height: 8),
-                Text(error, style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13)),
+                Text(error!, style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13)),
               ],
             ],
           ),
