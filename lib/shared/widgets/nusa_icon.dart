@@ -14,6 +14,7 @@ class NusaIcons {
     'barcode': Icons.qr_code_2_outlined,
     'camera': Icons.camera_alt_outlined,
     'notification': Icons.notifications_outlined,
+    'supplier': Icons.local_shipping_outlined,
   };
   static IconData get(String name) => _map[name] ?? Icons.circle_outlined;
   static Widget icon(String name, {double size = 28, Color? color}) =>

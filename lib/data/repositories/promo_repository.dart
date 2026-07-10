@@ -30,7 +30,11 @@ class PromoRepository {
   }
 
   Future<List<Promo>> getPromos() =>
-      (db.select(db.promos)..orderBy([(t) => OrderingMode.desc(t.id)])).get();
+      (db.select(db.promos)
+            ..orderBy([
+              (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc)
+            ]))
+          .get();
 
   Future<Promo?> byId(int id) =>
       (db.select(db.promos)..where((t) => t.id.equals(id))).getSingleOrNull();

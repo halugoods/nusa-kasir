@@ -7,7 +7,11 @@ class AttendanceRepository {
 
   // ---- Employees ----
   Future<List<Employee>> getEmployees() =>
-      (db.select(db.employees)..orderBy([(t) => OrderingMode.asc(t.name)])).get();
+      (db.select(db.employees)
+            ..orderBy([
+              (t) => OrderingTerm(expression: t.name, mode: OrderingMode.asc)
+            ]))
+          .get();
 
   Future<int> addEmployee({
     required String name,
@@ -24,13 +28,14 @@ class AttendanceRepository {
   }
 
   // ---- Attendance ----
-  Future<Attendance?> getToday(int employeeId) async {
+  Future<AttendanceData?> getToday(int employeeId) async {
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day)
         .subtract(const Duration(days: 1));
     final list = await (db.select(db.attendance)
           ..where((t) =>
-              t.employeeId.equals(employeeId) & t.date.isAfter(start)))
+              t.employeeId.equals(employeeId) &
+              t.date.isBiggerThan(Constant(start))))
         .get();
     return list.isNotEmpty ? list.first : null;
   }
@@ -76,17 +81,17 @@ class AttendanceRepository {
   Future<void> setPettyCashForToday(int employeeId, int amount) async {
     final today = await getToday(employeeId);
     final id = today?.id ??
-        await db.into(db.attendance).insert(
-            AttendanceCompanion.insert(employeeId: employeeId));
+        await db.into(db.attendance)
+            .insert(AttendanceCompanion.insert(employeeId: employeeId));
     await setPettyCash(id, amount);
   }
 
-  Future<List<Attendance>> history({int? employeeId}) {
+  Future<List<AttendanceData>> history({int? employeeId}) {
     final q = db.select(db.attendance);
     if (employeeId != null) {
       q.where((t) => t.employeeId.equals(employeeId));
     }
-    q.orderBy([(t) => OrderingMode.desc(t.date)]);
+    q.orderBy([(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)]);
     return q.get();
   }
 }

@@ -19,7 +19,7 @@ class AttendanceScreen extends ConsumerStatefulWidget {
 class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   final _roles = const ['Owner', 'Manager', 'Kasir', 'Gudang', 'Finance'];
   List<Employee> _employees = [];
-  Map<int, Attendance?> _today = {};
+  Map<int, AttendanceData?> _today = {};
 
   @override
   void initState() {
@@ -30,7 +30,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   Future<void> _load() async {
     final repo = AttendanceRepository(ref.read(databaseProvider));
     final emps = await repo.getEmployees();
-    final map = <int, Attendance?>{};
+    final map = <int, AttendanceData?>{};
     for (final e in emps) {
       map[e.id] = await repo.getToday(e.id);
     }
@@ -156,7 +156,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
 class _EmployeeAttendance extends StatelessWidget {
   final Employee employee;
-  final Attendance? today;
+  final AttendanceData? today;
   final VoidCallback onIn;
   final VoidCallback onOut;
   final VoidCallback onCash;

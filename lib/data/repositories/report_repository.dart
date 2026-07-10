@@ -12,15 +12,17 @@ class ReportRepository {
       q.where((t) {
         final conds = <Expression<bool>>[];
         if (from != null) {
-          conds.add(t.date.isAfter(from.subtract(const Duration(days: 1))));
+          conds.add(t.date
+              .isBiggerThan(Constant(from.subtract(const Duration(days: 1)))));
         }
         if (to != null) {
-          conds.add(t.date.isBefore(to.add(const Duration(days: 1))));
+          conds.add(t.date
+              .isSmallerThan(Constant(to.add(const Duration(days: 1)))));
         }
         return conds.reduce((a, b) => a & b);
       });
     }
-    q.orderBy([(t) => OrderingMode.desc(t.date)]);
+    q.orderBy([(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)]);
     return q.get();
   }
 

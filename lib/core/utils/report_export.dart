@@ -60,10 +60,16 @@ Future<File> exportExcel(List<Transaction> list, String fileName) async {
   final excel = Excel.createExcel();
   final sheet = excel.sheets[excel.getDefaultSheet()]!;
   for (final row in _buildRows(list)) {
-    sheet.appendRow(row);
+    sheet.appendRow(row.map(_cell).toList());
   }
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/$fileName.xlsx');
   await file.writeAsBytes(excel.encode()!);
   return file;
+}
+
+CellValue _cell(dynamic v) {
+  if (v is int) return IntCellValue(v);
+  if (v is num) return DoubleCellValue(v.toDouble());
+  return TextCellValue(v.toString());
 }

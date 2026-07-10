@@ -16,7 +16,6 @@ import 'package:nusa_kasir/features/auth/login_screen.dart';
 import 'package:nusa_kasir/features/onboarding/onboarding_screen.dart';
 import 'package:nusa_kasir/features/dashboard/dashboard_screen.dart';
 import 'package:nusa_kasir/features/settings/settings_screen.dart';
-import 'package:nusa_kasir/features/common/placeholder_screen.dart';
 import 'package:nusa_kasir/features/products/products_screen.dart';
 import 'package:nusa_kasir/features/products/product_form_screen.dart';
 import 'package:nusa_kasir/features/stock/stock_screen.dart';
@@ -27,6 +26,8 @@ import 'package:nusa_kasir/features/customers/customers_screen.dart';
 import 'package:nusa_kasir/features/promo/promo_screen.dart';
 import 'package:nusa_kasir/features/reports/reports_screen.dart';
 import 'package:nusa_kasir/features/attendance/attendance_screen.dart';
+import 'package:nusa_kasir/features/finance/finance_screen.dart';
+import 'package:nusa_kasir/features/suppliers/suppliers_screen.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 final authProvider = StateProvider<String?>((ref) => null);
@@ -70,10 +71,11 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/presensi', builder: (_, __) => const AttendanceScreen()),
         GoRoute(
-            path: '/keuangan',
-            builder: (_, __) => const PlaceholderScreen('Keuangan')),
+            path: '/keuangan', builder: (_, __) => const FinanceScreen()),
         GoRoute(
             path: '/pengaturan', builder: (_, __) => const SettingsScreen()),
+        GoRoute(
+            path: '/supplier', builder: (_, __) => const SuppliersScreen()),
       ],
     );
 
