@@ -11,7 +11,7 @@ import 'package:nusa_kasir/features/pos/cart.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
+import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/features/checkout/receipt_sheet.dart';
 
@@ -57,14 +57,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Future<void> _confirmPayment() async {
     final cart = ref.read(cartProvider);
     if (cart.isEmpty) {
-      NusaSnackbar.error(context, 'Keranjang kosong');
+      TopToast.error(context, 'Keranjang kosong');
       return;
     }
 
     if (_paymentMethod == 'Tunai') {
       final given = int.tryParse(_cashCtrl.text) ?? 0;
       if (given < _total) {
-        NusaSnackbar.error(context, 'Jumlah dibayarkan kurang');
+        TopToast.error(context, 'Jumlah dibayarkan kurang');
         return;
       }
     }
@@ -129,7 +129,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       }
     } catch (e) {
       if (mounted) {
-        NusaSnackbar.error(context, 'Gagal memproses pembayaran: $e');
+        TopToast.error(context, 'Gagal memproses pembayaran: $e');
       }
     } finally {
       if (mounted) setState(() => _loading = false);

@@ -10,7 +10,7 @@ import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
+import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 
 class ProductFormScreen extends ConsumerStatefulWidget {
@@ -82,11 +82,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final name = _name.text.trim();
     final sell = _toInt(_sell.text);
     if (name.isEmpty) {
-      NusaSnackbar.error(context, 'Nama produk wajib diisi');
+      TopToast.error(context, 'Nama produk wajib diisi');
       return;
     }
     if (sell == null) {
-      NusaSnackbar.error(context, 'Harga jual wajib diisi');
+      TopToast.error(context, 'Harga jual wajib diisi');
       return;
     }
     final repo = ProductRepository(ref.read(databaseProvider));

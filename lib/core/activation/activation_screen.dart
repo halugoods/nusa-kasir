@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/core/activation/activation_repository.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/core/services/google_auth_service.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -29,19 +31,50 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
       body: Center(child: SingleChildScrollView(padding: const EdgeInsets.all(24),
         child: Column(children: [
           const SizedBox(height: 40),
-          Text('NUSA', style: Theme.of(context).textTheme.displaySmall?.copyWith(color: NusaConfig.primaryColor)),
-          const SizedBox(height: 8),
+          Container(
+            width: 72, height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [NusaConfig.primaryColor, NusaConfig.primaryDark],
+              ),
+              boxShadow: [BoxShadow(color: NusaConfig.primaryColor.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
+            ),
+            child: const Icon(Icons.store_rounded, color: Colors.white, size: 36),
+          ),
+          const SizedBox(height: 20),
+          Text('NUSA', style: Theme.of(context).textTheme.displaySmall?.copyWith(
+            color: NusaConfig.primaryColor, fontWeight: FontWeight.w800, letterSpacing: -1)),
+          const SizedBox(height: 4),
           Text(NusaConfig.appSubtitle, textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 15, color: NusaConfig.textSecondary)),
+            style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           const SizedBox(height: 32),
           TextField(controller: _ctrl, textAlign: TextAlign.center,
             style: const TextStyle(fontFamily: 'monospace', fontSize: 17, letterSpacing: 1),
-            decoration: const InputDecoration(hintText: 'Masukkan Key Aktivasi',
-              border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(14))))),
+            decoration: InputDecoration(
+              hintText: 'Masukkan Key Aktivasi',
+              hintStyle: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+              filled: true,
+              fillColor: isDark ? NusaConfig.darkSurface : Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderSide: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderSide: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 2),
+              ),
+            )),
           if (_error != null) Padding(padding: const EdgeInsets.only(top: 8),
             child: Text(_error!, style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13))),
           const SizedBox(height: 16),
@@ -49,8 +82,12 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: NusaConfig.primaryColor,
               foregroundColor: Colors.white,
+              elevation: 2,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
-            onPressed: _loading ? null : _submit, child: Text(_loading ? 'Memproses...' : 'Aktivasi'))),
+            onPressed: _loading ? null : _submit, child: Text(_loading ? 'Memproses...' : 'Aktivasi',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)))),
           const SizedBox(height: 12),
           TextButton.icon(onPressed: _scan, icon: const Icon(Icons.qr_code_scanner), label: const Text('Scan Barcode Kartu')),
           TextButton.icon(onPressed: _tapNfc, icon: const Icon(Icons.nfc), label: const Text('Tap NFC')),
@@ -65,16 +102,85 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     final r = await repo.activate(key);
     setState(() => _loading = false);
 
-    if (r.ok) {
-      // Check if a backup from another device exists for this key.
-      final hasBackup = await repo.hasBackup(key);
-      if (hasBackup && mounted) {
-        await _promptRestore(key);
-      } else if (mounted) {
-        context.go('/setup');
-      }
-    } else {
+    if (!r.ok) {
       setState(() => _error = r.error);
+      return;
+    }
+
+    // Activation success — now link Google account for backup identity
+    if (mounted) await _linkGoogleAndRestore(key);
+  }
+
+  /// Link Google account → check for cloud backup → offer restore.
+  Future<void> _linkGoogleAndRestore(String activationKey) async {
+    final googleAuth = GoogleAuthService();
+
+    // Check if already linked (e.g., re-activation on same device)
+    final alreadyLinked = await GoogleAuthService.isLinked();
+
+    if (!alreadyLinked) {
+      final link = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.cloud_sync, color: NusaConfig.primaryColor, size: 28),
+              SizedBox(width: 10),
+              Text('Simpan ke Cloud', style: TextStyle(fontSize: 17)),
+            ],
+          ),
+          content: const Text(
+            'Login dengan Google agar data toko bisa dipindahkan antar device '
+            'tanpa kehilangan data.',
+            style: TextStyle(fontSize: 14, height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Nanti', style: TextStyle(color: NusaConfig.textSecondary)),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.login, size: 18),
+              label: const Text('Login Google'),
+              style: FilledButton.styleFrom(
+                backgroundColor: NusaConfig.primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (link != true) {
+        if (mounted) context.go('/setup');
+        return;
+      }
+
+      // Perform Google Sign-In
+      setState(() => _loading = true);
+      final googleId = await googleAuth.signIn();
+      setState(() => _loading = false);
+
+      if (googleId == null) {
+        TopToast.error(context, 'Gagal login Google. Coba lagi nanti.');
+        if (mounted) context.go('/setup');
+        return;
+      }
+
+      TopToast.success(context, 'Google terhubung!');
+    }
+
+    // Check for existing backup in cloud
+    final repo = ref.read(activationRepoProvider);
+    final hasBackup = await repo.hasBackup();
+
+    if (hasBackup && mounted) {
+      await _promptRestore(activationKey);
+    } else if (mounted) {
+      context.go('/setup');
     }
   }
 
@@ -86,14 +192,13 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.cloud_download_outlined,
-                color: NusaConfig.primaryColor, size: 28),
+            Icon(Icons.cloud_download_outlined, color: NusaConfig.primaryColor, size: 28),
             SizedBox(width: 10),
             Text('Data Ditemukan', style: TextStyle(fontSize: 17)),
           ],
         ),
         content: const Text(
-          'Data dari device lamamu tersimpan di cloud. '
+          'Data toko sebelumnya ditemukan di cloud. '
           'Mau dipulihkan sekarang?',
           style: TextStyle(fontSize: 14, height: 1.5),
         ),
@@ -105,8 +210,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: NusaConfig.primaryColor,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Pulihkan'),
@@ -120,7 +224,6 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
       return;
     }
 
-    // Download & stage for restore
     setState(() => _loading = true);
     final repo = ref.read(activationRepoProvider);
     final ok = await repo.downloadAndRestore(key);
@@ -140,31 +243,23 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
             ],
           ),
           content: const Text(
-            'App akan keluar sekarang. '
-            'Buka lagi NUSA Kasir untuk melanjutkan dengan data yang sudah dipulihkan.',
+            'App akan keluar. Buka lagi NUSA Kasir untuk melanjutkan.',
             style: TextStyle(fontSize: 14, height: 1.5),
           ),
           actions: [
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: NusaConfig.primaryColor,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              onPressed: () {
-                // On exit, the pending .sqlite file + flag will be picked up
-                // by _applyPendingRestore() in main.dart on next launch.
-                SystemNavigator.pop();
-              },
+              onPressed: () => SystemNavigator.pop(),
               child: const Text('Oke'),
             ),
           ],
         ),
       );
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal memulihkan data. Periksa koneksi internet.')),
-      );
+      TopToast.error(context, 'Gagal memulihkan data. Periksa koneksi internet.');
       context.go('/setup');
     }
   }
@@ -194,7 +289,6 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     final msg = ndef?.cachedMessage;
     if (msg == null) return null;
     for (final record in msg.records) {
-      // RTD Text: typeNameFormat == nfcWellKnown and type byte == 0x54 ('T')
       if (record.typeNameFormat == NdefTypeNameFormat.nfcWellknown &&
           record.type.isNotEmpty && record.type.first == 0x54) {
         final payload = record.payload;

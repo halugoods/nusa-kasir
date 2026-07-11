@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nusa_kasir/app.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
@@ -7,8 +8,10 @@ import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
+import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 
 class AttendanceScreen extends ConsumerStatefulWidget {
   const AttendanceScreen({super.key});
@@ -41,47 +44,74 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     }
   }
 
+  /// Absen Masuk: PIN → input kas awal (mandatory) → checkInWithCash.
   Future<void> _checkIn(Employee e) async {
-    final repo = AttendanceRepository(ref.read(databaseProvider));
-    await repo.checkIn(e.id);
-    _load();
-  }
-
-  Future<void> _checkOut(Employee e) async {
-    final repo = AttendanceRepository(ref.read(databaseProvider));
-    await repo.checkOut(e.id);
-    _load();
-  }
-
-  void _setPettyCash(Employee e) {
-    final controller = TextEditingController();
-    showDialog(
+    final result = await PinDialog.show(
       context: context,
-      builder: (_) => AlertDialog(
+      employeeName: e.name,
+      employeeRole: e.role,
+      correctPin: e.pin,
+    );
+    if (result == null || !result.success) return;
+
+    final cash = await _showCashInput('Kas Awal', 'Masukkan nominal kas awal (wajib)');
+    if (cash == null || !mounted) return;
+
+    final repo = AttendanceRepository(ref.read(databaseProvider));
+    await repo.checkInWithCash(e.id, cash);
+    TopToast.success(context, '${e.name} absen masuk');
+    _load();
+  }
+
+  /// Absen Pulang: PIN → input kas akhir (mandatory) → checkOutWithCash.
+  Future<void> _checkOut(Employee e) async {
+    final result = await PinDialog.show(
+      context: context,
+      employeeName: e.name,
+      employeeRole: e.role,
+      correctPin: e.pin,
+    );
+    if (result == null || !result.success) return;
+
+    final cash = await _showCashInput('Kas Akhir', 'Masukkan nominal kas akhir (wajib)');
+    if (cash == null || !mounted) return;
+
+    final repo = AttendanceRepository(ref.read(databaseProvider));
+    await repo.checkOutWithCash(e.id, cash);
+    TopToast.success(context, '${e.name} absen pulang');
+    _load();
+  }
+
+  /// Show mandatory cash input dialog. Returns null if cancelled.
+  Future<int?> _showCashInput(String title, String hint) async {
+    final ctrl = TextEditingController();
+    return showDialog<int>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Kas Kecil',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-        content: NusaInput('Jumlah kas kecil (Rp)',
-            controller: controller, type: TextInputType.number),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        content: NusaInput(hint, controller: ctrl, type: TextInputType.number),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Batal',
-                  style: TextStyle(color: NusaConfig.textSecondary))),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal',
+                style: TextStyle(color: NusaConfig.textSecondary)),
+          ),
           ElevatedButton(
-            onPressed: () async {
-              final amount = int.tryParse(controller.text.trim()) ?? 0;
-              final repo = AttendanceRepository(ref.read(databaseProvider));
-              await repo.setPettyCashForToday(e.id, amount);
-              if (mounted) Navigator.of(context).pop();
-              _load();
+            onPressed: () {
+              final amount = int.tryParse(ctrl.text.trim());
+              if (amount == null || amount <= 0) {
+                TopToast.error(context, '$title wajib diisi');
+                return;
+              }
+              Navigator.pop(ctx, amount);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: NusaConfig.primaryColor,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('Simpan'),
           ),
@@ -98,7 +128,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       _employees.isEmpty
           ? const EmptyState(
               icon: Icons.person_outline,
-              message: 'Belum ada karyawan. Tambah lewat tombol +',
+              message: 'Belum ada karyawan. Tambah lewat menu Karyawan.',
             )
           : RefreshIndicator(
               onRefresh: _load,
@@ -112,7 +142,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   isDark: isDark,
                   onIn: () => _checkIn(_employees[i]),
                   onOut: () => _checkOut(_employees[i]),
-                  onCash: () => _setPettyCash(_employees[i]),
                 ),
               ),
             ),
@@ -127,7 +156,6 @@ class _EmployeeCard extends StatelessWidget {
   final bool isDark;
   final VoidCallback onIn;
   final VoidCallback onOut;
-  final VoidCallback onCash;
 
   const _EmployeeCard({
     required this.employee,
@@ -135,14 +163,14 @@ class _EmployeeCard extends StatelessWidget {
     required this.isDark,
     required this.onIn,
     required this.onOut,
-    required this.onCash,
   });
 
   @override
   Widget build(BuildContext context) {
     final inTime = today?.checkIn;
     final outTime = today?.checkOut;
-    final cash = today?.pettyCash;
+    final pettyCash = today?.pettyCash;
+    final finalCash = today?.finalCash;
     final isCheckedIn = inTime != null;
     final isCheckedOut = outTime != null;
 
@@ -255,8 +283,15 @@ class _EmployeeCard extends StatelessWidget {
               Expanded(
                 child: _Info(
                   icon: Icons.account_balance_wallet_outlined,
-                  label: 'Kas Kecil',
-                  value: cash != null ? formatRupiah(cash) : '-',
+                  label: 'Kas Awal',
+                  value: pettyCash != null ? formatRupiah(pettyCash) : '-',
+                ),
+              ),
+              Expanded(
+                child: _Info(
+                  icon: Icons.monetization_on_outlined,
+                  label: 'Kas Akhir',
+                  value: finalCash != null ? formatRupiah(finalCash) : '-',
                 ),
               ),
             ],
@@ -280,15 +315,6 @@ class _EmployeeCard extends StatelessWidget {
                   color: const Color(0xFFEF4444),
                   enabled: isCheckedIn && !isCheckedOut,
                   onTap: onOut,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ActionBtn(
-                  label: 'Kas Kecil',
-                  color: NusaConfig.accentPurple,
-                  enabled: true,
-                  onTap: onCash,
                 ),
               ),
             ],
@@ -348,18 +374,18 @@ class _Info extends StatelessWidget {
   Widget build(BuildContext context) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color ?? NusaConfig.textSecondary),
-          const SizedBox(width: 6),
+          Icon(icon, size: 14, color: color ?? NusaConfig.textSecondary),
+          const SizedBox(width: 4),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label,
                   style: const TextStyle(
-                      fontSize: 11, color: NusaConfig.textSecondary)),
+                      fontSize: 10, color: NusaConfig.textSecondary)),
               const SizedBox(height: 2),
               Text(value,
                   style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: color ?? NusaConfig.textPrimary)),
             ],

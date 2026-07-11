@@ -8,7 +8,7 @@ import 'package:nusa_kasir/core/utils/report_export.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/report_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
+import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
@@ -54,7 +54,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         text: 'Laporan penjualan NUSA Kasir ($_period)',
       );
     } catch (e) {
-      if (mounted) NusaSnackbar.error(context, 'Gagal ekspor: $e');
+      if (mounted) TopToast.error(context, 'Gagal ekspor: $e');
     } finally {
       if (mounted) setState(() => _exporting = false);
     }

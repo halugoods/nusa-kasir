@@ -8,7 +8,7 @@ import 'package:nusa_kasir/data/repositories/promo_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
+import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
@@ -45,7 +45,7 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
   Future<void> _delete(Promo p) async {
     final repo = PromoRepository(ref.read(databaseProvider));
     await repo.deletePromo(p.id);
-    if (mounted) NusaSnackbar.success(context, 'Promo "${p.name}" dihapus');
+    if (mounted) TopToast.success(context, 'Promo "${p.name}" dihapus');
     _load();
   }
 
@@ -168,15 +168,15 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
               final code = codeC.text.trim();
               final value = int.tryParse(valueC.text.trim());
               if (name.isEmpty) {
-                NusaSnackbar.error(context, 'Nama promo wajib diisi');
+                TopToast.error(context, 'Nama promo wajib diisi');
                 return;
               }
               if (code.isEmpty) {
-                NusaSnackbar.error(context, 'Kode promo wajib diisi');
+                TopToast.error(context, 'Kode promo wajib diisi');
                 return;
               }
               if (value == null) {
-                NusaSnackbar.error(context, 'Nilai diskon wajib diisi');
+                TopToast.error(context, 'Nilai diskon wajib diisi');
                 return;
               }
               final repo = PromoRepository(ref.read(databaseProvider));

@@ -46,15 +46,23 @@ class ActivationRepository {
     return ActivationResult(true);
   }
 
-  /// Check if an encrypted backup exists in Supabase Storage for this key.
-  Future<bool> hasBackup(String key) async {
+  /// Build the backup path using the stored Google user ID.
+  static Future<String?> _backupPath() async {
+    final uid = await SecureStore.read(key: 'nusa_google_user_id');
+    if (uid == null) return null;
+    return '$uid/backup.sqlite.enc';
+  }
+
+  /// Check if an encrypted backup exists in Supabase Storage for the linked Google account.
+  Future<bool> hasBackup() async {
     if (client == null) return false;
+    final uid = await SecureStore.read(key: 'nusa_google_user_id');
+    if (uid == null) return false;
     try {
-      final sanitizedKey = key.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_');
       final res = await client!.storage
           .from('nusa-backups')
-          .list(path: sanitizedKey);
-      return res.isNotEmpty;
+          .list(path: uid);
+      return res.any((f) => f.name == 'backup.sqlite.enc');
     } catch (_) {
       return false;
     }
@@ -62,15 +70,16 @@ class ActivationRepository {
 
   Future<bool> uploadBackup(String key) async {
     if (client == null) return false;
+    final path = await _backupPath();
+    if (path == null) return false;
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File(p.join(dir.path, 'nusa_kasir.sqlite'));
       if (!await file.exists()) return false;
       final raw = await file.readAsBytes();
       final encrypted = await BackupCrypto.encrypt(raw, key);
-      final sanitizedKey = key.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_');
       await client!.storage.from('nusa-backups').uploadBinary(
-        '$sanitizedKey/backup.sqlite.enc',
+        path,
         encrypted,
         fileOptions: const FileOptions(upsert: true, contentType: 'application/octet-stream'),
       );
@@ -81,16 +90,14 @@ class ActivationRepository {
   }
 
   /// Download encrypted backup and stage it for restore on next launch.
-  /// We cannot write the live DB file while the app holds it open, so we
-  /// save to a .pending file and set a flag; main.dart swaps it before
-  /// the database is opened.
   Future<bool> downloadAndRestore(String key) async {
     if (client == null) return false;
+    final path = await _backupPath();
+    if (path == null) return false;
     try {
-      final sanitizedKey = key.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_');
       final bytes = await client!.storage
           .from('nusa-backups')
-          .download('$sanitizedKey/backup.sqlite.enc');
+          .download(path);
       if (bytes.isEmpty) return false;
       final decrypted = await BackupCrypto.decrypt(bytes, key);
       final dir = await getApplicationDocumentsDirectory();

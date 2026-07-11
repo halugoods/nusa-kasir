@@ -3349,6 +3349,17 @@ class $AttendanceTable extends Attendance
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _finalCashMeta = const VerificationMeta(
+    'finalCash',
+  );
+  @override
+  late final GeneratedColumn<int> finalCash = GeneratedColumn<int>(
+    'final_cash',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3357,6 +3368,7 @@ class $AttendanceTable extends Attendance
     checkIn,
     checkOut,
     pettyCash,
+    finalCash,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3405,6 +3417,12 @@ class $AttendanceTable extends Attendance
         pettyCash.isAcceptableOrUnknown(data['petty_cash']!, _pettyCashMeta),
       );
     }
+    if (data.containsKey('final_cash')) {
+      context.handle(
+        _finalCashMeta,
+        finalCash.isAcceptableOrUnknown(data['final_cash']!, _finalCashMeta),
+      );
+    }
     return context;
   }
 
@@ -3438,6 +3456,10 @@ class $AttendanceTable extends Attendance
         DriftSqlType.int,
         data['${effectivePrefix}petty_cash'],
       ),
+      finalCash: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}final_cash'],
+      ),
     );
   }
 
@@ -3454,6 +3476,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
   final String? checkIn;
   final String? checkOut;
   final int? pettyCash;
+  final int? finalCash;
   const AttendanceData({
     required this.id,
     required this.employeeId,
@@ -3461,6 +3484,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     this.checkIn,
     this.checkOut,
     this.pettyCash,
+    this.finalCash,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3476,6 +3500,9 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     }
     if (!nullToAbsent || pettyCash != null) {
       map['petty_cash'] = Variable<int>(pettyCash);
+    }
+    if (!nullToAbsent || finalCash != null) {
+      map['final_cash'] = Variable<int>(finalCash);
     }
     return map;
   }
@@ -3494,6 +3521,9 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       pettyCash: pettyCash == null && nullToAbsent
           ? const Value.absent()
           : Value(pettyCash),
+      finalCash: finalCash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(finalCash),
     );
   }
 
@@ -3509,6 +3539,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       checkIn: serializer.fromJson<String?>(json['checkIn']),
       checkOut: serializer.fromJson<String?>(json['checkOut']),
       pettyCash: serializer.fromJson<int?>(json['pettyCash']),
+      finalCash: serializer.fromJson<int?>(json['finalCash']),
     );
   }
   @override
@@ -3521,6 +3552,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       'checkIn': serializer.toJson<String?>(checkIn),
       'checkOut': serializer.toJson<String?>(checkOut),
       'pettyCash': serializer.toJson<int?>(pettyCash),
+      'finalCash': serializer.toJson<int?>(finalCash),
     };
   }
 
@@ -3531,6 +3563,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     Value<String?> checkIn = const Value.absent(),
     Value<String?> checkOut = const Value.absent(),
     Value<int?> pettyCash = const Value.absent(),
+    Value<int?> finalCash = const Value.absent(),
   }) => AttendanceData(
     id: id ?? this.id,
     employeeId: employeeId ?? this.employeeId,
@@ -3538,6 +3571,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     checkIn: checkIn.present ? checkIn.value : this.checkIn,
     checkOut: checkOut.present ? checkOut.value : this.checkOut,
     pettyCash: pettyCash.present ? pettyCash.value : this.pettyCash,
+    finalCash: finalCash.present ? finalCash.value : this.finalCash,
   );
   AttendanceData copyWithCompanion(AttendanceCompanion data) {
     return AttendanceData(
@@ -3549,6 +3583,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       checkIn: data.checkIn.present ? data.checkIn.value : this.checkIn,
       checkOut: data.checkOut.present ? data.checkOut.value : this.checkOut,
       pettyCash: data.pettyCash.present ? data.pettyCash.value : this.pettyCash,
+      finalCash: data.finalCash.present ? data.finalCash.value : this.finalCash,
     );
   }
 
@@ -3560,14 +3595,22 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
           ..write('date: $date, ')
           ..write('checkIn: $checkIn, ')
           ..write('checkOut: $checkOut, ')
-          ..write('pettyCash: $pettyCash')
+          ..write('pettyCash: $pettyCash, ')
+          ..write('finalCash: $finalCash')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, employeeId, date, checkIn, checkOut, pettyCash);
+  int get hashCode => Object.hash(
+    id,
+    employeeId,
+    date,
+    checkIn,
+    checkOut,
+    pettyCash,
+    finalCash,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3577,7 +3620,8 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
           other.date == this.date &&
           other.checkIn == this.checkIn &&
           other.checkOut == this.checkOut &&
-          other.pettyCash == this.pettyCash);
+          other.pettyCash == this.pettyCash &&
+          other.finalCash == this.finalCash);
 }
 
 class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
@@ -3587,6 +3631,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
   final Value<String?> checkIn;
   final Value<String?> checkOut;
   final Value<int?> pettyCash;
+  final Value<int?> finalCash;
   const AttendanceCompanion({
     this.id = const Value.absent(),
     this.employeeId = const Value.absent(),
@@ -3594,6 +3639,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     this.checkIn = const Value.absent(),
     this.checkOut = const Value.absent(),
     this.pettyCash = const Value.absent(),
+    this.finalCash = const Value.absent(),
   });
   AttendanceCompanion.insert({
     this.id = const Value.absent(),
@@ -3602,6 +3648,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     this.checkIn = const Value.absent(),
     this.checkOut = const Value.absent(),
     this.pettyCash = const Value.absent(),
+    this.finalCash = const Value.absent(),
   }) : employeeId = Value(employeeId);
   static Insertable<AttendanceData> custom({
     Expression<int>? id,
@@ -3610,6 +3657,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     Expression<String>? checkIn,
     Expression<String>? checkOut,
     Expression<int>? pettyCash,
+    Expression<int>? finalCash,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3618,6 +3666,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
       if (checkIn != null) 'check_in': checkIn,
       if (checkOut != null) 'check_out': checkOut,
       if (pettyCash != null) 'petty_cash': pettyCash,
+      if (finalCash != null) 'final_cash': finalCash,
     });
   }
 
@@ -3628,6 +3677,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     Value<String?>? checkIn,
     Value<String?>? checkOut,
     Value<int?>? pettyCash,
+    Value<int?>? finalCash,
   }) {
     return AttendanceCompanion(
       id: id ?? this.id,
@@ -3636,6 +3686,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
       checkIn: checkIn ?? this.checkIn,
       checkOut: checkOut ?? this.checkOut,
       pettyCash: pettyCash ?? this.pettyCash,
+      finalCash: finalCash ?? this.finalCash,
     );
   }
 
@@ -3660,6 +3711,9 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     if (pettyCash.present) {
       map['petty_cash'] = Variable<int>(pettyCash.value);
     }
+    if (finalCash.present) {
+      map['final_cash'] = Variable<int>(finalCash.value);
+    }
     return map;
   }
 
@@ -3671,7 +3725,8 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
           ..write('date: $date, ')
           ..write('checkIn: $checkIn, ')
           ..write('checkOut: $checkOut, ')
-          ..write('pettyCash: $pettyCash')
+          ..write('pettyCash: $pettyCash, ')
+          ..write('finalCash: $finalCash')
           ..write(')'))
         .toString();
   }
@@ -9480,6 +9535,7 @@ typedef $$AttendanceTableCreateCompanionBuilder =
       Value<String?> checkIn,
       Value<String?> checkOut,
       Value<int?> pettyCash,
+      Value<int?> finalCash,
     });
 typedef $$AttendanceTableUpdateCompanionBuilder =
     AttendanceCompanion Function({
@@ -9489,6 +9545,7 @@ typedef $$AttendanceTableUpdateCompanionBuilder =
       Value<String?> checkIn,
       Value<String?> checkOut,
       Value<int?> pettyCash,
+      Value<int?> finalCash,
     });
 
 class $$AttendanceTableFilterComposer
@@ -9527,6 +9584,11 @@ class $$AttendanceTableFilterComposer
 
   ColumnFilters<int> get pettyCash => $composableBuilder(
     column: $table.pettyCash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get finalCash => $composableBuilder(
+    column: $table.finalCash,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -9569,6 +9631,11 @@ class $$AttendanceTableOrderingComposer
     column: $table.pettyCash,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get finalCash => $composableBuilder(
+    column: $table.finalCash,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AttendanceTableAnnotationComposer
@@ -9599,6 +9666,9 @@ class $$AttendanceTableAnnotationComposer
 
   GeneratedColumn<int> get pettyCash =>
       $composableBuilder(column: $table.pettyCash, builder: (column) => column);
+
+  GeneratedColumn<int> get finalCash =>
+      $composableBuilder(column: $table.finalCash, builder: (column) => column);
 }
 
 class $$AttendanceTableTableManager
@@ -9638,6 +9708,7 @@ class $$AttendanceTableTableManager
                 Value<String?> checkIn = const Value.absent(),
                 Value<String?> checkOut = const Value.absent(),
                 Value<int?> pettyCash = const Value.absent(),
+                Value<int?> finalCash = const Value.absent(),
               }) => AttendanceCompanion(
                 id: id,
                 employeeId: employeeId,
@@ -9645,6 +9716,7 @@ class $$AttendanceTableTableManager
                 checkIn: checkIn,
                 checkOut: checkOut,
                 pettyCash: pettyCash,
+                finalCash: finalCash,
               ),
           createCompanionCallback:
               ({
@@ -9654,6 +9726,7 @@ class $$AttendanceTableTableManager
                 Value<String?> checkIn = const Value.absent(),
                 Value<String?> checkOut = const Value.absent(),
                 Value<int?> pettyCash = const Value.absent(),
+                Value<int?> finalCash = const Value.absent(),
               }) => AttendanceCompanion.insert(
                 id: id,
                 employeeId: employeeId,
@@ -9661,6 +9734,7 @@ class $$AttendanceTableTableManager
                 checkIn: checkIn,
                 checkOut: checkOut,
                 pettyCash: pettyCash,
+                finalCash: finalCash,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

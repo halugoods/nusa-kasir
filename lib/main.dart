@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:workmanager/workmanager.dart';
@@ -13,6 +14,21 @@ import 'package:nusa_kasir/core/services/notification_service.dart';
 import 'package:nusa_kasir/core/services/stok_alert_worker.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
+
+/// Catch all unhandled Flutter errors and display them instead of blank screen.
+void _setupErrorHandlers() {
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    if (!details.silent) {
+      final errorString = 'FlutterError: ${details.exception}\n${details.stack?.toString().substring(0, 500) ?? ''}';
+      debugPrint(errorString);
+    }
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('PlatformDispatcher error: $error\n$stack');
+    return true; // handled
+  };
+}
 
 /// Swap a pending encrypted backup into place BEFORE the database opens.
 /// downloadAndRestore() stages a .pending file + flag; we commit it here
@@ -35,6 +51,7 @@ Future<void> _applyPendingRestore() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _setupErrorHandlers();
 
   // Workmanager: initialise first so the callback dispatcher is registered.
   await Workmanager().initialize(stokCallbackDispatcher, isInDebugMode: false);

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/app.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
+import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -31,7 +31,7 @@ class _BackupSheetBody extends StatelessWidget {
     try {
       final src = File(await _dbPath());
       if (!await src.exists()) {
-        if (ctx.mounted) NusaSnackbar.error(ctx, 'Database tidak ditemukan');
+        if (ctx.mounted) TopToast.error(ctx, 'Database tidak ditemukan');
         return;
       }
       final outDir = await getTemporaryDirectory();
@@ -47,7 +47,7 @@ class _BackupSheetBody extends StatelessWidget {
         text: 'File backup database NUSA Kasir',
       );
     } catch (e) {
-      if (ctx.mounted) NusaSnackbar.error(ctx, 'Gagal backup: $e');
+      if (ctx.mounted) TopToast.error(ctx, 'Gagal backup: $e');
     }
   }
 
@@ -66,7 +66,7 @@ class _BackupSheetBody extends StatelessWidget {
       if (ctx.mounted) Navigator.of(ctx).pop();
       if (rootContext.mounted) GoRouter.of(rootContext).go('/home');
     } catch (e) {
-      if (ctx.mounted) NusaSnackbar.error(ctx, 'Gagal restore: $e');
+      if (ctx.mounted) TopToast.error(ctx, 'Gagal restore: $e');
     }
   }
 

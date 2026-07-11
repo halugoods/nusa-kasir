@@ -10,9 +10,9 @@ import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
 import 'package:nusa_kasir/data/repositories/report_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/features/auth/rbac.dart';
-import 'package:nusa_kasir/shared/widgets/buka_kasir_sheet.dart';
 import 'package:nusa_kasir/shared/widgets/dashboard_header.dart';
 import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/profile_stats_card.dart';
 import 'package:nusa_kasir/data/repositories/branch_repository.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
@@ -124,10 +124,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Future<void> _pickAndLogin() async {
     if (_employees.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Belum ada karyawan. Tambah di menu Karyawan.')),
-      );
+      TopToast.info(context, 'Belum ada karyawan. Tambah di menu Karyawan.');
       return;
     }
 
@@ -159,13 +156,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.read(authProvider.notifier).state = emp.role;
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Halo, ${emp.name}! 👋'),
-          backgroundColor: NusaConfig.accentGreen,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      TopToast.success(context, 'Halo, ${emp.name}! 👋');
     }
   }
 
@@ -192,6 +183,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (mounted) await _load();
     } else {
       context.push('/$route');
+    }
+  }
+
+  /// Buka Kasir: PIN → auto-create session (saldo=0) → langsung POS.
+  Future<void> _bukaKasir() async {
+    // Need a logged-in employee session first
+    final session = ref.read(employeeSessionProvider);
+    if (session == null) {
+      await _pickAndLogin();
+      if (ref.read(employeeSessionProvider) == null) return;
+    }
+    if (!mounted) return;
+
+    final s = ref.read(employeeSessionProvider)!;
+
+    // Create cashier session immediately with saldo = 0
+    final cashierRepo = CashierSessionRepository(ref.read(databaseProvider));
+    try {
+      final sessionId = await cashierRepo.open(
+        employeeId: s.employeeId,
+        startingCash: 0,
+      );
+      if (mounted) {
+        TopToast.success(context, 'Kasir dibuka — Halo, ${s.name}! 👋');
+        context.push('/kasir?sessionId=$sessionId');
+      }
+    } catch (e) {
+      if (mounted) {
+        TopToast.error(context, 'Gagal membuka kasir: $e');
+      }
     }
   }
 
@@ -422,29 +443,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
               child: _BukaKasirCTA(
-                onTap: () async {
-                  // Need session first — pick employee + PIN
-                  final session = ref.read(employeeSessionProvider);
-                  if (session == null) {
-                    await _pickAndLogin();
-                    if (ref.read(employeeSessionProvider) == null) return;
-                  }
-                  if (!mounted) return;
-                  final s = ref.read(employeeSessionProvider)!;
-                  BukaKasirSheet.show(
-                    context: context,
-                    storeName: _storeName,
-                    employeeId: s.employeeId,
-                    employeeName: s.name,
-                    employeeRole: s.role,
-                    onConfirm: (sessionId, saldo) {
-                      // Navigate to POS with the cashier session
-                      if (mounted) {
-                        context.push('/kasir?sessionId=$sessionId');
-                      }
-                    },
-                  );
-                },
+                onTap: () => _bukaKasir(),
               ),
             ),
           ],

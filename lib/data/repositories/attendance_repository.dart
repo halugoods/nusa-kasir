@@ -103,6 +103,28 @@ class AttendanceRepository {
     await setPettyCash(id, amount);
   }
 
+  /// Set final cash (kas akhir) for today's attendance record.
+  Future<void> setFinalCashForToday(int employeeId, int amount) async {
+    final today = await getToday(employeeId);
+    final id = today?.id ??
+        await db.into(db.attendance)
+            .insert(AttendanceCompanion.insert(employeeId: employeeId));
+    await (db.update(db.attendance)..where((t) => t.id.equals(id)))
+        .write(AttendanceCompanion(finalCash: Value(amount)));
+  }
+
+  /// Check in with initial cash (kas awal wajib).
+  Future<void> checkInWithCash(int employeeId, int cash) async {
+    await checkIn(employeeId);
+    await setPettyCashForToday(employeeId, cash);
+  }
+
+  /// Check out with final cash (kas akhir wajib).
+  Future<void> checkOutWithCash(int employeeId, int cash) async {
+    await checkOut(employeeId);
+    await setFinalCashForToday(employeeId, cash);
+  }
+
   Future<List<AttendanceData>> history({int? employeeId}) {
     final q = db.select(db.attendance);
     if (employeeId != null) {

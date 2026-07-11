@@ -8,7 +8,7 @@ import 'package:nusa_kasir/core/utils/receipt_printer.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/pos/cart.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
+import "package:nusa_kasir/shared/widgets/top_toast.dart";
 
 class ReceiptSheet extends ConsumerWidget {
   final List<CartItem> items;
@@ -166,7 +166,7 @@ class ReceiptSheet extends ConsumerWidget {
       final devices = await printer.discover();
       if (devices.isEmpty) {
         if (context.mounted) {
-          NusaSnackbar.error(
+          TopToast.error(
               context, 'Sambungkan printer di Pengaturan');
         }
         return;
@@ -194,12 +194,12 @@ class ReceiptSheet extends ConsumerWidget {
         cashierName: cashierName,
       );
       if (context.mounted) {
-        NusaSnackbar.error(
+        TopToast.error(
             context, ok ? 'Struk berhasil dicetak' : 'Gagal mencetak');
       }
     } catch (_) {
       if (context.mounted) {
-        NusaSnackbar.error(context, 'Gagal mencetak struk');
+        TopToast.error(context, 'Gagal mencetak struk');
       }
     } finally {
       printer.dispose();
@@ -227,7 +227,7 @@ class ReceiptSheet extends ConsumerWidget {
     if (canLaunch) {
       await launcher.launchUrl(uri, mode: launcher.LaunchMode.externalApplication);
     } else if (context.mounted) {
-      NusaSnackbar.error(context, 'Tidak dapat membuka WhatsApp');
+      TopToast.error(context, 'Tidak dapat membuka WhatsApp');
     }
   }
 }

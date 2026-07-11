@@ -6,7 +6,7 @@ import 'package:nusa_kasir/core/services/spreadsheet_service.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
+import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 
 class SpreadsheetScreen extends ConsumerStatefulWidget {
@@ -66,9 +66,9 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
     if (id != null && mounted) {
       await SecureStore.saveSheetsTokens(id);
       setState(() => _spreadsheetId = id);
-      NusaSnackbar.success(context, 'Spreadsheet berhasil dibuat!');
+      TopToast.success(context, 'Spreadsheet berhasil dibuat!');
     } else if (mounted) {
-      NusaSnackbar.error(context, 'Gagal membuat spreadsheet');
+      TopToast.error(context, 'Gagal membuat spreadsheet');
     }
   }
 
@@ -105,9 +105,9 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
         _syncingTab = '';
       });
       if (ok) {
-        NusaSnackbar.success(context, '$tab tersinkronisasi');
+        TopToast.success(context, '$tab tersinkronisasi');
       } else {
-        NusaSnackbar.error(context, 'Gagal sinkron $tab');
+        TopToast.error(context, 'Gagal sinkron $tab');
       }
     }
   }
@@ -125,9 +125,9 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
         _syncingTab = '';
       });
       if (ok) {
-        NusaSnackbar.success(context, 'Semua data tersinkronisasi');
+        TopToast.success(context, 'Semua data tersinkronisasi');
       } else {
-        NusaSnackbar.error(context, 'Gagal sinkronisasi');
+        TopToast.error(context, 'Gagal sinkronisasi');
       }
     }
   }

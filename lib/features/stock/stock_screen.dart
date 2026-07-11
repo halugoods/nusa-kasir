@@ -9,7 +9,7 @@ import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_snackbar.dart';
+import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
@@ -62,12 +62,12 @@ class _StockScreenState extends ConsumerState<StockScreen> {
 
   Future<void> _addStock() async {
     if (_inProductId == null) {
-      NusaSnackbar.error(context, 'Pilih produk terlebih dahulu');
+      TopToast.error(context, 'Pilih produk terlebih dahulu');
       return;
     }
     final qty = int.tryParse(_inQty.text.trim());
     if (qty == null || qty <= 0) {
-      NusaSnackbar.error(context, 'Jumlah stok harus lebih dari 0');
+      TopToast.error(context, 'Jumlah stok harus lebih dari 0');
       return;
     }
     final db = ref.read(databaseProvider);
@@ -80,7 +80,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
         ));
     _inQty.clear();
     if (mounted) {
-      NusaSnackbar.error(context, 'Stok berhasil ditambah');
+      TopToast.error(context, 'Stok berhasil ditambah');
       await _load();
     }
   }

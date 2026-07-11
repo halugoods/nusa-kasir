@@ -9,9 +9,11 @@ import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/features/settings/backup_sheet.dart';
 import 'package:nusa_kasir/features/settings/printer_settings_sheet.dart';
 import 'package:nusa_kasir/core/services/update_service.dart';
+import 'package:nusa_kasir/core/services/google_auth_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -57,6 +59,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _pindahDevice() async {
     final key = _activationKey ?? '';
+
+    // Ensure Google is linked for backup identity
+    final googleLinked = await GoogleAuthService.isLinked();
+    if (!googleLinked) {
+      final link = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.login, color: NusaConfig.primaryColor),
+              SizedBox(width: 10),
+              Text('Login Google', style: TextStyle(fontSize: 17)),
+            ],
+          ),
+          content: const Text(
+            'Pindah device perlu akun Google agar data bisa dikenali di device baru.',
+            style: TextStyle(fontSize: 14, height: 1.5),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nanti')),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.login, size: 18),
+              label: const Text('Login Google'),
+              style: FilledButton.styleFrom(
+                backgroundColor: NusaConfig.primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (link != true) return;
+
+      final googleAuth = GoogleAuthService();
+      final googleId = await googleAuth.signIn();
+      if (googleId == null) {
+        if (mounted) TopToast.error(context, 'Login Google dibutuhkan untuk pindah device.');
+        return;
+      }
+      if (mounted) TopToast.success(context, 'Google terhubung!');
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -88,9 +134,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Mengenkripsi & mengupload backup...')),
-    );
+    TopToast.info(context, 'Mengenkripsi & mengupload backup...');
 
     final ok = key.isNotEmpty
         ? await ref.read(activationRepoProvider).uploadBackup(key)
@@ -99,17 +143,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (ok) {
       await ref.read(activationRepoProvider).deactivate();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data tersimpan di cloud. Silakan aktivasi di device baru.')),
-        );
+        TopToast.success(context, 'Data tersimpan di cloud. Silakan aktivasi di device baru.');
         context.go('/activation');
       }
     } else {
       // Upload failed — don't deactivate, user can try again
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal upload. Periksa koneksi internet & coba lagi.')),
-        );
+        TopToast.error(context, 'Gagal upload. Periksa koneksi internet & coba lagi.');
       }
     }
   }

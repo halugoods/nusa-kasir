@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/utils/receipt_printer.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 
 /// Bottom sheet for discovering and selecting a Bluetooth thermal printer.
 class PrinterSettingsSheet extends StatefulWidget {
@@ -67,12 +68,7 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal menyambung ke printer'),
-            backgroundColor: Color(0xFFE63946),
-          ),
-        );
+        TopToast.error(context, 'Gagal menyambung ke printer');
       }
     } finally {
       await printer.dispose();

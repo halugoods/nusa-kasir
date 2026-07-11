@@ -3,6 +3,7 @@ import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 
 /// Bottom sheet modal for "Buka Kasir" — asks for starting cash balance.
 ///
@@ -88,12 +89,7 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
   Future<void> _confirm() async {
     final nilai = int.tryParse(_raw);
     if (nilai == null || nilai <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Saldo awal wajib diisi'),
-          backgroundColor: NusaConfig.primaryColor,
-        ),
-      );
+      TopToast.error(context, 'Saldo awal wajib diisi');
       return;
     }
 
@@ -113,9 +109,7 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal buka kasir: $e')),
-        );
+        TopToast.error(context, 'Gagal buka kasir: $e');
       }
     }
   }

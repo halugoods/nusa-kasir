@@ -74,6 +74,7 @@ class Attendance extends Table {
   TextColumn get checkIn => text().nullable()();
   TextColumn get checkOut => text().nullable()();
   IntColumn get pettyCash => integer().nullable()();
+  IntColumn get finalCash => integer().nullable()();
 }
 class Expenses extends Table {
   IntColumn get id => integer().autoIncrement()();

@@ -5,7 +5,7 @@ abstract class NusaConfig {
   static const String brandName = "NUSA";
   static const String appSubtitle = "Aplikasi Kasir untuk Toko Kelontong";
   static const String appVersion = "1.0.0";
-  static const int appBuildNumber = 6;
+  static const int appBuildNumber = 7;
   static const String githubRepo = "halugoods/nusa-kasir";
   static const String applicationId = "com.nusa.kasir";
   static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://sakeuhcbcnueplzlkltm.supabase.co');
