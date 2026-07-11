@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/core/activation/activation_repository.dart';
@@ -60,15 +61,111 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   Future<void> _submit() async {
     setState(() => _loading = true);
     final key = _ctrl.text.trim().toUpperCase();
-    final r = await ref.read(activationRepoProvider).activate(key);
-    if (r.ok) {
-      await ref.read(activationRepoProvider).downloadAndRestore(key);
-    }
+    final repo = ref.read(activationRepoProvider);
+    final r = await repo.activate(key);
     setState(() => _loading = false);
+
     if (r.ok) {
-      if (mounted) context.go('/setup');
+      // Check if a backup from another device exists for this key.
+      final hasBackup = await repo.hasBackup(key);
+      if (hasBackup && mounted) {
+        await _promptRestore(key);
+      } else if (mounted) {
+        context.go('/setup');
+      }
     } else {
       setState(() => _error = r.error);
+    }
+  }
+
+  Future<void> _promptRestore(String key) async {
+    final restore = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.cloud_download_outlined,
+                color: NusaConfig.primaryColor, size: 28),
+            SizedBox(width: 10),
+            Text('Data Ditemukan', style: TextStyle(fontSize: 17)),
+          ],
+        ),
+        content: const Text(
+          'Data dari device lamamu tersimpan di cloud. '
+          'Mau dipulihkan sekarang?',
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Nanti', style: TextStyle(color: NusaConfig.textSecondary)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: NusaConfig.primaryColor,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Pulihkan'),
+          ),
+        ],
+      ),
+    );
+
+    if (restore != true) {
+      if (mounted) context.go('/setup');
+      return;
+    }
+
+    // Download & stage for restore
+    setState(() => _loading = true);
+    final repo = ref.read(activationRepoProvider);
+    final ok = await repo.downloadAndRestore(key);
+    setState(() => _loading = false);
+
+    if (ok && mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: NusaConfig.accentGreen, size: 28),
+              SizedBox(width: 10),
+              Text('Data Siap!', style: TextStyle(fontSize: 17)),
+            ],
+          ),
+          content: const Text(
+            'App akan keluar sekarang. '
+            'Buka lagi NUSA Kasir untuk melanjutkan dengan data yang sudah dipulihkan.',
+            style: TextStyle(fontSize: 14, height: 1.5),
+          ),
+          actions: [
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: NusaConfig.primaryColor,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                // On exit, the pending .sqlite file + flag will be picked up
+                // by _applyPendingRestore() in main.dart on next launch.
+                SystemNavigator.pop();
+              },
+              child: const Text('Oke'),
+            ),
+          ],
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal memulihkan data. Periksa koneksi internet.')),
+      );
+      context.go('/setup');
     }
   }
 

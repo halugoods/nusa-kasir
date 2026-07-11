@@ -55,6 +55,65 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.dispose();
   }
 
+  Future<void> _pindahDevice() async {
+    final key = _activationKey ?? '';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.phone_android, color: NusaConfig.primaryColor),
+            SizedBox(width: 10),
+            Text('Pindah Device?', style: TextStyle(fontSize: 17)),
+          ],
+        ),
+        content: const Text(
+          'Seluruh data toko akan dienkripsi & disimpan ke cloud. '
+          'Kamu bisa memasangnya lagi di device baru dengan key aktivasi yang sama.',
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: NusaConfig.primaryColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ya, Pindah'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Mengenkripsi & mengupload backup...')),
+    );
+
+    final ok = key.isNotEmpty
+        ? await ref.read(activationRepoProvider).uploadBackup(key)
+        : false;
+
+    if (ok) {
+      await ref.read(activationRepoProvider).deactivate();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data tersimpan di cloud. Silakan aktivasi di device baru.')),
+        );
+        context.go('/activation');
+      }
+    } else {
+      // Upload failed — don't deactivate, user can try again
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal upload. Periksa koneksi internet & coba lagi.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ScreenScaffold(
         'Pengaturan',
@@ -99,20 +158,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             borderRadius: BorderRadius.circular(16)),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      onPressed: () async {
-                        final key = _activationKey ?? '';
-                        // Show progress
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Menyiapkan backup...')),
-                          );
-                        }
-                        if (key.isNotEmpty) {
-                          await ref.read(activationRepoProvider).uploadBackup(key);
-                        }
-                        await ref.read(activationRepoProvider).deactivate();
-                        if (mounted) context.go('/activation');
-                      },
+                      onPressed: () => _pindahDevice(),
                       child: const Text('Pindah Device'),
                     ),
                   ],

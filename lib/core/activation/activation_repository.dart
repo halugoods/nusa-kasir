@@ -46,6 +46,20 @@ class ActivationRepository {
     return ActivationResult(true);
   }
 
+  /// Check if an encrypted backup exists in Supabase Storage for this key.
+  Future<bool> hasBackup(String key) async {
+    if (client == null) return false;
+    try {
+      final sanitizedKey = key.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_');
+      final res = await client!.storage
+          .from('nusa-backups')
+          .list(path: sanitizedKey);
+      return res.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> uploadBackup(String key) async {
     if (client == null) return false;
     try {
@@ -56,7 +70,7 @@ class ActivationRepository {
       final encrypted = await BackupCrypto.encrypt(raw, key);
       final sanitizedKey = key.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_');
       await client!.storage.from('nusa-backups').uploadBinary(
-        '\$sanitizedKey/backup.sqlite.enc',
+        '$sanitizedKey/backup.sqlite.enc',
         encrypted,
         fileOptions: const FileOptions(upsert: true, contentType: 'application/octet-stream'),
       );
@@ -76,7 +90,7 @@ class ActivationRepository {
       final sanitizedKey = key.replaceAll(RegExp(r'[^A-Za-z0-9]'), '_');
       final bytes = await client!.storage
           .from('nusa-backups')
-          .download('\$sanitizedKey/backup.sqlite.enc');
+          .download('$sanitizedKey/backup.sqlite.enc');
       if (bytes.isEmpty) return false;
       final decrypted = await BackupCrypto.decrypt(bytes, key);
       final dir = await getApplicationDocumentsDirectory();
