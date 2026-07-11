@@ -370,7 +370,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
 
   Widget _buildCartBar(bool isDark, int totalItems, int totalPrice) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 68), // extra bottom to avoid FAB overlap
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),

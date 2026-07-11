@@ -1,8 +1,10 @@
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/sheets/v4.dart';
+import 'package:drift/drift.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
+import 'package:nusa_kasir/data/repositories/report_repository.dart';
 import 'package:nusa_kasir/data/repositories/transaction_repository.dart';
 
 class SpreadsheetService {
@@ -52,28 +54,14 @@ class SpreadsheetService {
       final rows = <List<dynamic>>[
         ['ID', 'Nama', 'SKU', 'Barcode', 'Kategori', 'Harga Beli', 'Harga Jual', 'Stok', 'Stok Min'],
         for (final p in products)
-          [
-            p.id,
-            p.name,
-            p.sku ?? '',
-            p.barcode ?? '',
-            p.category,
-            p.buyPrice,
-            p.sellPrice,
-            p.stock,
-            p.minStock,
-          ],
+          [p.id, p.name, p.sku ?? '', p.barcode ?? '', p.category, p.buyPrice, p.sellPrice, p.stock, p.minStock],
       ];
       await api.spreadsheets.values.update(
-        ValueRange(range: 'Produk!A1', values: rows),
-        spreadsheetId,
-        'Produk!A1',
+        ValueRange(range: 'Produk!A1', values: rows), spreadsheetId, 'Produk!A1',
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) {
-      return false;
-    }
+    } catch (_) { return false; }
   }
 
   Future<bool> syncTransactions(String spreadsheetId) async {
@@ -85,32 +73,65 @@ class SpreadsheetService {
       final rows = <List<dynamic>>[
         ['Invoice', 'Tanggal', 'Total', 'Diskon', 'Metode', 'Bayar', 'Kembali', 'Kasir'],
         for (final t in txs)
-          [
-            t.invoice,
-            '${t.date.day}/${t.date.month}/${t.date.year}',
-            t.total,
-            t.discount,
-            t.paymentMethod,
-            t.cashGiven ?? 0,
-            t.cashReturn ?? 0,
-            t.cashierName ?? '-',
-          ],
+          [t.invoice, '${t.date.day}/${t.date.month}/${t.date.year}', t.total, t.discount, t.paymentMethod, t.cashGiven ?? 0, t.cashReturn ?? 0, t.cashierName ?? '-'],
       ];
       await api.spreadsheets.values.update(
-        ValueRange(range: 'Transaksi!A1', values: rows),
-        spreadsheetId,
-        'Transaksi!A1',
+        ValueRange(range: 'Transaksi!A1', values: rows), spreadsheetId, 'Transaksi!A1',
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) {
-      return false;
-    }
+    } catch (_) { return false; }
+  }
+
+  /// Sync stock movements to 'Stok' sheet.
+  Future<bool> syncStock(String spreadsheetId) async {
+    final api = await _client();
+    if (api == null) return false;
+    try {
+      final movements = await (db.select(db.stockMovements)
+            ..orderBy([(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)]))
+          .get();
+      final products = await ProductRepository(db).getProducts();
+      final nameOf = {for (final p in products) p.id: p.name};
+      final rows = <List<dynamic>>[
+        ['Tanggal', 'Produk', 'Tipe', 'Qty'],
+        for (final m in movements)
+          ['${m.date.day}/${m.date.month}/${m.date.year} ${m.date.hour}:${m.date.minute}', nameOf[m.productId] ?? '#${m.productId}', m.type, m.qty],
+      ];
+      await api.spreadsheets.values.update(
+        ValueRange(range: 'Stok!A1', values: rows), spreadsheetId, 'Stok!A1',
+        valueInputOption: 'USER_ENTERED',
+      );
+      return true;
+    } catch (_) { return false; }
+  }
+
+  /// Sync financial summary to 'Laporan' sheet.
+  Future<bool> syncLaporan(String spreadsheetId) async {
+    final api = await _client();
+    if (api == null) return false;
+    try {
+      final reportRepo = ReportRepository(db);
+      final summary = await reportRepo.summary();
+      final rows = <List<dynamic>>[
+        ['Metrik', 'Nilai'],
+        ['Omzet', summary['omzet']],
+        ['Jumlah Transaksi', summary['count']],
+        ['Rata-rata Transaksi', summary['avg']],
+      ];
+      await api.spreadsheets.values.update(
+        ValueRange(range: 'Laporan!A1', values: rows), spreadsheetId, 'Laporan!A1',
+        valueInputOption: 'USER_ENTERED',
+      );
+      return true;
+    } catch (_) { return false; }
   }
 
   Future<bool> syncAll(String spreadsheetId) async {
     final p = await syncProducts(spreadsheetId);
     final t = await syncTransactions(spreadsheetId);
-    return p && t;
+    final s = await syncStock(spreadsheetId);
+    final l = await syncLaporan(spreadsheetId);
+    return p && t && s && l;
   }
 }

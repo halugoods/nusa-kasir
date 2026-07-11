@@ -21,6 +21,7 @@ class ReportsScreen extends ConsumerStatefulWidget {
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   String _period = 'Hari Ini';
+  int _refreshKey = 0;
   static const _periods = ['Hari Ini', '7 Hari', '30 Hari', 'Semua'];
   bool _exporting = false;
 
@@ -104,6 +105,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ),
           const SizedBox(height: 12),
           FutureBuilder<Map<String, dynamic>>(
+            key: ValueKey('sum_$_refreshKey'),
             future: repo.summary(from: from, to: to),
             builder: (context, snap) {
               final omzet = snap.data?['omzet'] as int? ?? 0;
@@ -133,8 +135,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 onPressed: _exporting
                     ? null
                     : () async {
-                        final items = (await repo.summary(from: from, to: to))['items']
-                            as List<Transaction>;
+                        final data = await repo.summary(from: from, to: to);
+                        final items = data['items'] as List<Transaction>;
                         await _doExport(items);
                       },
                 icon: _exporting
@@ -154,6 +156,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: FutureBuilder<List<Transaction>>(
+              key: ValueKey('list_$_refreshKey'),
               future: repo.getTransactions(from: from, to: to),
               builder: (context, snap) {
                 if (snap.connectionState != ConnectionState.done) {
@@ -173,7 +176,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   );
                 }
                 return RefreshIndicator(
-                  onRefresh: () async => setState(() {}),
+                  onRefresh: () async => setState(() => _refreshKey++),
                   child: ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: list.length,
@@ -202,7 +205,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         fontWeight: FontWeight.w600,
       ),
       backgroundColor: NusaConfig.surfaceColor,
-      onSelected: (_) => setState(() => _period = label),
+      onSelected: (_) {
+        if (_period == label) return;
+        setState(() { _period = label; _refreshKey++; });
+      },
     );
   }
 }

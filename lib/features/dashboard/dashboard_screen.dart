@@ -155,6 +155,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
     ref.read(authProvider.notifier).state = emp.role;
 
+    // Touch session to extend the 8h window
+    ref.read(employeeSessionProvider.notifier).touch();
+
     if (mounted) {
       TopToast.success(context, 'Halo, ${emp.name}! 👋');
     }
@@ -198,8 +201,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final s = ref.read(employeeSessionProvider)!;
 
-    // Create cashier session immediately with saldo = 0
+    // Check if there's already an active (unclosed) cashier session
     final cashierRepo = CashierSessionRepository(ref.read(databaseProvider));
+    final active = await cashierRepo.getActive();
+    if (active != null) {
+      if (mounted) {
+        TopToast.info(context, 'Kasir masih terbuka. Melanjutkan sesi sebelumnya.');
+        context.push('/kasir?sessionId=${active.id}');
+      }
+      return;
+    }
+
+    // Create cashier session immediately with saldo = 0
     try {
       final sessionId = await cashierRepo.open(
         employeeId: s.employeeId,

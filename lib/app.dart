@@ -75,7 +75,9 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
                     state.uri.queryParameters['sessionId'] ?? '')))),
         GoRoute(
             path: '/checkout',
-            pageBuilder: (_, __) => _slidePage(const CheckoutScreen())),
+            pageBuilder: (_, state) => _slidePage(CheckoutScreen(
+                sessionId: int.tryParse(
+                    state.uri.queryParameters['sessionId'] ?? '')))),
         GoRoute(
             path: '/produk',
             pageBuilder: (_, __) => _slidePage(const ProductsScreen())),

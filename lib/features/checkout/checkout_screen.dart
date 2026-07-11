@@ -6,7 +6,11 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:nusa_kasir/app.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
+import 'package:nusa_kasir/data/database/app_database.dart';
+import 'package:nusa_kasir/data/repositories/customer_repository.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
+import 'package:nusa_kasir/data/repositories/promo_repository.dart';
+import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/features/pos/cart.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
@@ -25,14 +29,19 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   final _discountCtrl = TextEditingController();
   final _cashCtrl = TextEditingController();
+  final _promoCtrl = TextEditingController();
   String _paymentMethod = 'Tunai';
   bool _loading = false;
   int? _cashGiven;
   String? _qrisString;
+  Customer? _selectedCustomer;
+  Promo? _appliedPromo;
+  int _promoDiscount = 0; // computed from applied promo
 
   int get _subtotal => ref.watch(cartProvider).fold(0, (s, e) => s + e.subtotal);
-  int get _discount => int.tryParse(_discountCtrl.text) ?? 0;
-  int get _total => (_subtotal - _discount).clamp(0, _subtotal);
+  int get _manualDiscount => int.tryParse(_discountCtrl.text) ?? 0;
+  int get _totalDiscount => (_manualDiscount + _promoDiscount).clamp(0, _subtotal);
+  int get _total => (_subtotal - _totalDiscount).clamp(0, _subtotal);
   int? get _kembalian =>
       _cashGiven != null && _cashGiven! >= _total ? _cashGiven! - _total : null;
 
@@ -51,7 +60,102 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   void dispose() {
     _discountCtrl.dispose();
     _cashCtrl.dispose();
+    _promoCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _applyPromo() async {
+    final code = _promoCtrl.text.trim();
+    if (code.isEmpty) {
+      TopToast.error(context, 'Masukkan kode promo');
+      return;
+    }
+    final repo = PromoRepository(ref.read(databaseProvider));
+    final promos = await repo.getPromos();
+    final match = promos.cast<Promo?>().firstWhere(
+          (p) => p!.code.toUpperCase() == code.toUpperCase() && p.status == 'Aktif',
+          orElse: () => null,
+        );
+    if (match == null) {
+      TopToast.error(context, 'Kode promo tidak valid atau tidak aktif');
+      return;
+    }
+
+    // Check min belanja
+    if (_subtotal < match.minBelanja) {
+      TopToast.error(context, 'Min. belanja ${formatRupiah(match.minBelanja)}');
+      return;
+    }
+
+    // Check kuota
+    if (match.maxUses != null && match.usedCount >= match.maxUses!) {
+      TopToast.error(context, 'Kuota promo sudah habis');
+      return;
+    }
+
+    // Calculate discount
+    int discount;
+    if (match.type == 'persen') {
+      discount = (_subtotal * match.value / 100).round();
+    } else {
+      discount = match.value;
+    }
+    discount = discount.clamp(0, _subtotal);
+
+    setState(() {
+      _appliedPromo = match;
+      _promoDiscount = discount;
+    });
+    TopToast.success(context, 'Promo "${match.name}" diterapkan!');
+  }
+
+  void _clearPromo() {
+    setState(() {
+      _appliedPromo = null;
+      _promoDiscount = 0;
+      _promoCtrl.clear();
+    });
+  }
+
+  Future<void> _pickCustomer() async {
+    final repo = CustomerRepository(ref.read(databaseProvider));
+    final customers = await repo.getCustomers();
+    if (!mounted) return;
+    if (customers.isEmpty) {
+      TopToast.info(context, 'Belum ada pelanggan. Tambah di menu Pelanggan.');
+      return;
+    }
+    final c = await showDialog<Customer>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Pilih Pelanggan'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: customers.length,
+            itemBuilder: (_, i) => ListTile(
+              title: Text(customers[i].name,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(
+                  '${formatRupiah(customers[i].totalSpent)} • ${customers[i].level}'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.pop(ctx, customers[i]),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+        ],
+      ),
+    );
+    if (c != null && mounted) {
+      setState(() => _selectedCustomer = c);
+      TopToast.success(context, 'Pelanggan: ${c.name}');
+    }
   }
 
   Future<void> _confirmPayment() async {
@@ -69,11 +173,23 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       }
     }
 
+    // Validate stock before deducting
+    final db = ref.read(databaseProvider);
+    final productRepo = ProductRepository(db);
+    for (final item in cart) {
+      final product = await productRepo.byId(item.productId);
+      if (product == null || product.stock < item.qty) {
+        final name = product?.name ?? item.name;
+        if (mounted) {
+          TopToast.error(context, 'Stok "$name" tidak cukup (tersedia: ${product?.stock ?? 0})');
+        }
+        return;
+      }
+    }
+
     setState(() => _loading = true);
 
     try {
-      final db = ref.read(databaseProvider);
-      final productRepo = ProductRepository(db);
       final transactionRepo = ref.read(transactionRepoProvider);
 
       // Deduct stock for each item
@@ -82,7 +198,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       }
 
       // Save transaction
-      final cashierName = ref.read(authProvider);
+      final session = ref.read(employeeSessionProvider);
+      final cashierName = session?.name;
       final cashGiven = int.tryParse(_cashCtrl.text);
       final cashReturn = cashGiven != null && cashGiven >= _total
           ? cashGiven - _total
@@ -91,21 +208,32 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       await transactionRepo.saveTransaction(
         items: cart,
         total: _total,
-        discount: _discount,
+        discount: _totalDiscount,
         paymentMethod: _paymentMethod,
         cashGiven: cashGiven,
         cashReturn: cashReturn,
         cashierName: cashierName,
+        customerId: _selectedCustomer?.id,
         branchId: ref.read(activeBranchProvider)?.id,
       );
+
+      // Update customer loyalty
+      if (_selectedCustomer != null) {
+        await CustomerRepository(db).addSpent(_selectedCustomer!.id, _total);
+      }
+
+      // Increment promo usage
+      if (_appliedPromo != null) {
+        await PromoRepository(db).incrementUsed(_appliedPromo!.id);
+      }
 
       // Clear cart
       ref.read(cartProvider.notifier).clear();
 
       if (!mounted) return;
 
-      // Show receipt sheet
-      showModalBottomSheet(
+      // Show receipt sheet and wait for it to be dismissed
+      await showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         shape: const RoundedRectangleBorder(
@@ -114,14 +242,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         builder: (ctx) => ReceiptSheet(
           items: cart,
           total: _total,
-          discount: _discount,
+          discount: _totalDiscount,
           paymentMethod: _paymentMethod,
           cashGiven: cashGiven,
           cashReturn: cashReturn,
           cashierName: cashierName,
         ),
       );
-      // Return to POS screen
+      // Return to POS screen after receipt is dismissed
       if (mounted && widget.sessionId != null) {
         context.go('/kasir?sessionId=${widget.sessionId}');
       } else if (mounted) {
@@ -138,7 +266,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(cartProvider); // re-build on cart changes
+    ref.watch(cartProvider);
     final subtotal = _subtotal;
 
     return ScreenScaffold(
@@ -146,6 +274,43 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // --- Customer Selector ---
+          NusaCard(
+            InkWell(
+              onTap: _pickCustomer,
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    const Icon(Icons.person_outline, color: NusaConfig.primaryColor),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _selectedCustomer != null
+                            ? _selectedCustomer!.name
+                            : 'Pilih Pelanggan (opsional)',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: _selectedCustomer != null
+                              ? NusaConfig.textPrimary
+                              : NusaConfig.textSecondary,
+                        ),
+                      ),
+                    ),
+                    if (_selectedCustomer != null)
+                      GestureDetector(
+                        onTap: () => setState(() => _selectedCustomer = null),
+                        child: const Icon(Icons.close, size: 18, color: NusaConfig.textSecondary),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
           // --- Summary Card ---
           NusaCard(
             Column(
@@ -153,8 +318,51 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               children: [
                 _row('Subtotal', formatRupiah(subtotal)),
                 const SizedBox(height: 8),
+                // Promo code row
+                Row(
+                  children: [
+                    Expanded(
+                      child: NusaInput(
+                        'Kode Promo',
+                        controller: _promoCtrl,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (_appliedPromo != null)
+                      IconButton(
+                        onPressed: _clearPromo,
+                        icon: const Icon(Icons.close, color: NusaConfig.primaryColor),
+                        tooltip: 'Hapus promo',
+                      )
+                    else
+                      SizedBox(
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: _applyPromo,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: NusaConfig.primaryColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Pakai'),
+                        ),
+                      ),
+                  ],
+                ),
+                if (_appliedPromo != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '✓ ${_appliedPromo!.name} (-${formatRupiah(_promoDiscount)})',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: NusaConfig.accentGreen,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
                 NusaInput(
-                  'Diskon (Rp)',
+                  'Diskon Manual (Rp)',
                   controller: _discountCtrl,
                   type: TextInputType.number,
                 ),

@@ -31,6 +31,9 @@ class EmployeeSessionNotifier extends StateNotifier<EmployeeSession?> {
     }
   }
 
+  /// Refresh the persisted session timestamp so the 8h window stays alive.
+  Future<void> touch() => EmployeeSession.touch();
+
   void logout() {
     state = null;
     EmployeeSession.clear();

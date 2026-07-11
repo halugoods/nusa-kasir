@@ -17,10 +17,25 @@ class EmployeeSession {
   }) : savedAt = savedAt ?? DateTime.now();
 
   bool get isExpired {
-    // Only remembered sessions can survive app restart.
-    // Non-remembered sessions are in-memory only and should NOT be persisted.
-    if (!remember) return true; // not remembered → don't auto-restore
+    if (!remember) return true;
     return DateTime.now().difference(savedAt).inHours >= 8;
+  }
+
+  /// Refresh the session timestamp to extend the 8-hour window.
+  static Future<void> touch() async {
+    final raw = await SecureStore.read(key: _key);
+    if (raw == null) return;
+    try {
+      final session = EmployeeSession.fromJson(jsonDecode(raw));
+      final refreshed = EmployeeSession(
+        employeeId: session.employeeId,
+        name: session.name,
+        role: session.role,
+        remember: true,
+        savedAt: DateTime.now(),
+      );
+      await save(refreshed);
+    } catch (_) {}
   }
 
   Map<String, dynamic> toJson() => {

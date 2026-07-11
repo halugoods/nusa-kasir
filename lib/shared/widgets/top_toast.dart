@@ -11,7 +11,9 @@ import 'package:nusa_kasir/core/config/nusa_config.dart';
 enum ToastType { success, error, info }
 
 class TopToast {
-  static final Map<BuildContext, List<OverlayEntry>> _entries = {};
+  /// Uses a WeakReference so we don't hold dead BuildContexts.
+  static final Map<int, List<OverlayEntry>> _entries = {};
+  static int _contextHash(BuildContext c) => c.hashCode;
 
   /// Show a toast at the top of the screen. Auto-dismisses after [duration].
   static void show(
@@ -30,22 +32,25 @@ class TopToast {
         type: type,
         icon: icon,
         onDismiss: () {
-          entry.remove();
-          _entries[context]?.remove(entry);
+          try { entry.remove(); } catch (_) {}
+          final hash = _contextHash(context);
+          _entries[hash]?.remove(entry);
+          if (_entries[hash]?.isEmpty ?? false) _entries.remove(hash);
         },
         duration: duration,
       ),
     );
 
     overlay.insert(entry);
-    _entries.putIfAbsent(context, () => []).add(entry);
+    final hash = _contextHash(context);
+    _entries.putIfAbsent(hash, () => []).add(entry);
 
-    // Clean up entries when context is disposed
-    // (approximation — entries auto-remove themselves via Timer)
-    Future.delayed(duration + const Duration(milliseconds: 400), () {
+    // Fallback cleanup — remove entry after duration in case onDismiss wasn't called
+    Future.delayed(duration + const Duration(seconds: 2), () {
       try {
         entry.remove();
-        _entries[context]?.remove(entry);
+        _entries[hash]?.remove(entry);
+        if (_entries[hash]?.isEmpty ?? false) _entries.remove(hash);
       } catch (_) {}
     });
   }

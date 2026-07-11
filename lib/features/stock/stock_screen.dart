@@ -24,7 +24,9 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   List<Product> _products = [];
   List<StockMovement> _movements = [];
   int? _inProductId;
+  int? _outProductId;
   final _inQty = TextEditingController();
+  final _outQty = TextEditingController();
   bool _loading = true;
 
   @override
@@ -36,6 +38,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   @override
   void dispose() {
     _inQty.dispose();
+    _outQty.dispose();
     super.dispose();
   }
 
@@ -80,7 +83,38 @@ class _StockScreenState extends ConsumerState<StockScreen> {
         ));
     _inQty.clear();
     if (mounted) {
-      TopToast.error(context, 'Stok berhasil ditambah');
+      TopToast.success(context, 'Stok berhasil ditambah');
+      await _load();
+    }
+  }
+
+  /// Stok keluar manual — kurangi stok dengan validasi.
+  Future<void> _removeStock() async {
+    if (_outProductId == null) {
+      TopToast.error(context, 'Pilih produk terlebih dahulu');
+      return;
+    }
+    final qty = int.tryParse(_outQty.text.trim());
+    if (qty == null || qty <= 0) {
+      TopToast.error(context, 'Jumlah stok harus lebih dari 0');
+      return;
+    }
+    final db = ref.read(databaseProvider);
+    final repo = ProductRepository(db);
+    final product = await repo.byId(_outProductId!);
+    if (product == null || product.stock < qty) {
+      TopToast.error(context, 'Stok tidak cukup (tersedia: ${product?.stock ?? 0})');
+      return;
+    }
+    await repo.adjustStock(_outProductId!, -qty);
+    await db.into(db.stockMovements).insert(StockMovementsCompanion.insert(
+          productId: _outProductId!,
+          type: 'out',
+          qty: qty,
+        ));
+    _outQty.clear();
+    if (mounted) {
+      TopToast.success(context, 'Stok berhasil dikurangi');
       await _load();
     }
   }
@@ -92,7 +126,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
       _loading
           ? const SkeletonList()
           : DefaultTabController(
-              length: 3,
+              length: 4,
               child: Column(
                 children: [
                   const TabBar(
@@ -102,6 +136,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
                     tabs: [
                       Tab(text: 'Stok Menipis'),
                       Tab(text: 'Masuk'),
+                      Tab(text: 'Keluar'),
                       Tab(text: 'Riwayat'),
                     ],
                   ),
@@ -117,6 +152,15 @@ class _StockScreenState extends ConsumerState<StockScreen> {
                           selectedId: _inProductId,
                           onChanged: (id) => setState(() => _inProductId = id),
                           onSave: _addStock,
+                        ),
+                        _InTab(
+                          products: _products,
+                          qtyController: _outQty,
+                          selectedId: _outProductId,
+                          onChanged: (id) => setState(() => _outProductId = id),
+                          onSave: _removeStock,
+                          hint: 'Jumlah stok keluar',
+                          buttonLabel: 'Kurangi Stok',
                         ),
                         _HistoryTab(movements: _movements, products: _products, onRefresh: _load),
                       ],
@@ -189,12 +233,16 @@ class _InTab extends StatelessWidget {
   final int? selectedId;
   final ValueChanged<int?> onChanged;
   final VoidCallback onSave;
+  final String hint;
+  final String buttonLabel;
   const _InTab({
     required this.products,
     required this.qtyController,
     required this.selectedId,
     required this.onChanged,
     required this.onSave,
+    this.hint = 'Jumlah stok masuk',
+    this.buttonLabel = 'Tambah Stok',
   });
 
   @override
@@ -218,10 +266,10 @@ class _InTab extends StatelessWidget {
               onChanged: onChanged,
             ),
             const SizedBox(height: 12),
-            NusaInput('Jumlah stok masuk',
+            NusaInput(hint,
                 controller: qtyController, type: TextInputType.number),
             const SizedBox(height: 20),
-            NusaButton('Tambah Stok', onPressed: onSave),
+            NusaButton(buttonLabel, onPressed: onSave),
           ],
         ),
       );

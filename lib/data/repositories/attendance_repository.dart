@@ -47,12 +47,13 @@ class AttendanceRepository {
   // ---- Attendance ----
   Future<AttendanceData?> getToday(int employeeId) async {
     final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day)
-        .subtract(const Duration(days: 1));
+    final today = DateTime(now.year, now.month, now.day);
     final list = await (db.select(db.attendance)
           ..where((t) =>
               t.employeeId.equals(employeeId) &
-              t.date.isBiggerThan(Constant(start))))
+              t.date.isBiggerThanValue(today))
+          ..orderBy([(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)])
+          ..limit(1))
         .get();
     return list.isNotEmpty ? list.first : null;
   }

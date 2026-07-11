@@ -194,8 +194,11 @@ class ReceiptSheet extends ConsumerWidget {
         cashierName: cashierName,
       );
       if (context.mounted) {
-        TopToast.error(
-            context, ok ? 'Struk berhasil dicetak' : 'Gagal mencetak');
+        if (ok) {
+          TopToast.success(context, 'Struk berhasil dicetak');
+        } else {
+          TopToast.error(context, 'Gagal mencetak');
+        }
       }
     } catch (_) {
       if (context.mounted) {

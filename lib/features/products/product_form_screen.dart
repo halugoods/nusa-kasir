@@ -1,4 +1,5 @@
 import 'package:barcode_widget/barcode_widget.dart';
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -90,6 +91,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       return;
     }
     final repo = ProductRepository(ref.read(databaseProvider));
+    final db = ref.read(databaseProvider);
     final buy = _toInt(_buy.text) ?? 0;
     final stock = _toInt(_stock.text) ?? 0;
     final min = _toInt(_min.text) ?? 0;
@@ -102,6 +104,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           buyPrice: buy,
           sellPrice: sell,
           minStock: min);
+      // Update SKU & stock separately since updateProduct doesn't support them
+      if (sku != null) {
+        await (db.update(db.products)..where((t) => t.id.equals(widget.productId!)))
+            .write(ProductsCompanion(sku: Value(sku)));
+      }
+      await (db.update(db.products)..where((t) => t.id.equals(widget.productId!)))
+          .write(ProductsCompanion(stock: Value(stock)));
     } else {
       await repo.addProduct(
         name: name,

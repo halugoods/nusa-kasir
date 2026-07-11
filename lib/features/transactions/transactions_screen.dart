@@ -19,6 +19,7 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   String _timeFilter = 'Hari Ini';
   String _payFilter = 'Semua';
+  int _refreshKey = 0;
 
   static const _timeChips = ['Hari Ini', 'Minggu Ini', 'Semua'];
   static const _payChips = ['Semua', 'Tunai', 'QRIS', 'Transfer'];
@@ -75,6 +76,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: FutureBuilder<List<Transaction>>(
+              key: ValueKey(_refreshKey),
               future: ref.watch(transactionRepoProvider).getTransactions(),
               builder: (context, snap) {
                 if (snap.connectionState != ConnectionState.done) {
@@ -94,7 +96,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   );
                 }
                 return RefreshIndicator(
-                  onRefresh: () async => setState(() {}),
+                  onRefresh: () async {
+                    setState(() => _refreshKey++);
+                  },
                   child: ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: list.length,

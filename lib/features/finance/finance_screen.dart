@@ -124,6 +124,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   }
 
   Widget _body() {
+    final f = FinanceRepository(ref.read(databaseProvider));
     switch (_tab) {
       case 0:
         return _listView(
@@ -162,6 +163,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                     ),
                   ))
               .toList(),
+          onDelete: (i) async { await f.deleteExpense(_expenses[i].id); await _load(); },
         );
       case 1:
         return _listView(
@@ -179,23 +181,30 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600)),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: p.status == 'Paid'
-                                    ? Colors.green.withOpacity(0.15)
-                                    : NusaConfig.primaryColor
-                                        .withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(12),
+                            GestureDetector(
+                              onTap: () async {
+                                final next = p.status == 'Paid' ? 'Pending' : 'Paid';
+                                await f.updatePayrollStatus(p.id, next);
+                                await _load();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: p.status == 'Paid'
+                                      ? Colors.green.withOpacity(0.15)
+                                      : NusaConfig.primaryColor
+                                          .withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(p.status,
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: p.status == 'Paid'
+                                            ? Colors.green
+                                            : NusaConfig.primaryColor)),
                               ),
-                              child: Text(p.status,
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: p.status == 'Paid'
-                                          ? Colors.green
-                                          : NusaConfig.primaryColor)),
                             ),
                           ],
                         ),
@@ -212,6 +221,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                     ),
                   ))
               .toList(),
+          onDelete: (i) async { await f.deletePayroll(_payroll[i].id); await _load(); },
         );
       case 2:
         return _listView(
@@ -248,6 +258,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                     ),
                   ))
               .toList(),
+          onDelete: (i) async { await f.deleteWaste(_waste[i].id); await _load(); },
         );
       default:
         return _listView(
@@ -289,11 +300,12 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                     ),
                   ))
               .toList(),
+          onDelete: (i) async { await f.deleteLiquidity(_liquidity[i].id); await _load(); },
         );
     }
   }
 
-  Widget _listView(bool empty, List<Widget> children) {
+  Widget _listView(bool empty, List<Widget> children, {Future<void> Function(int)? onDelete}) {
     if (empty) {
       return const EmptyState(
         icon: Icons.account_balance_wallet_outlined,
@@ -302,11 +314,44 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     }
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView.separated(
+      child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: children.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, i) => children[i],
+        itemBuilder: (_, i) {
+          final child = children[i];
+          if (onDelete == null) return Padding(padding: const EdgeInsets.only(bottom: 12), child: child);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Dismissible(
+              key: ValueKey(i),
+              direction: DismissDirection.endToStart,
+              confirmDismiss: (_) async {
+                return await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Hapus'),
+                    content: const Text('Yakin hapus data ini?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hapus', style: TextStyle(color: Colors.red))),
+                    ],
+                  ),
+                ) ?? false;
+              },
+              onDismissed: (_) => onDelete(i),
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 20),
+                decoration: BoxDecoration(
+                  color: NusaConfig.primaryColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.delete, color: Colors.white),
+              ),
+              child: child,
+            ),
+          );
+        },
       ),
     );
   }
@@ -488,12 +533,18 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
             NusaButton('Simpan', fullWidth: false, onPressed: () async {
               if (_products.isEmpty) return;
               final f = FinanceRepository(ref.read(databaseProvider));
+              final qty = int.tryParse(qtyC.text.trim()) ?? 0;
               await f.addWaste(
                 productId: prodId,
-                qty: int.tryParse(qtyC.text.trim()) ?? 0,
+                qty: qty,
                 reason: reasonC.text.trim(),
                 type: type,
               );
+              // Auto-reduce stock
+              if (qty > 0) {
+                await ProductRepository(ref.read(databaseProvider))
+                    .adjustStock(prodId, -qty);
+              }
               if (mounted) Navigator.of(context).pop();
               _load();
             }),

@@ -98,4 +98,22 @@ class FinanceRepository {
               (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)
             ]))
           .get();
+
+  // ---- Delete ----
+  Future<void> deleteExpense(int id) =>
+      (db.delete(db.expenses)..where((t) => t.id.equals(id))).go();
+
+  Future<void> deletePayroll(int id) =>
+      (db.delete(db.payroll)..where((t) => t.id.equals(id))).go();
+
+  Future<void> deleteWaste(int id) =>
+      (db.delete(db.waste)..where((t) => t.id.equals(id))).go();
+
+  Future<void> deleteLiquidity(int id) =>
+      (db.delete(db.liquidity)..where((t) => t.id.equals(id))).go();
+
+  // ---- Payroll status ----
+  Future<void> updatePayrollStatus(int id, String status) =>
+      (db.update(db.payroll)..where((t) => t.id.equals(id)))
+          .write(PayrollCompanion(status: Value(status)));
 }

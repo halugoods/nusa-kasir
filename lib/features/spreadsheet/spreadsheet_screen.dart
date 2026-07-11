@@ -88,12 +88,10 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
           ok = await _svc!.syncTransactions(_spreadsheetId!);
           break;
         case 'Stok':
-          // stok sync belum ada di service
-          ok = true;
+          ok = await _svc!.syncStock(_spreadsheetId!);
           break;
         case 'Laporan':
-          // laporan sync belum ada di service
-          ok = true;
+          ok = await _svc!.syncLaporan(_spreadsheetId!);
           break;
       }
     } catch (_) {

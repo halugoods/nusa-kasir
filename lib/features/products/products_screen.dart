@@ -49,7 +49,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     final filtered = q.isEmpty
         ? all
         : all.where((p) => p.name.toLowerCase().contains(q)).toList();
-    if (mounted) setState(() => _products = filtered);
+    if (mounted) setState(() { _products = filtered; _loading = false; });
   }
 
   List<String> get _chips => ['Semua', ...NusaConfig.categories];
