@@ -8,12 +8,12 @@ part 'app_database.g.dart';
 
 @DriftDatabase(tables: [Products, StockMovements, Transactions, Customers, Promos,
   Employees, Attendance, Expenses, Payroll, Waste, Liquidity, Suppliers, Branches,
-  Settings, ActivationsLocal, SyncQueue, CashierSessions])
+  Settings, ActivationsLocal, SyncQueue, CashierSessions, OnlineOrders])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.test() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -23,6 +23,15 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await m.addColumn(attendance, attendance.finalCash);
+      }
+      if (from < 4) {
+        await m.addColumn(products, products.isOnline);
+        await m.createTable(onlineOrders);
+      }
+      if (from < 5) {
+        await m.addColumn(transactions, transactions.status);
+        await m.addColumn(transactions, transactions.voidReason);
+        await m.addColumn(transactions, transactions.voidedAt);
       }
     },
   );

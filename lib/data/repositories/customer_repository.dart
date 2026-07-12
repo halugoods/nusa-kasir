@@ -14,6 +14,9 @@ class CustomerRepository {
 
   Future<List<Customer>> getCustomers() => db.select(db.customers).get();
 
+  Future<Customer?> byPhone(String phone) =>
+      (db.select(db.customers)..where((t) => t.phone.equals(phone))).getSingleOrNull();
+
   Future<void> addSpent(int id, int amount) async {
     final c = await byId(id);
     if (c == null) return;
@@ -22,5 +25,25 @@ class CustomerRepository {
     final level = points >= 5000 ? 'Platinum' : points >= 1000 ? 'Gold' : 'Silver';
     await (db.update(db.customers)..where((t) => t.id.equals(id))).write(
       CustomersCompanion(totalSpent: Value(total), points: Value(points), level: Value(level)));
+  }
+
+  /// Redeem points for discount. Returns the discount amount in Rupiah (1 poin = Rp 1).
+  /// Returns null if customer not found or insufficient points.
+  Future<int?> redeemPoints(int id, int pointsToRedeem) async {
+    final c = await byId(id);
+    if (c == null || c.points < pointsToRedeem) return null;
+    final newPoints = c.points - pointsToRedeem;
+    await (db.update(db.customers)..where((t) => t.id.equals(id))).write(
+      CustomersCompanion(points: Value(newPoints)));
+    return pointsToRedeem; // 1 poin = Rp 1
+  }
+
+  /// Get auto-discount percentage based on loyalty tier.
+  static double tierDiscountPercent(String level) {
+    switch (level) {
+      case 'Platinum': return 5;
+      case 'Gold': return 2;
+      default: return 0;
+    }
   }
 }

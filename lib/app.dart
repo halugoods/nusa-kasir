@@ -32,6 +32,9 @@ import 'package:nusa_kasir/features/suppliers/suppliers_screen.dart';
 import 'package:nusa_kasir/features/spreadsheet/spreadsheet_screen.dart';
 import 'package:nusa_kasir/features/branches/branch_screen.dart';
 import 'package:nusa_kasir/features/setup/setup_screen.dart';
+import 'package:nusa_kasir/features/online_orders/online_orders_screen.dart';
+import 'package:nusa_kasir/features/online_orders/online_store_setup_screen.dart';
+import 'package:nusa_kasir/features/ai_assistant/ai_chat_screen.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 final authProvider = StateProvider<String?>((ref) => null);
@@ -122,6 +125,15 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/cabang',
             pageBuilder: (_, __) => _slidePage(const BranchScreen())),
+        GoRoute(
+            path: '/pesanan_online',
+            pageBuilder: (_, __) => _slidePage(const OnlineOrdersScreen())),
+        GoRoute(
+            path: '/toko_online_setup',
+            pageBuilder: (_, __) => _slidePage(const OnlineStoreSetupScreen())),
+        GoRoute(
+            path: '/ai_chat',
+            pageBuilder: (_, __) => _slidePage(const AiChatScreen())),
       ],
     );
 

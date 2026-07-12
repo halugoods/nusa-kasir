@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:drift/drift.dart' hide Column;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +15,8 @@ import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 class ProductFormScreen extends ConsumerStatefulWidget {
   final int? productId;
@@ -32,6 +36,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   late final String _barcode;
   Product? _existing;
   bool _loading = true;
+  bool _barcodeOn = false; // toggle — default off
+  bool _isOnline = false; // toko online toggle
+  String? _imagePath; // local image path
   bool get _isEdit => widget.productId != null;
 
   @override
@@ -70,6 +77,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       _category = NusaConfig.categories.contains(p.category)
           ? p.category
           : NusaConfig.categories.first;
+      _imagePath = p.imagePath;
+      _isOnline = p.isOnline;
+      // If the product already has a barcode, turn toggle on
+      if (p.barcode != null && p.barcode!.isNotEmpty) {
+        _barcodeOn = true;
+        _barcode = p.barcode!;
+      }
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -77,6 +91,28 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   int? _toInt(String v) {
     if (v.trim().isEmpty) return null;
     return int.tryParse(v.trim());
+  }
+
+  Future<void> _pickImage() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result == null || result.files.single.path == null) return;
+
+    // Copy to app documents dir so it survives temp cleanup
+    try {
+      final src = File(result.files.single.path!);
+      final dir = await getApplicationDocumentsDirectory();
+      final ext = p.extension(src.path);
+      final destName = 'product_${DateTime.now().millisecondsSinceEpoch}$ext';
+      final dest = File(p.join(dir.path, destName));
+      await src.copy(dest.path);
+      setState(() => _imagePath = dest.path);
+      TopToast.success(context, 'Gambar ditambahkan');
+    } catch (_) {
+      TopToast.error(context, 'Gagal menyimpan gambar');
+    }
   }
 
   Future<void> _save() async {
@@ -90,7 +126,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       TopToast.error(context, 'Harga jual wajib diisi');
       return;
     }
-    final repo = ProductRepository(ref.read(databaseProvider));
     final db = ref.read(databaseProvider);
     final buy = _toInt(_buy.text) ?? 0;
     final stock = _toInt(_stock.text) ?? 0;
@@ -98,21 +133,22 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final sku = _sku.text.trim().isEmpty ? null : _sku.text.trim();
 
     if (_isEdit) {
-      await repo.updateProduct(widget.productId!,
-          name: name,
-          category: _category,
-          buyPrice: buy,
-          sellPrice: sell,
-          minStock: min);
-      // Update SKU & stock separately since updateProduct doesn't support them
-      if (sku != null) {
-        await (db.update(db.products)..where((t) => t.id.equals(widget.productId!)))
-            .write(ProductsCompanion(sku: Value(sku)));
-      }
+      // Single atomic update — all fields in one write, no partial state.
       await (db.update(db.products)..where((t) => t.id.equals(widget.productId!)))
-          .write(ProductsCompanion(stock: Value(stock)));
+          .write(ProductsCompanion(
+            name: Value(name),
+            category: Value(_category),
+            buyPrice: Value(buy),
+            sellPrice: Value(sell),
+            minStock: Value(min),
+            sku: Value(sku),
+            stock: Value(stock),
+            barcode: Value(_barcodeOn ? _barcode : null),
+            imagePath: Value(_imagePath),
+            isOnline: Value(_isOnline),
+          ));
     } else {
-      await repo.addProduct(
+      await _addProductWithAll(
         name: name,
         category: _category,
         buyPrice: buy,
@@ -120,17 +156,45 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         stock: stock,
         minStock: min,
         sku: sku,
+        imagePath: _imagePath,
+        barcode: _barcodeOn ? _barcode : null,
+        isOnline: _isOnline,
       );
     }
     if (mounted) context.pop();
   }
 
+  /// Cleaner approach: single add with all fields
+  Future<int> _addProductWithAll({
+    required String name,
+    required String category,
+    required int buyPrice,
+    required int sellPrice,
+    required int stock,
+    required int minStock,
+    String? sku,
+    String? imagePath,
+    String? barcode,
+    bool isOnline = false,
+  }) async {
+    final db = ref.read(databaseProvider);
+    final id = await db.into(db.products).insert(ProductsCompanion.insert(
+      name: name,
+      sellPrice: sellPrice,
+      category: Value(category),
+      buyPrice: Value(buyPrice),
+      stock: Value(stock),
+      minStock: Value(minStock),
+      sku: Value(sku),
+      imagePath: Value(imagePath),
+      barcode: Value(barcode),
+      isOnline: Value(isOnline),
+    ));
+    return id;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final displayBarcode = _isEdit && _existing?.barcode != null
-        ? _existing!.barcode!
-        : _barcode;
-
     return ScreenScaffold(
       _isEdit ? 'Edit Produk' : 'Tambah Produk',
       _loading
@@ -140,6 +204,47 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // ── Product image ──
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? NusaConfig.darkSurface2
+                            : NusaConfig.backgroundColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? NusaConfig.darkBorder
+                              : NusaConfig.borderColor,
+                        ),
+                      ),
+                      child: _imagePath != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.file(
+                                File(_imagePath!),
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: 140,
+                              ),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_photo_alternate_outlined,
+                                    size: 40, color: NusaConfig.textTertiary),
+                                const SizedBox(height: 8),
+                                Text('Tambah Gambar Produk',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color: NusaConfig.textTertiary)),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   NusaInput('Nama Produk', controller: _name),
                   const SizedBox(height: 12),
                   NusaInput('SKU (opsional)', controller: _sku),
@@ -170,25 +275,113 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   NusaInput('Stok Minimum',
                       controller: _min, type: TextInputType.number),
                   const SizedBox(height: 16),
+
+                  // ── Barcode toggle ──
                   NusaCard(
                     Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Barcode',
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: NusaConfig.textSecondary)),
-                        const SizedBox(height: 8),
-                        BarcodeWidget(
-                          data: displayBarcode,
-                          barcode: Barcode.code128(),
-                          width: double.infinity,
-                          height: 80,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Barcode',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: NusaConfig.textSecondary)),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _barcodeOn ? 'ON' : 'OFF',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: _barcodeOn
+                                        ? NusaConfig.accentGreen
+                                        : NusaConfig.textTertiary,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Switch(
+                                  value: _barcodeOn,
+                                  activeColor: NusaConfig.primaryColor,
+                                  onChanged: (v) {
+                                    setState(() {
+                                      _barcodeOn = v;
+                                      if (v && _existing == null) {
+                                        _barcode =
+                                            ActivationKey.generateSerial();
+                                      }
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(displayBarcode,
-                            style: const TextStyle(
-                                fontFamily: 'monospace', fontSize: 12)),
+                        if (_barcodeOn) ...[
+                          const SizedBox(height: 8),
+                          BarcodeWidget(
+                            data: _barcode,
+                            barcode: Barcode.code128(),
+                            width: double.infinity,
+                            height: 80,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(_barcode,
+                              style: const TextStyle(
+                                  fontFamily: 'monospace', fontSize: 12)),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Toko Online toggle ──
+                  NusaCard(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Tampil di Toko Online',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: NusaConfig.textSecondary)),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _isOnline ? 'ON' : 'OFF',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: _isOnline
+                                        ? NusaConfig.accentGreen
+                                        : NusaConfig.textTertiary,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Switch(
+                                  value: _isOnline,
+                                  activeColor: NusaConfig.primaryColor,
+                                  onChanged: (v) => setState(() => _isOnline = v),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        if (_isOnline)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 6),
+                            child: Text(
+                              'Produk akan muncul di website toko online Anda.',
+                              style: TextStyle(fontSize: 11, color: NusaConfig.textTertiary),
+                            ),
+                          ),
                       ],
                     ),
                   ),

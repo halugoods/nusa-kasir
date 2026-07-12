@@ -11,6 +11,7 @@ class Products extends Table {
   IntColumn get stock => integer().withDefault(const Constant(0))();
   IntColumn get minStock => integer().withDefault(const Constant(0))();
   TextColumn get imagePath => text().nullable()();
+  BoolColumn get isOnline => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 class StockMovements extends Table {
@@ -34,6 +35,9 @@ class Transactions extends Table {
   IntColumn get cashReturn => integer().nullable()();
   TextColumn get cashierName => text().nullable()();
   IntColumn get branchId => integer().nullable()();
+  TextColumn get status => text().withDefault(const Constant('Normal'))();
+  TextColumn get voidReason => text().nullable()();
+  DateTimeColumn get voidedAt => dateTime().nullable()();
 }
 class Customers extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -160,4 +164,22 @@ class CashierSessions extends Table {
   DateTimeColumn get closedAt => dateTime().nullable()();
   IntColumn get startingCash => integer().withDefault(const Constant(0))();
   IntColumn get branchId => integer().nullable()();
+}
+class OnlineOrders extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get invoice => text()();
+  TextColumn get customerName => text()();
+  TextColumn get customerPhone => text()();
+  TextColumn get items => text()();  // JSON string
+  IntColumn get subtotal => integer().withDefault(const Constant(0))();
+  IntColumn get discount => integer().withDefault(const Constant(0))();
+  IntColumn get handlingFee => integer().withDefault(const Constant(0))();
+  IntColumn get total => integer()();
+  TextColumn get paymentMethod => text().withDefault(const Constant('Tunai'))();
+  TextColumn get pickupTime => text().nullable()();
+  TextColumn get branch => text().withDefault(const Constant('Pusat'))();
+  TextColumn get notes => text().nullable()();
+  TextColumn get status => text().withDefault(const Constant('Online Baru'))();
+  TextColumn get processedBy => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

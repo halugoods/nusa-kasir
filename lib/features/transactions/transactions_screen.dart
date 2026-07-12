@@ -5,10 +5,12 @@ import 'package:nusa_kasir/app.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
+import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -37,6 +39,73 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     };
     if (_payFilter == 'Semua') return byTime;
     return byTime.where((t) => t.paymentMethod == _payFilter).toList();
+  }
+
+  Future<void> _voidTransaction(Transaction tx) async {
+    final reasonCtrl = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Void Transaksi'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Invoice: ${tx.invoice}',
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text('Total: ${formatRupiah(tx.total)}',
+                style: const TextStyle(
+                    color: NusaConfig.primaryColor,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonCtrl,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Alasan void *',
+                border: OutlineInputBorder(
+                    borderRadius:
+                        BorderRadius.all(Radius.circular(12))),
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          NusaButton(
+            'Void',
+            fullWidth: false,
+            onPressed: () {
+              final r = reasonCtrl.text.trim();
+              if (r.isEmpty) {
+                TopToast.error(context, 'Alasan void wajib diisi');
+                return;
+              }
+              Navigator.pop(context, r);
+            },
+          ),
+        ],
+      ),
+    );
+
+    reasonCtrl.dispose();
+    if (reason == null || reason.isEmpty) return;
+
+    final repo = ref.read(transactionRepoProvider);
+    final err = await repo.voidTransaction(tx.id, reason);
+    if (mounted) {
+      if (err != null) {
+        TopToast.error(context, err);
+      } else {
+        TopToast.success(context, 'Transaksi #${tx.invoice} berhasil di-void');
+        setState(() => _refreshKey++);
+      }
+    }
   }
 
   @override
@@ -103,7 +172,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     padding: const EdgeInsets.all(16),
                     itemCount: list.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) => _TransactionCard(tx: list[i]),
+                    itemBuilder: (_, i) => _TransactionCard(
+                      tx: list[i],
+                      onVoid: () => _voidTransaction(list[i]),
+                    ),
                   ),
                 );
               },
@@ -138,7 +210,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
 class _TransactionCard extends StatefulWidget {
   final Transaction tx;
-  const _TransactionCard({required this.tx});
+  final VoidCallback onVoid;
+  const _TransactionCard({required this.tx, required this.onVoid});
 
   @override
   State<_TransactionCard> createState() => _TransactionCardState();
@@ -154,11 +227,14 @@ class _TransactionCardState extends State<_TransactionCard> {
     final dateStr =
         '${tx.date.day}/${tx.date.month}/${tx.date.year} ${tx.date.hour.toString().padLeft(2, '0')}:${tx.date.minute.toString().padLeft(2, '0')}';
     final subtotal = tx.total + tx.discount;
+    final isVoided = tx.status == 'Void';
 
-    return InkWell(
-      onTap: () => setState(() => _expanded = !_expanded),
-      borderRadius: BorderRadius.circular(20),
-      child: NusaCard(
+    return Opacity(
+      opacity: isVoided ? 0.55 : 1.0,
+      child: InkWell(
+        onTap: () => setState(() => _expanded = !_expanded),
+        borderRadius: BorderRadius.circular(20),
+        child: NusaCard(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -168,13 +244,39 @@ class _TransactionCardState extends State<_TransactionCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(tx.invoice,
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600)),
+                      Row(
+                        children: [
+                          Text(tx.invoice,
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: isVoided
+                                      ? TextDecoration.lineThrough
+                                      : null)),
+                          if (isVoided) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: NusaConfig.primaryColor
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text('VOID',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: NusaConfig.primaryColor)),
+                            ),
+                          ],
+                        ],
+                      ),
                       const SizedBox(height: 4),
                       Text('$dateStr • ${tx.paymentMethod}',
                           style: const TextStyle(
-                              fontSize: 13, color: NusaConfig.textSecondary)),
+                              fontSize: 13,
+                              color: NusaConfig.textSecondary)),
                     ],
                   ),
                 ),
@@ -182,10 +284,12 @@ class _TransactionCardState extends State<_TransactionCard> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(formatRupiah(tx.total),
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: NusaConfig.primaryColor)),
+                            color: isVoided
+                                ? NusaConfig.textTertiary
+                                : NusaConfig.primaryColor)),
                     Icon(
                       _expanded
                           ? Icons.expand_less
@@ -223,9 +327,42 @@ class _TransactionCardState extends State<_TransactionCard> {
               _row('Kembali', tx.cashReturn != null
                   ? formatRupiah(tx.cashReturn!)
                   : '-'),
+              // Void reason (if voided)
+              if (isVoided && tx.voidReason != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '🔴 Alasan void: ${tx.voidReason}',
+                  style: const TextStyle(
+                      fontSize: 12,
+                      color: NusaConfig.primaryColor,
+                      fontStyle: FontStyle.italic),
+                ),
+              ],
+              // Void button (only for normal, non-voided transactions)
+              if (!isVoided) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: widget.onVoid,
+                    icon: const Icon(Icons.undo, size: 18),
+                    label: const Text('Void Transaksi',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: NusaConfig.primaryColor,
+                      side: const BorderSide(color: NusaConfig.primaryColor),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ],
         ),
+      ),
       ),
     );
   }

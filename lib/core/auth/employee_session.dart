@@ -35,7 +35,11 @@ class EmployeeSession {
         savedAt: DateTime.now(),
       );
       await save(refreshed);
-    } catch (_) {}
+    } catch (e) {
+      // Session refresh failed — user will re-login when current session expires.
+      // ignore: avoid_print
+      print('[EmployeeSession] Gagal refresh sesi: $e');
+    }
   }
 
   Map<String, dynamic> toJson() => {

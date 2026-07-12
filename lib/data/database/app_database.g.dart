@@ -118,6 +118,21 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _isOnlineMeta = const VerificationMeta(
+    'isOnline',
+  );
+  @override
+  late final GeneratedColumn<bool> isOnline = GeneratedColumn<bool>(
+    'is_online',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_online" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -142,6 +157,7 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     stock,
     minStock,
     imagePath,
+    isOnline,
     createdAt,
   ];
   @override
@@ -217,6 +233,12 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         imagePath.isAcceptableOrUnknown(data['image_path']!, _imagePathMeta),
       );
     }
+    if (data.containsKey('is_online')) {
+      context.handle(
+        _isOnlineMeta,
+        isOnline.isAcceptableOrUnknown(data['is_online']!, _isOnlineMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -272,6 +294,10 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         DriftSqlType.string,
         data['${effectivePrefix}image_path'],
       ),
+      isOnline: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_online'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -296,6 +322,7 @@ class Product extends DataClass implements Insertable<Product> {
   final int stock;
   final int minStock;
   final String? imagePath;
+  final bool isOnline;
   final DateTime createdAt;
   const Product({
     required this.id,
@@ -308,6 +335,7 @@ class Product extends DataClass implements Insertable<Product> {
     required this.stock,
     required this.minStock,
     this.imagePath,
+    required this.isOnline,
     required this.createdAt,
   });
   @override
@@ -329,6 +357,7 @@ class Product extends DataClass implements Insertable<Product> {
     if (!nullToAbsent || imagePath != null) {
       map['image_path'] = Variable<String>(imagePath);
     }
+    map['is_online'] = Variable<bool>(isOnline);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -349,6 +378,7 @@ class Product extends DataClass implements Insertable<Product> {
       imagePath: imagePath == null && nullToAbsent
           ? const Value.absent()
           : Value(imagePath),
+      isOnline: Value(isOnline),
       createdAt: Value(createdAt),
     );
   }
@@ -369,6 +399,7 @@ class Product extends DataClass implements Insertable<Product> {
       stock: serializer.fromJson<int>(json['stock']),
       minStock: serializer.fromJson<int>(json['minStock']),
       imagePath: serializer.fromJson<String?>(json['imagePath']),
+      isOnline: serializer.fromJson<bool>(json['isOnline']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -386,6 +417,7 @@ class Product extends DataClass implements Insertable<Product> {
       'stock': serializer.toJson<int>(stock),
       'minStock': serializer.toJson<int>(minStock),
       'imagePath': serializer.toJson<String?>(imagePath),
+      'isOnline': serializer.toJson<bool>(isOnline),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -401,6 +433,7 @@ class Product extends DataClass implements Insertable<Product> {
     int? stock,
     int? minStock,
     Value<String?> imagePath = const Value.absent(),
+    bool? isOnline,
     DateTime? createdAt,
   }) => Product(
     id: id ?? this.id,
@@ -413,6 +446,7 @@ class Product extends DataClass implements Insertable<Product> {
     stock: stock ?? this.stock,
     minStock: minStock ?? this.minStock,
     imagePath: imagePath.present ? imagePath.value : this.imagePath,
+    isOnline: isOnline ?? this.isOnline,
     createdAt: createdAt ?? this.createdAt,
   );
   Product copyWithCompanion(ProductsCompanion data) {
@@ -427,6 +461,7 @@ class Product extends DataClass implements Insertable<Product> {
       stock: data.stock.present ? data.stock.value : this.stock,
       minStock: data.minStock.present ? data.minStock.value : this.minStock,
       imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
+      isOnline: data.isOnline.present ? data.isOnline.value : this.isOnline,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -444,6 +479,7 @@ class Product extends DataClass implements Insertable<Product> {
           ..write('stock: $stock, ')
           ..write('minStock: $minStock, ')
           ..write('imagePath: $imagePath, ')
+          ..write('isOnline: $isOnline, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -461,6 +497,7 @@ class Product extends DataClass implements Insertable<Product> {
     stock,
     minStock,
     imagePath,
+    isOnline,
     createdAt,
   );
   @override
@@ -477,6 +514,7 @@ class Product extends DataClass implements Insertable<Product> {
           other.stock == this.stock &&
           other.minStock == this.minStock &&
           other.imagePath == this.imagePath &&
+          other.isOnline == this.isOnline &&
           other.createdAt == this.createdAt);
 }
 
@@ -491,6 +529,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
   final Value<int> stock;
   final Value<int> minStock;
   final Value<String?> imagePath;
+  final Value<bool> isOnline;
   final Value<DateTime> createdAt;
   const ProductsCompanion({
     this.id = const Value.absent(),
@@ -503,6 +542,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.stock = const Value.absent(),
     this.minStock = const Value.absent(),
     this.imagePath = const Value.absent(),
+    this.isOnline = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   ProductsCompanion.insert({
@@ -516,6 +556,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.stock = const Value.absent(),
     this.minStock = const Value.absent(),
     this.imagePath = const Value.absent(),
+    this.isOnline = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        sellPrice = Value(sellPrice);
@@ -530,6 +571,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Expression<int>? stock,
     Expression<int>? minStock,
     Expression<String>? imagePath,
+    Expression<bool>? isOnline,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -543,6 +585,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       if (stock != null) 'stock': stock,
       if (minStock != null) 'min_stock': minStock,
       if (imagePath != null) 'image_path': imagePath,
+      if (isOnline != null) 'is_online': isOnline,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -558,6 +601,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Value<int>? stock,
     Value<int>? minStock,
     Value<String?>? imagePath,
+    Value<bool>? isOnline,
     Value<DateTime>? createdAt,
   }) {
     return ProductsCompanion(
@@ -571,6 +615,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       stock: stock ?? this.stock,
       minStock: minStock ?? this.minStock,
       imagePath: imagePath ?? this.imagePath,
+      isOnline: isOnline ?? this.isOnline,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -608,6 +653,9 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     if (imagePath.present) {
       map['image_path'] = Variable<String>(imagePath.value);
     }
+    if (isOnline.present) {
+      map['is_online'] = Variable<bool>(isOnline.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -627,6 +675,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
           ..write('stock: $stock, ')
           ..write('minStock: $minStock, ')
           ..write('imagePath: $imagePath, ')
+          ..write('isOnline: $isOnline, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -1152,6 +1201,38 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Normal'),
+  );
+  static const VerificationMeta _voidReasonMeta = const VerificationMeta(
+    'voidReason',
+  );
+  @override
+  late final GeneratedColumn<String> voidReason = GeneratedColumn<String>(
+    'void_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _voidedAtMeta = const VerificationMeta(
+    'voidedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> voidedAt = GeneratedColumn<DateTime>(
+    'voided_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1166,6 +1247,9 @@ class $TransactionsTable extends Transactions
     cashReturn,
     cashierName,
     branchId,
+    status,
+    voidReason,
+    voidedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1258,6 +1342,24 @@ class $TransactionsTable extends Transactions
         branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
       );
     }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('void_reason')) {
+      context.handle(
+        _voidReasonMeta,
+        voidReason.isAcceptableOrUnknown(data['void_reason']!, _voidReasonMeta),
+      );
+    }
+    if (data.containsKey('voided_at')) {
+      context.handle(
+        _voidedAtMeta,
+        voidedAt.isAcceptableOrUnknown(data['voided_at']!, _voidedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -1315,6 +1417,18 @@ class $TransactionsTable extends Transactions
         DriftSqlType.int,
         data['${effectivePrefix}branch_id'],
       ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      voidReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}void_reason'],
+      ),
+      voidedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}voided_at'],
+      ),
     );
   }
 
@@ -1337,6 +1451,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final int? cashReturn;
   final String? cashierName;
   final int? branchId;
+  final String status;
+  final String? voidReason;
+  final DateTime? voidedAt;
   const Transaction({
     required this.id,
     required this.invoice,
@@ -1350,6 +1467,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     this.cashReturn,
     this.cashierName,
     this.branchId,
+    required this.status,
+    this.voidReason,
+    this.voidedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1375,6 +1495,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     }
     if (!nullToAbsent || branchId != null) {
       map['branch_id'] = Variable<int>(branchId);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || voidReason != null) {
+      map['void_reason'] = Variable<String>(voidReason);
+    }
+    if (!nullToAbsent || voidedAt != null) {
+      map['voided_at'] = Variable<DateTime>(voidedAt);
     }
     return map;
   }
@@ -1403,6 +1530,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       branchId: branchId == null && nullToAbsent
           ? const Value.absent()
           : Value(branchId),
+      status: Value(status),
+      voidReason: voidReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(voidReason),
+      voidedAt: voidedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(voidedAt),
     );
   }
 
@@ -1424,6 +1558,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       cashReturn: serializer.fromJson<int?>(json['cashReturn']),
       cashierName: serializer.fromJson<String?>(json['cashierName']),
       branchId: serializer.fromJson<int?>(json['branchId']),
+      status: serializer.fromJson<String>(json['status']),
+      voidReason: serializer.fromJson<String?>(json['voidReason']),
+      voidedAt: serializer.fromJson<DateTime?>(json['voidedAt']),
     );
   }
   @override
@@ -1442,6 +1579,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'cashReturn': serializer.toJson<int?>(cashReturn),
       'cashierName': serializer.toJson<String?>(cashierName),
       'branchId': serializer.toJson<int?>(branchId),
+      'status': serializer.toJson<String>(status),
+      'voidReason': serializer.toJson<String?>(voidReason),
+      'voidedAt': serializer.toJson<DateTime?>(voidedAt),
     };
   }
 
@@ -1458,6 +1598,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     Value<int?> cashReturn = const Value.absent(),
     Value<String?> cashierName = const Value.absent(),
     Value<int?> branchId = const Value.absent(),
+    String? status,
+    Value<String?> voidReason = const Value.absent(),
+    Value<DateTime?> voidedAt = const Value.absent(),
   }) => Transaction(
     id: id ?? this.id,
     invoice: invoice ?? this.invoice,
@@ -1471,6 +1614,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     cashReturn: cashReturn.present ? cashReturn.value : this.cashReturn,
     cashierName: cashierName.present ? cashierName.value : this.cashierName,
     branchId: branchId.present ? branchId.value : this.branchId,
+    status: status ?? this.status,
+    voidReason: voidReason.present ? voidReason.value : this.voidReason,
+    voidedAt: voidedAt.present ? voidedAt.value : this.voidedAt,
   );
   Transaction copyWithCompanion(TransactionsCompanion data) {
     return Transaction(
@@ -1494,6 +1640,11 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ? data.cashierName.value
           : this.cashierName,
       branchId: data.branchId.present ? data.branchId.value : this.branchId,
+      status: data.status.present ? data.status.value : this.status,
+      voidReason: data.voidReason.present
+          ? data.voidReason.value
+          : this.voidReason,
+      voidedAt: data.voidedAt.present ? data.voidedAt.value : this.voidedAt,
     );
   }
 
@@ -1511,7 +1662,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('cashGiven: $cashGiven, ')
           ..write('cashReturn: $cashReturn, ')
           ..write('cashierName: $cashierName, ')
-          ..write('branchId: $branchId')
+          ..write('branchId: $branchId, ')
+          ..write('status: $status, ')
+          ..write('voidReason: $voidReason, ')
+          ..write('voidedAt: $voidedAt')
           ..write(')'))
         .toString();
   }
@@ -1530,6 +1684,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     cashReturn,
     cashierName,
     branchId,
+    status,
+    voidReason,
+    voidedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -1546,7 +1703,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.cashGiven == this.cashGiven &&
           other.cashReturn == this.cashReturn &&
           other.cashierName == this.cashierName &&
-          other.branchId == this.branchId);
+          other.branchId == this.branchId &&
+          other.status == this.status &&
+          other.voidReason == this.voidReason &&
+          other.voidedAt == this.voidedAt);
 }
 
 class TransactionsCompanion extends UpdateCompanion<Transaction> {
@@ -1562,6 +1722,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<int?> cashReturn;
   final Value<String?> cashierName;
   final Value<int?> branchId;
+  final Value<String> status;
+  final Value<String?> voidReason;
+  final Value<DateTime?> voidedAt;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.invoice = const Value.absent(),
@@ -1575,6 +1738,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.cashReturn = const Value.absent(),
     this.cashierName = const Value.absent(),
     this.branchId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.voidReason = const Value.absent(),
+    this.voidedAt = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -1589,6 +1755,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.cashReturn = const Value.absent(),
     this.cashierName = const Value.absent(),
     this.branchId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.voidReason = const Value.absent(),
+    this.voidedAt = const Value.absent(),
   }) : invoice = Value(invoice),
        items = Value(items);
   static Insertable<Transaction> custom({
@@ -1604,6 +1773,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<int>? cashReturn,
     Expression<String>? cashierName,
     Expression<int>? branchId,
+    Expression<String>? status,
+    Expression<String>? voidReason,
+    Expression<DateTime>? voidedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1618,6 +1790,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (cashReturn != null) 'cash_return': cashReturn,
       if (cashierName != null) 'cashier_name': cashierName,
       if (branchId != null) 'branch_id': branchId,
+      if (status != null) 'status': status,
+      if (voidReason != null) 'void_reason': voidReason,
+      if (voidedAt != null) 'voided_at': voidedAt,
     });
   }
 
@@ -1634,6 +1809,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<int?>? cashReturn,
     Value<String?>? cashierName,
     Value<int?>? branchId,
+    Value<String>? status,
+    Value<String?>? voidReason,
+    Value<DateTime?>? voidedAt,
   }) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -1648,6 +1826,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       cashReturn: cashReturn ?? this.cashReturn,
       cashierName: cashierName ?? this.cashierName,
       branchId: branchId ?? this.branchId,
+      status: status ?? this.status,
+      voidReason: voidReason ?? this.voidReason,
+      voidedAt: voidedAt ?? this.voidedAt,
     );
   }
 
@@ -1690,6 +1871,15 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (branchId.present) {
       map['branch_id'] = Variable<int>(branchId.value);
     }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (voidReason.present) {
+      map['void_reason'] = Variable<String>(voidReason.value);
+    }
+    if (voidedAt.present) {
+      map['voided_at'] = Variable<DateTime>(voidedAt.value);
+    }
     return map;
   }
 
@@ -1707,7 +1897,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('cashGiven: $cashGiven, ')
           ..write('cashReturn: $cashReturn, ')
           ..write('cashierName: $cashierName, ')
-          ..write('branchId: $branchId')
+          ..write('branchId: $branchId, ')
+          ..write('status: $status, ')
+          ..write('voidReason: $voidReason, ')
+          ..write('voidedAt: $voidedAt')
           ..write(')'))
         .toString();
   }
@@ -7849,6 +8042,898 @@ class CashierSessionsCompanion extends UpdateCompanion<CashierSession> {
   }
 }
 
+class $OnlineOrdersTable extends OnlineOrders
+    with TableInfo<$OnlineOrdersTable, OnlineOrder> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OnlineOrdersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _invoiceMeta = const VerificationMeta(
+    'invoice',
+  );
+  @override
+  late final GeneratedColumn<String> invoice = GeneratedColumn<String>(
+    'invoice',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _customerNameMeta = const VerificationMeta(
+    'customerName',
+  );
+  @override
+  late final GeneratedColumn<String> customerName = GeneratedColumn<String>(
+    'customer_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _customerPhoneMeta = const VerificationMeta(
+    'customerPhone',
+  );
+  @override
+  late final GeneratedColumn<String> customerPhone = GeneratedColumn<String>(
+    'customer_phone',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _itemsMeta = const VerificationMeta('items');
+  @override
+  late final GeneratedColumn<String> items = GeneratedColumn<String>(
+    'items',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _subtotalMeta = const VerificationMeta(
+    'subtotal',
+  );
+  @override
+  late final GeneratedColumn<int> subtotal = GeneratedColumn<int>(
+    'subtotal',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _discountMeta = const VerificationMeta(
+    'discount',
+  );
+  @override
+  late final GeneratedColumn<int> discount = GeneratedColumn<int>(
+    'discount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _handlingFeeMeta = const VerificationMeta(
+    'handlingFee',
+  );
+  @override
+  late final GeneratedColumn<int> handlingFee = GeneratedColumn<int>(
+    'handling_fee',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _totalMeta = const VerificationMeta('total');
+  @override
+  late final GeneratedColumn<int> total = GeneratedColumn<int>(
+    'total',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _paymentMethodMeta = const VerificationMeta(
+    'paymentMethod',
+  );
+  @override
+  late final GeneratedColumn<String> paymentMethod = GeneratedColumn<String>(
+    'payment_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Tunai'),
+  );
+  static const VerificationMeta _pickupTimeMeta = const VerificationMeta(
+    'pickupTime',
+  );
+  @override
+  late final GeneratedColumn<String> pickupTime = GeneratedColumn<String>(
+    'pickup_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _branchMeta = const VerificationMeta('branch');
+  @override
+  late final GeneratedColumn<String> branch = GeneratedColumn<String>(
+    'branch',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Pusat'),
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Online Baru'),
+  );
+  static const VerificationMeta _processedByMeta = const VerificationMeta(
+    'processedBy',
+  );
+  @override
+  late final GeneratedColumn<String> processedBy = GeneratedColumn<String>(
+    'processed_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    invoice,
+    customerName,
+    customerPhone,
+    items,
+    subtotal,
+    discount,
+    handlingFee,
+    total,
+    paymentMethod,
+    pickupTime,
+    branch,
+    notes,
+    status,
+    processedBy,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'online_orders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OnlineOrder> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('invoice')) {
+      context.handle(
+        _invoiceMeta,
+        invoice.isAcceptableOrUnknown(data['invoice']!, _invoiceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_invoiceMeta);
+    }
+    if (data.containsKey('customer_name')) {
+      context.handle(
+        _customerNameMeta,
+        customerName.isAcceptableOrUnknown(
+          data['customer_name']!,
+          _customerNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_customerNameMeta);
+    }
+    if (data.containsKey('customer_phone')) {
+      context.handle(
+        _customerPhoneMeta,
+        customerPhone.isAcceptableOrUnknown(
+          data['customer_phone']!,
+          _customerPhoneMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_customerPhoneMeta);
+    }
+    if (data.containsKey('items')) {
+      context.handle(
+        _itemsMeta,
+        items.isAcceptableOrUnknown(data['items']!, _itemsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemsMeta);
+    }
+    if (data.containsKey('subtotal')) {
+      context.handle(
+        _subtotalMeta,
+        subtotal.isAcceptableOrUnknown(data['subtotal']!, _subtotalMeta),
+      );
+    }
+    if (data.containsKey('discount')) {
+      context.handle(
+        _discountMeta,
+        discount.isAcceptableOrUnknown(data['discount']!, _discountMeta),
+      );
+    }
+    if (data.containsKey('handling_fee')) {
+      context.handle(
+        _handlingFeeMeta,
+        handlingFee.isAcceptableOrUnknown(
+          data['handling_fee']!,
+          _handlingFeeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total')) {
+      context.handle(
+        _totalMeta,
+        total.isAcceptableOrUnknown(data['total']!, _totalMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_totalMeta);
+    }
+    if (data.containsKey('payment_method')) {
+      context.handle(
+        _paymentMethodMeta,
+        paymentMethod.isAcceptableOrUnknown(
+          data['payment_method']!,
+          _paymentMethodMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pickup_time')) {
+      context.handle(
+        _pickupTimeMeta,
+        pickupTime.isAcceptableOrUnknown(data['pickup_time']!, _pickupTimeMeta),
+      );
+    }
+    if (data.containsKey('branch')) {
+      context.handle(
+        _branchMeta,
+        branch.isAcceptableOrUnknown(data['branch']!, _branchMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('processed_by')) {
+      context.handle(
+        _processedByMeta,
+        processedBy.isAcceptableOrUnknown(
+          data['processed_by']!,
+          _processedByMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OnlineOrder map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OnlineOrder(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      invoice: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}invoice'],
+      )!,
+      customerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_name'],
+      )!,
+      customerPhone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_phone'],
+      )!,
+      items: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}items'],
+      )!,
+      subtotal: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}subtotal'],
+      )!,
+      discount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}discount'],
+      )!,
+      handlingFee: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}handling_fee'],
+      )!,
+      total: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total'],
+      )!,
+      paymentMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payment_method'],
+      )!,
+      pickupTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pickup_time'],
+      ),
+      branch: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      processedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}processed_by'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $OnlineOrdersTable createAlias(String alias) {
+    return $OnlineOrdersTable(attachedDatabase, alias);
+  }
+}
+
+class OnlineOrder extends DataClass implements Insertable<OnlineOrder> {
+  final int id;
+  final String invoice;
+  final String customerName;
+  final String customerPhone;
+  final String items;
+  final int subtotal;
+  final int discount;
+  final int handlingFee;
+  final int total;
+  final String paymentMethod;
+  final String? pickupTime;
+  final String branch;
+  final String? notes;
+  final String status;
+  final String? processedBy;
+  final DateTime createdAt;
+  const OnlineOrder({
+    required this.id,
+    required this.invoice,
+    required this.customerName,
+    required this.customerPhone,
+    required this.items,
+    required this.subtotal,
+    required this.discount,
+    required this.handlingFee,
+    required this.total,
+    required this.paymentMethod,
+    this.pickupTime,
+    required this.branch,
+    this.notes,
+    required this.status,
+    this.processedBy,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['invoice'] = Variable<String>(invoice);
+    map['customer_name'] = Variable<String>(customerName);
+    map['customer_phone'] = Variable<String>(customerPhone);
+    map['items'] = Variable<String>(items);
+    map['subtotal'] = Variable<int>(subtotal);
+    map['discount'] = Variable<int>(discount);
+    map['handling_fee'] = Variable<int>(handlingFee);
+    map['total'] = Variable<int>(total);
+    map['payment_method'] = Variable<String>(paymentMethod);
+    if (!nullToAbsent || pickupTime != null) {
+      map['pickup_time'] = Variable<String>(pickupTime);
+    }
+    map['branch'] = Variable<String>(branch);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || processedBy != null) {
+      map['processed_by'] = Variable<String>(processedBy);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  OnlineOrdersCompanion toCompanion(bool nullToAbsent) {
+    return OnlineOrdersCompanion(
+      id: Value(id),
+      invoice: Value(invoice),
+      customerName: Value(customerName),
+      customerPhone: Value(customerPhone),
+      items: Value(items),
+      subtotal: Value(subtotal),
+      discount: Value(discount),
+      handlingFee: Value(handlingFee),
+      total: Value(total),
+      paymentMethod: Value(paymentMethod),
+      pickupTime: pickupTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pickupTime),
+      branch: Value(branch),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      status: Value(status),
+      processedBy: processedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(processedBy),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory OnlineOrder.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OnlineOrder(
+      id: serializer.fromJson<int>(json['id']),
+      invoice: serializer.fromJson<String>(json['invoice']),
+      customerName: serializer.fromJson<String>(json['customerName']),
+      customerPhone: serializer.fromJson<String>(json['customerPhone']),
+      items: serializer.fromJson<String>(json['items']),
+      subtotal: serializer.fromJson<int>(json['subtotal']),
+      discount: serializer.fromJson<int>(json['discount']),
+      handlingFee: serializer.fromJson<int>(json['handlingFee']),
+      total: serializer.fromJson<int>(json['total']),
+      paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
+      pickupTime: serializer.fromJson<String?>(json['pickupTime']),
+      branch: serializer.fromJson<String>(json['branch']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      status: serializer.fromJson<String>(json['status']),
+      processedBy: serializer.fromJson<String?>(json['processedBy']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'invoice': serializer.toJson<String>(invoice),
+      'customerName': serializer.toJson<String>(customerName),
+      'customerPhone': serializer.toJson<String>(customerPhone),
+      'items': serializer.toJson<String>(items),
+      'subtotal': serializer.toJson<int>(subtotal),
+      'discount': serializer.toJson<int>(discount),
+      'handlingFee': serializer.toJson<int>(handlingFee),
+      'total': serializer.toJson<int>(total),
+      'paymentMethod': serializer.toJson<String>(paymentMethod),
+      'pickupTime': serializer.toJson<String?>(pickupTime),
+      'branch': serializer.toJson<String>(branch),
+      'notes': serializer.toJson<String?>(notes),
+      'status': serializer.toJson<String>(status),
+      'processedBy': serializer.toJson<String?>(processedBy),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  OnlineOrder copyWith({
+    int? id,
+    String? invoice,
+    String? customerName,
+    String? customerPhone,
+    String? items,
+    int? subtotal,
+    int? discount,
+    int? handlingFee,
+    int? total,
+    String? paymentMethod,
+    Value<String?> pickupTime = const Value.absent(),
+    String? branch,
+    Value<String?> notes = const Value.absent(),
+    String? status,
+    Value<String?> processedBy = const Value.absent(),
+    DateTime? createdAt,
+  }) => OnlineOrder(
+    id: id ?? this.id,
+    invoice: invoice ?? this.invoice,
+    customerName: customerName ?? this.customerName,
+    customerPhone: customerPhone ?? this.customerPhone,
+    items: items ?? this.items,
+    subtotal: subtotal ?? this.subtotal,
+    discount: discount ?? this.discount,
+    handlingFee: handlingFee ?? this.handlingFee,
+    total: total ?? this.total,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
+    pickupTime: pickupTime.present ? pickupTime.value : this.pickupTime,
+    branch: branch ?? this.branch,
+    notes: notes.present ? notes.value : this.notes,
+    status: status ?? this.status,
+    processedBy: processedBy.present ? processedBy.value : this.processedBy,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  OnlineOrder copyWithCompanion(OnlineOrdersCompanion data) {
+    return OnlineOrder(
+      id: data.id.present ? data.id.value : this.id,
+      invoice: data.invoice.present ? data.invoice.value : this.invoice,
+      customerName: data.customerName.present
+          ? data.customerName.value
+          : this.customerName,
+      customerPhone: data.customerPhone.present
+          ? data.customerPhone.value
+          : this.customerPhone,
+      items: data.items.present ? data.items.value : this.items,
+      subtotal: data.subtotal.present ? data.subtotal.value : this.subtotal,
+      discount: data.discount.present ? data.discount.value : this.discount,
+      handlingFee: data.handlingFee.present
+          ? data.handlingFee.value
+          : this.handlingFee,
+      total: data.total.present ? data.total.value : this.total,
+      paymentMethod: data.paymentMethod.present
+          ? data.paymentMethod.value
+          : this.paymentMethod,
+      pickupTime: data.pickupTime.present
+          ? data.pickupTime.value
+          : this.pickupTime,
+      branch: data.branch.present ? data.branch.value : this.branch,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      status: data.status.present ? data.status.value : this.status,
+      processedBy: data.processedBy.present
+          ? data.processedBy.value
+          : this.processedBy,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OnlineOrder(')
+          ..write('id: $id, ')
+          ..write('invoice: $invoice, ')
+          ..write('customerName: $customerName, ')
+          ..write('customerPhone: $customerPhone, ')
+          ..write('items: $items, ')
+          ..write('subtotal: $subtotal, ')
+          ..write('discount: $discount, ')
+          ..write('handlingFee: $handlingFee, ')
+          ..write('total: $total, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('pickupTime: $pickupTime, ')
+          ..write('branch: $branch, ')
+          ..write('notes: $notes, ')
+          ..write('status: $status, ')
+          ..write('processedBy: $processedBy, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    invoice,
+    customerName,
+    customerPhone,
+    items,
+    subtotal,
+    discount,
+    handlingFee,
+    total,
+    paymentMethod,
+    pickupTime,
+    branch,
+    notes,
+    status,
+    processedBy,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OnlineOrder &&
+          other.id == this.id &&
+          other.invoice == this.invoice &&
+          other.customerName == this.customerName &&
+          other.customerPhone == this.customerPhone &&
+          other.items == this.items &&
+          other.subtotal == this.subtotal &&
+          other.discount == this.discount &&
+          other.handlingFee == this.handlingFee &&
+          other.total == this.total &&
+          other.paymentMethod == this.paymentMethod &&
+          other.pickupTime == this.pickupTime &&
+          other.branch == this.branch &&
+          other.notes == this.notes &&
+          other.status == this.status &&
+          other.processedBy == this.processedBy &&
+          other.createdAt == this.createdAt);
+}
+
+class OnlineOrdersCompanion extends UpdateCompanion<OnlineOrder> {
+  final Value<int> id;
+  final Value<String> invoice;
+  final Value<String> customerName;
+  final Value<String> customerPhone;
+  final Value<String> items;
+  final Value<int> subtotal;
+  final Value<int> discount;
+  final Value<int> handlingFee;
+  final Value<int> total;
+  final Value<String> paymentMethod;
+  final Value<String?> pickupTime;
+  final Value<String> branch;
+  final Value<String?> notes;
+  final Value<String> status;
+  final Value<String?> processedBy;
+  final Value<DateTime> createdAt;
+  const OnlineOrdersCompanion({
+    this.id = const Value.absent(),
+    this.invoice = const Value.absent(),
+    this.customerName = const Value.absent(),
+    this.customerPhone = const Value.absent(),
+    this.items = const Value.absent(),
+    this.subtotal = const Value.absent(),
+    this.discount = const Value.absent(),
+    this.handlingFee = const Value.absent(),
+    this.total = const Value.absent(),
+    this.paymentMethod = const Value.absent(),
+    this.pickupTime = const Value.absent(),
+    this.branch = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.status = const Value.absent(),
+    this.processedBy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  OnlineOrdersCompanion.insert({
+    this.id = const Value.absent(),
+    required String invoice,
+    required String customerName,
+    required String customerPhone,
+    required String items,
+    this.subtotal = const Value.absent(),
+    this.discount = const Value.absent(),
+    this.handlingFee = const Value.absent(),
+    required int total,
+    this.paymentMethod = const Value.absent(),
+    this.pickupTime = const Value.absent(),
+    this.branch = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.status = const Value.absent(),
+    this.processedBy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : invoice = Value(invoice),
+       customerName = Value(customerName),
+       customerPhone = Value(customerPhone),
+       items = Value(items),
+       total = Value(total);
+  static Insertable<OnlineOrder> custom({
+    Expression<int>? id,
+    Expression<String>? invoice,
+    Expression<String>? customerName,
+    Expression<String>? customerPhone,
+    Expression<String>? items,
+    Expression<int>? subtotal,
+    Expression<int>? discount,
+    Expression<int>? handlingFee,
+    Expression<int>? total,
+    Expression<String>? paymentMethod,
+    Expression<String>? pickupTime,
+    Expression<String>? branch,
+    Expression<String>? notes,
+    Expression<String>? status,
+    Expression<String>? processedBy,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (invoice != null) 'invoice': invoice,
+      if (customerName != null) 'customer_name': customerName,
+      if (customerPhone != null) 'customer_phone': customerPhone,
+      if (items != null) 'items': items,
+      if (subtotal != null) 'subtotal': subtotal,
+      if (discount != null) 'discount': discount,
+      if (handlingFee != null) 'handling_fee': handlingFee,
+      if (total != null) 'total': total,
+      if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (pickupTime != null) 'pickup_time': pickupTime,
+      if (branch != null) 'branch': branch,
+      if (notes != null) 'notes': notes,
+      if (status != null) 'status': status,
+      if (processedBy != null) 'processed_by': processedBy,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  OnlineOrdersCompanion copyWith({
+    Value<int>? id,
+    Value<String>? invoice,
+    Value<String>? customerName,
+    Value<String>? customerPhone,
+    Value<String>? items,
+    Value<int>? subtotal,
+    Value<int>? discount,
+    Value<int>? handlingFee,
+    Value<int>? total,
+    Value<String>? paymentMethod,
+    Value<String?>? pickupTime,
+    Value<String>? branch,
+    Value<String?>? notes,
+    Value<String>? status,
+    Value<String?>? processedBy,
+    Value<DateTime>? createdAt,
+  }) {
+    return OnlineOrdersCompanion(
+      id: id ?? this.id,
+      invoice: invoice ?? this.invoice,
+      customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
+      items: items ?? this.items,
+      subtotal: subtotal ?? this.subtotal,
+      discount: discount ?? this.discount,
+      handlingFee: handlingFee ?? this.handlingFee,
+      total: total ?? this.total,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      pickupTime: pickupTime ?? this.pickupTime,
+      branch: branch ?? this.branch,
+      notes: notes ?? this.notes,
+      status: status ?? this.status,
+      processedBy: processedBy ?? this.processedBy,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (invoice.present) {
+      map['invoice'] = Variable<String>(invoice.value);
+    }
+    if (customerName.present) {
+      map['customer_name'] = Variable<String>(customerName.value);
+    }
+    if (customerPhone.present) {
+      map['customer_phone'] = Variable<String>(customerPhone.value);
+    }
+    if (items.present) {
+      map['items'] = Variable<String>(items.value);
+    }
+    if (subtotal.present) {
+      map['subtotal'] = Variable<int>(subtotal.value);
+    }
+    if (discount.present) {
+      map['discount'] = Variable<int>(discount.value);
+    }
+    if (handlingFee.present) {
+      map['handling_fee'] = Variable<int>(handlingFee.value);
+    }
+    if (total.present) {
+      map['total'] = Variable<int>(total.value);
+    }
+    if (paymentMethod.present) {
+      map['payment_method'] = Variable<String>(paymentMethod.value);
+    }
+    if (pickupTime.present) {
+      map['pickup_time'] = Variable<String>(pickupTime.value);
+    }
+    if (branch.present) {
+      map['branch'] = Variable<String>(branch.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (processedBy.present) {
+      map['processed_by'] = Variable<String>(processedBy.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OnlineOrdersCompanion(')
+          ..write('id: $id, ')
+          ..write('invoice: $invoice, ')
+          ..write('customerName: $customerName, ')
+          ..write('customerPhone: $customerPhone, ')
+          ..write('items: $items, ')
+          ..write('subtotal: $subtotal, ')
+          ..write('discount: $discount, ')
+          ..write('handlingFee: $handlingFee, ')
+          ..write('total: $total, ')
+          ..write('paymentMethod: $paymentMethod, ')
+          ..write('pickupTime: $pickupTime, ')
+          ..write('branch: $branch, ')
+          ..write('notes: $notes, ')
+          ..write('status: $status, ')
+          ..write('processedBy: $processedBy, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7873,6 +8958,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CashierSessionsTable cashierSessions = $CashierSessionsTable(
     this,
   );
+  late final $OnlineOrdersTable onlineOrders = $OnlineOrdersTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7895,6 +8981,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     activationsLocal,
     syncQueue,
     cashierSessions,
+    onlineOrders,
   ];
 }
 
@@ -7910,6 +8997,7 @@ typedef $$ProductsTableCreateCompanionBuilder =
       Value<int> stock,
       Value<int> minStock,
       Value<String?> imagePath,
+      Value<bool> isOnline,
       Value<DateTime> createdAt,
     });
 typedef $$ProductsTableUpdateCompanionBuilder =
@@ -7924,6 +9012,7 @@ typedef $$ProductsTableUpdateCompanionBuilder =
       Value<int> stock,
       Value<int> minStock,
       Value<String?> imagePath,
+      Value<bool> isOnline,
       Value<DateTime> createdAt,
     });
 
@@ -7983,6 +9072,11 @@ class $$ProductsTableFilterComposer
 
   ColumnFilters<String> get imagePath => $composableBuilder(
     column: $table.imagePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isOnline => $composableBuilder(
+    column: $table.isOnline,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8051,6 +9145,11 @@ class $$ProductsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isOnline => $composableBuilder(
+    column: $table.isOnline,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -8096,6 +9195,9 @@ class $$ProductsTableAnnotationComposer
   GeneratedColumn<String> get imagePath =>
       $composableBuilder(column: $table.imagePath, builder: (column) => column);
 
+  GeneratedColumn<bool> get isOnline =>
+      $composableBuilder(column: $table.isOnline, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -8138,6 +9240,7 @@ class $$ProductsTableTableManager
                 Value<int> stock = const Value.absent(),
                 Value<int> minStock = const Value.absent(),
                 Value<String?> imagePath = const Value.absent(),
+                Value<bool> isOnline = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => ProductsCompanion(
                 id: id,
@@ -8150,6 +9253,7 @@ class $$ProductsTableTableManager
                 stock: stock,
                 minStock: minStock,
                 imagePath: imagePath,
+                isOnline: isOnline,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -8164,6 +9268,7 @@ class $$ProductsTableTableManager
                 Value<int> stock = const Value.absent(),
                 Value<int> minStock = const Value.absent(),
                 Value<String?> imagePath = const Value.absent(),
+                Value<bool> isOnline = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => ProductsCompanion.insert(
                 id: id,
@@ -8176,6 +9281,7 @@ class $$ProductsTableTableManager
                 stock: stock,
                 minStock: minStock,
                 imagePath: imagePath,
+                isOnline: isOnline,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -8429,6 +9535,9 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<int?> cashReturn,
       Value<String?> cashierName,
       Value<int?> branchId,
+      Value<String> status,
+      Value<String?> voidReason,
+      Value<DateTime?> voidedAt,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
     TransactionsCompanion Function({
@@ -8444,6 +9553,9 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<int?> cashReturn,
       Value<String?> cashierName,
       Value<int?> branchId,
+      Value<String> status,
+      Value<String?> voidReason,
+      Value<DateTime?> voidedAt,
     });
 
 class $$TransactionsTableFilterComposer
@@ -8512,6 +9624,21 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<int> get branchId => $composableBuilder(
     column: $table.branchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get voidReason => $composableBuilder(
+    column: $table.voidReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get voidedAt => $composableBuilder(
+    column: $table.voidedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8584,6 +9711,21 @@ class $$TransactionsTableOrderingComposer
     column: $table.branchId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get voidReason => $composableBuilder(
+    column: $table.voidReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get voidedAt => $composableBuilder(
+    column: $table.voidedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TransactionsTableAnnotationComposer
@@ -8638,6 +9780,17 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<int> get branchId =>
       $composableBuilder(column: $table.branchId, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get voidReason => $composableBuilder(
+    column: $table.voidReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get voidedAt =>
+      $composableBuilder(column: $table.voidedAt, builder: (column) => column);
 }
 
 class $$TransactionsTableTableManager
@@ -8683,6 +9836,9 @@ class $$TransactionsTableTableManager
                 Value<int?> cashReturn = const Value.absent(),
                 Value<String?> cashierName = const Value.absent(),
                 Value<int?> branchId = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> voidReason = const Value.absent(),
+                Value<DateTime?> voidedAt = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
                 invoice: invoice,
@@ -8696,6 +9852,9 @@ class $$TransactionsTableTableManager
                 cashReturn: cashReturn,
                 cashierName: cashierName,
                 branchId: branchId,
+                status: status,
+                voidReason: voidReason,
+                voidedAt: voidedAt,
               ),
           createCompanionCallback:
               ({
@@ -8711,6 +9870,9 @@ class $$TransactionsTableTableManager
                 Value<int?> cashReturn = const Value.absent(),
                 Value<String?> cashierName = const Value.absent(),
                 Value<int?> branchId = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> voidReason = const Value.absent(),
+                Value<DateTime?> voidedAt = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
                 invoice: invoice,
@@ -8724,6 +9886,9 @@ class $$TransactionsTableTableManager
                 cashReturn: cashReturn,
                 cashierName: cashierName,
                 branchId: branchId,
+                status: status,
+                voidReason: voidReason,
+                voidedAt: voidedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -11944,6 +13109,421 @@ typedef $$CashierSessionsTableProcessedTableManager =
       CashierSession,
       PrefetchHooks Function()
     >;
+typedef $$OnlineOrdersTableCreateCompanionBuilder =
+    OnlineOrdersCompanion Function({
+      Value<int> id,
+      required String invoice,
+      required String customerName,
+      required String customerPhone,
+      required String items,
+      Value<int> subtotal,
+      Value<int> discount,
+      Value<int> handlingFee,
+      required int total,
+      Value<String> paymentMethod,
+      Value<String?> pickupTime,
+      Value<String> branch,
+      Value<String?> notes,
+      Value<String> status,
+      Value<String?> processedBy,
+      Value<DateTime> createdAt,
+    });
+typedef $$OnlineOrdersTableUpdateCompanionBuilder =
+    OnlineOrdersCompanion Function({
+      Value<int> id,
+      Value<String> invoice,
+      Value<String> customerName,
+      Value<String> customerPhone,
+      Value<String> items,
+      Value<int> subtotal,
+      Value<int> discount,
+      Value<int> handlingFee,
+      Value<int> total,
+      Value<String> paymentMethod,
+      Value<String?> pickupTime,
+      Value<String> branch,
+      Value<String?> notes,
+      Value<String> status,
+      Value<String?> processedBy,
+      Value<DateTime> createdAt,
+    });
+
+class $$OnlineOrdersTableFilterComposer
+    extends Composer<_$AppDatabase, $OnlineOrdersTable> {
+  $$OnlineOrdersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get invoice => $composableBuilder(
+    column: $table.invoice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerPhone => $composableBuilder(
+    column: $table.customerPhone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get items => $composableBuilder(
+    column: $table.items,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get subtotal => $composableBuilder(
+    column: $table.subtotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get discount => $composableBuilder(
+    column: $table.discount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get handlingFee => $composableBuilder(
+    column: $table.handlingFee,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get total => $composableBuilder(
+    column: $table.total,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pickupTime => $composableBuilder(
+    column: $table.pickupTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branch => $composableBuilder(
+    column: $table.branch,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get processedBy => $composableBuilder(
+    column: $table.processedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OnlineOrdersTableOrderingComposer
+    extends Composer<_$AppDatabase, $OnlineOrdersTable> {
+  $$OnlineOrdersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get invoice => $composableBuilder(
+    column: $table.invoice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerPhone => $composableBuilder(
+    column: $table.customerPhone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get items => $composableBuilder(
+    column: $table.items,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get subtotal => $composableBuilder(
+    column: $table.subtotal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get discount => $composableBuilder(
+    column: $table.discount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get handlingFee => $composableBuilder(
+    column: $table.handlingFee,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get total => $composableBuilder(
+    column: $table.total,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pickupTime => $composableBuilder(
+    column: $table.pickupTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branch => $composableBuilder(
+    column: $table.branch,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get processedBy => $composableBuilder(
+    column: $table.processedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OnlineOrdersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OnlineOrdersTable> {
+  $$OnlineOrdersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get invoice =>
+      $composableBuilder(column: $table.invoice, builder: (column) => column);
+
+  GeneratedColumn<String> get customerName => $composableBuilder(
+    column: $table.customerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customerPhone => $composableBuilder(
+    column: $table.customerPhone,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get items =>
+      $composableBuilder(column: $table.items, builder: (column) => column);
+
+  GeneratedColumn<int> get subtotal =>
+      $composableBuilder(column: $table.subtotal, builder: (column) => column);
+
+  GeneratedColumn<int> get discount =>
+      $composableBuilder(column: $table.discount, builder: (column) => column);
+
+  GeneratedColumn<int> get handlingFee => $composableBuilder(
+    column: $table.handlingFee,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get total =>
+      $composableBuilder(column: $table.total, builder: (column) => column);
+
+  GeneratedColumn<String> get paymentMethod => $composableBuilder(
+    column: $table.paymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get pickupTime => $composableBuilder(
+    column: $table.pickupTime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get branch =>
+      $composableBuilder(column: $table.branch, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get processedBy => $composableBuilder(
+    column: $table.processedBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$OnlineOrdersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OnlineOrdersTable,
+          OnlineOrder,
+          $$OnlineOrdersTableFilterComposer,
+          $$OnlineOrdersTableOrderingComposer,
+          $$OnlineOrdersTableAnnotationComposer,
+          $$OnlineOrdersTableCreateCompanionBuilder,
+          $$OnlineOrdersTableUpdateCompanionBuilder,
+          (
+            OnlineOrder,
+            BaseReferences<_$AppDatabase, $OnlineOrdersTable, OnlineOrder>,
+          ),
+          OnlineOrder,
+          PrefetchHooks Function()
+        > {
+  $$OnlineOrdersTableTableManager(_$AppDatabase db, $OnlineOrdersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OnlineOrdersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OnlineOrdersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OnlineOrdersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> invoice = const Value.absent(),
+                Value<String> customerName = const Value.absent(),
+                Value<String> customerPhone = const Value.absent(),
+                Value<String> items = const Value.absent(),
+                Value<int> subtotal = const Value.absent(),
+                Value<int> discount = const Value.absent(),
+                Value<int> handlingFee = const Value.absent(),
+                Value<int> total = const Value.absent(),
+                Value<String> paymentMethod = const Value.absent(),
+                Value<String?> pickupTime = const Value.absent(),
+                Value<String> branch = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> processedBy = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => OnlineOrdersCompanion(
+                id: id,
+                invoice: invoice,
+                customerName: customerName,
+                customerPhone: customerPhone,
+                items: items,
+                subtotal: subtotal,
+                discount: discount,
+                handlingFee: handlingFee,
+                total: total,
+                paymentMethod: paymentMethod,
+                pickupTime: pickupTime,
+                branch: branch,
+                notes: notes,
+                status: status,
+                processedBy: processedBy,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String invoice,
+                required String customerName,
+                required String customerPhone,
+                required String items,
+                Value<int> subtotal = const Value.absent(),
+                Value<int> discount = const Value.absent(),
+                Value<int> handlingFee = const Value.absent(),
+                required int total,
+                Value<String> paymentMethod = const Value.absent(),
+                Value<String?> pickupTime = const Value.absent(),
+                Value<String> branch = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> processedBy = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => OnlineOrdersCompanion.insert(
+                id: id,
+                invoice: invoice,
+                customerName: customerName,
+                customerPhone: customerPhone,
+                items: items,
+                subtotal: subtotal,
+                discount: discount,
+                handlingFee: handlingFee,
+                total: total,
+                paymentMethod: paymentMethod,
+                pickupTime: pickupTime,
+                branch: branch,
+                notes: notes,
+                status: status,
+                processedBy: processedBy,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OnlineOrdersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OnlineOrdersTable,
+      OnlineOrder,
+      $$OnlineOrdersTableFilterComposer,
+      $$OnlineOrdersTableOrderingComposer,
+      $$OnlineOrdersTableAnnotationComposer,
+      $$OnlineOrdersTableCreateCompanionBuilder,
+      $$OnlineOrdersTableUpdateCompanionBuilder,
+      (
+        OnlineOrder,
+        BaseReferences<_$AppDatabase, $OnlineOrdersTable, OnlineOrder>,
+      ),
+      OnlineOrder,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11982,4 +13562,6 @@ class $AppDatabaseManager {
       $$SyncQueueTableTableManager(_db, _db.syncQueue);
   $$CashierSessionsTableTableManager get cashierSessions =>
       $$CashierSessionsTableTableManager(_db, _db.cashierSessions);
+  $$OnlineOrdersTableTableManager get onlineOrders =>
+      $$OnlineOrdersTableTableManager(_db, _db.onlineOrders);
 }

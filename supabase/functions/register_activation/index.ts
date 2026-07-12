@@ -1,5 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import * as ed from 'https://esm.sh/@noble/ed25519@2';
+import { sha512 } from "https://esm.sh/@noble/hashes@1/sha512";
+
+// Polyfill sync sha512 for noble-ed25519 (Deno needs explicit hash setup)
+ed.etc.sha512Sync = (...msgs: Uint8Array[]): Uint8Array => {
+  const h = sha512.create();
+  for (const m of msgs) h.update(m);
+  return h.digest();
+};
 
 const PUBLIC_KEY_HEX = Deno.env.get('NUSA_PUBLIC_KEY') ?? '';
 const supabase = createClient(

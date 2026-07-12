@@ -37,10 +37,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Customer? _selectedCustomer;
   Promo? _appliedPromo;
   int _promoDiscount = 0; // computed from applied promo
+  int _pointsUsed = 0; // poin yang ditukar (1 poin = Rp 1)
 
   int get _subtotal => ref.watch(cartProvider).fold(0, (s, e) => s + e.subtotal);
   int get _manualDiscount => int.tryParse(_discountCtrl.text) ?? 0;
-  int get _totalDiscount => (_manualDiscount + _promoDiscount).clamp(0, _subtotal);
+  int get _tierDiscount {
+    if (_selectedCustomer == null) return 0;
+    final pct = CustomerRepository.tierDiscountPercent(_selectedCustomer!.level);
+    return (_subtotal * pct / 100).round();
+  }
+  int get _totalDiscount =>
+      (_manualDiscount + _promoDiscount + _tierDiscount + _pointsUsed).clamp(0, _subtotal);
   int get _total => (_subtotal - _totalDiscount).clamp(0, _subtotal);
   int? get _kembalian =>
       _cashGiven != null && _cashGiven! >= _total ? _cashGiven! - _total : null;
@@ -153,7 +160,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ),
     );
     if (c != null && mounted) {
-      setState(() => _selectedCustomer = c);
+      setState(() {
+        _selectedCustomer = c;
+        _pointsUsed = 0; // reset when switching customer
+      });
       TopToast.success(context, 'Pelanggan: ${c.name}');
     }
   }
@@ -191,13 +201,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     try {
       final transactionRepo = ref.read(transactionRepoProvider);
-
-      // Deduct stock for each item
-      for (final item in cart) {
-        await productRepo.adjustStock(item.productId, -item.qty);
-      }
-
-      // Save transaction
       final session = ref.read(employeeSessionProvider);
       final cashierName = session?.name;
       final cashGiven = int.tryParse(_cashCtrl.text);
@@ -205,27 +208,43 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           ? cashGiven - _total
           : null;
 
-      await transactionRepo.saveTransaction(
-        items: cart,
-        total: _total,
-        discount: _totalDiscount,
-        paymentMethod: _paymentMethod,
-        cashGiven: cashGiven,
-        cashReturn: cashReturn,
-        cashierName: cashierName,
-        customerId: _selectedCustomer?.id,
-        branchId: ref.read(activeBranchProvider)?.id,
-      );
+      // Wrap all DB writes (stock, transaction, loyalty, promo) in a single transaction.
+      // If any step fails, it all rolls back — no partial state.
+      await db.transaction(() async {
+        // Deduct stock for each item
+        for (final item in cart) {
+          await productRepo.adjustStock(item.productId, -item.qty);
+        }
 
-      // Update customer loyalty
-      if (_selectedCustomer != null) {
-        await CustomerRepository(db).addSpent(_selectedCustomer!.id, _total);
-      }
+        // Save transaction
+        await transactionRepo.saveTransaction(
+          items: cart,
+          total: _total,
+          discount: _totalDiscount,
+          paymentMethod: _paymentMethod,
+          cashGiven: cashGiven,
+          cashReturn: cashReturn,
+          cashierName: cashierName,
+          customerId: _selectedCustomer?.id,
+          branchId: ref.read(activeBranchProvider)?.id,
+        );
 
-      // Increment promo usage
-      if (_appliedPromo != null) {
-        await PromoRepository(db).incrementUsed(_appliedPromo!.id);
-      }
+        // Update customer loyalty
+        if (_selectedCustomer != null) {
+          await CustomerRepository(db).addSpent(_selectedCustomer!.id, _total);
+        }
+
+        // Increment promo usage
+        if (_appliedPromo != null) {
+          await PromoRepository(db).incrementUsed(_appliedPromo!.id);
+        }
+
+        // Redeem loyalty points
+        if (_selectedCustomer != null && _pointsUsed > 0) {
+          await CustomerRepository(db).redeemPoints(
+              _selectedCustomer!.id, _pointsUsed);
+        }
+      });
 
       // Clear cart
       ref.read(cartProvider.notifier).clear();
@@ -318,6 +337,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               children: [
                 _row('Subtotal', formatRupiah(subtotal)),
                 const SizedBox(height: 8),
+
+                // Tier discount (auto, if customer selected)
+                if (_selectedCustomer != null) ...[
+                  _row(
+                    'Diskon ${_selectedCustomer!.level} (${CustomerRepository.tierDiscountPercent(_selectedCustomer!.level).toInt()}%)',
+                    '-${formatRupiah(_tierDiscount)}',
+                  ),
+                  const SizedBox(height: 4),
+                ],
+
                 // Promo code row
                 Row(
                   children: [
@@ -360,6 +389,25 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     ),
                   ),
                 ],
+
+                // Points redeem (if customer has points)
+                if (_selectedCustomer != null && _selectedCustomer!.points > 0) ...[
+                  const SizedBox(height: 8),
+                  _buildPointsRow(),
+                ],
+
+                if (_pointsUsed > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '✓ Poin ditukar: -${formatRupiah(_pointsUsed)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: NusaConfig.accentGreen,
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 8),
                 NusaInput(
                   'Diskon Manual (Rp)',
@@ -501,6 +549,92 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildPointsRow() {
+    final maxRedeemable = (_selectedCustomer!.points).clamp(0, _subtotal - _manualDiscount - _promoDiscount - _tierDiscount);
+    final remaining = _selectedCustomer!.points - _pointsUsed;
+    return NusaCard(
+      padding: const EdgeInsets.all(12),
+      Row(
+        children: [
+          const Icon(Icons.redeem, size: 18, color: Colors.amber),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Poin: ${remaining} (Rp ${formatRupiah(remaining)})',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text('1 poin = Rp 1',
+                    style: const TextStyle(fontSize: 11, color: NusaConfig.textTertiary)),
+              ],
+            ),
+          ),
+          if (_pointsUsed > 0)
+            TextButton(
+              onPressed: () => setState(() => _pointsUsed = 0),
+              child: const Text('Batal'),
+            )
+          else
+            SizedBox(
+              height: 36,
+              child: ElevatedButton(
+                onPressed: maxRedeemable <= 0 ? null : () => _pickPoints(maxRedeemable),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber.shade600,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                child: const Text('Tukar', style: TextStyle(fontSize: 12)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _pickPoints(int maxRedeemable) {
+    showDialog(
+      context: context,
+      builder: (_) {
+        final ctrl = TextEditingController(text: maxRedeemable.toString());
+        return AlertDialog(
+          title: const Text('Tukar Poin'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Maksimal: ${formatRupiah(maxRedeemable)} (${maxRedeemable} poin)',
+                  style: const TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+              const SizedBox(height: 12),
+              NusaInput('Jumlah poin', controller: ctrl,
+                  type: TextInputType.number),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Batal'),
+            ),
+            NusaButton('Tukar', fullWidth: false, onPressed: () {
+              final val = int.tryParse(ctrl.text.trim()) ?? 0;
+              if (val <= 0) {
+                TopToast.error(context, 'Masukkan jumlah poin');
+                return;
+              }
+              if (val > maxRedeemable) {
+                TopToast.error(context, 'Poin tidak cukup');
+                return;
+              }
+              setState(() => _pointsUsed = val);
+              Navigator.pop(context);
+            }),
+          ],
+        );
+      },
     );
   }
 

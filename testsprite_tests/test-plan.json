@@ -1,0 +1,258 @@
+[
+  {
+    "id": "TC001",
+    "title": "Complete POS transaction flow: Buka Kasir → Checkout → Receipt",
+    "category": "POS & Checkout",
+    "priority": "High",
+    "steps": [
+      {"type": "action", "description": "Login via PIN as cashier"},
+      {"type": "action", "description": "Tap 'Buka Kasir' on dashboard"},
+      {"type": "action", "description": "Tap a product to add to cart"},
+      {"type": "action", "description": "Tap cart icon to proceed to checkout"},
+      {"type": "action", "description": "Enter cash received ≥ total"},
+      {"type": "action", "description": "Tap Bayar to confirm payment"},
+      {"type": "assertion", "description": "Receipt bottom sheet appears with correct items/total/change"},
+      {"type": "assertion", "description": "After dismissing receipt, navigate back to POS"},
+      {"type": "assertion", "description": "Stock deducted correctly in Stock screen"}
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "POS transaction with promo code applied",
+    "category": "POS & Checkout",
+    "priority": "High",
+    "steps": [
+      {"type": "action", "description": "Add product to cart, go to checkout"},
+      {"type": "action", "description": "Enter valid promo code in Promo field"},
+      {"type": "action", "description": "Tap 'Pakai' to apply promo"},
+      {"type": "assertion", "description": "Promo discount reflected in total"},
+      {"type": "assertion", "description": "'Promo diterapkan' toast appears"}
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Checkout with selected customer → loyalty points update",
+    "category": "POS & Checkout",
+    "priority": "High",
+    "steps": [
+      {"type": "action", "description": "Go to checkout, tap 'Pilih Pelanggan'"},
+      {"type": "action", "description": "Select a customer from list"},
+      {"type": "action", "description": "Complete payment"},
+      {"type": "assertion", "description": "Customer's totalSpent and points updated in Pelanggan screen"}
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Product barcode scanner in POS",
+    "category": "POS & Checkout",
+    "priority": "High",
+    "steps": [
+      {"type": "action", "description": "On POS screen, tap barcode scan button"},
+      {"type": "action", "description": "Scan a valid product barcode"},
+      {"type": "assertion", "description": "Product added to cart automatically"},
+      {"type": "assertion", "description": "If barcode not found, show 'Produk tidak ditemukan'"}
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Complete Online Order lifecycle: New → Siapkan → Selesai",
+    "category": "Online Orders",
+    "priority": "High",
+    "steps": [
+      {"type": "action", "description": "Navigate to Pesanan Online"},
+      {"type": "action", "description": "Ensure at least one 'Online Baru' order exists"},
+      {"type": "action", "description": "Tap 'Terima & Siapkan' on an order"},
+      {"type": "action", "description": "Confirm in dialog"},
+      {"type": "assertion", "description": "Order moves to 'Disiapkan' tab"},
+      {"type": "action", "description": "Tap 'Siap Diambil'"},
+      {"type": "action", "description": "Tap 'Selesai (Lunas)' and confirm"},
+      {"type": "assertion", "description": "Order moves to 'Lunas' tab"},
+      {"type": "assertion", "description": "Stock deducted, transaction recorded in Transaksi"}
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Cancel online order at 'Online Baru' status",
+    "category": "Online Orders",
+    "priority": "High",
+    "steps": [
+      {"type": "action", "description": "On Pesanan Online, find 'Online Baru' order"},
+      {"type": "action", "description": "Tap 'Tolak / Batal'"},
+      {"type": "action", "description": "Confirm cancellation dialog"},
+      {"type": "assertion", "description": "Order status changes to 'Dibatalkan'"},
+      {"type": "assertion", "description": "Order disappears from active tabs"}
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Activate Toko Online and sync products",
+    "category": "Online Orders",
+    "priority": "High",
+    "steps": [
+      {"type": "action", "description": "Go to Pengaturan → Toko Online"},
+      {"type": "action", "description": "Fill store name, WhatsApp, open hours"},
+      {"type": "action", "description": "Toggle 'Aktifkan Toko Online' switch on"},
+      {"type": "assertion", "description": "Green status banner shows 'Toko Online Aktif'"},
+      {"type": "assertion", "description": "Store URL displayed with activation key"},
+      {"type": "action", "description": "Tap 'Sinkronkan Produk Sekarang'"},
+      {"type": "assertion", "description": "Products with isOnline=true appear on web storefront"}
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Add new product with image and barcode",
+    "category": "Products",
+    "priority": "High",
+    "steps": [
+      {"type": "action", "description": "Go to Produk → Tambah"},
+      {"type": "action", "description": "Fill name, buy price, sell price, stock"},
+      {"type": "action", "description": "Pick image from gallery"},
+      {"type": "action", "description": "Toggle barcode on"},
+      {"type": "action", "description": "Enable 'Tampil di Toko Online'"},
+      {"type": "action", "description": "Tap Simpan"},
+      {"type": "assertion", "description": "Product appears in product list"},
+      {"type": "assertion", "description": "Image loads in product detail"},
+      {"type": "assertion", "description": "isOnline = true persisted"}
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Edit product — all fields persist",
+    "category": "Products",
+    "priority": "Medium",
+    "steps": [
+      {"type": "action", "description": "Edit existing product"},
+      {"type": "action", "description": "Change name, price, stock, category"},
+      {"type": "action", "description": "Save"},
+      {"type": "action", "description": "Re-edit to verify all fields saved"}
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Stock alert notification — low stock check",
+    "category": "Stock",
+    "priority": "Medium",
+    "steps": [
+      {"type": "action", "description": "Set a product stock below minStock threshold"},
+      {"type": "action", "description": "Wait for background worker (30 min) or trigger manually"},
+      {"type": "assertion", "description": "Notification appears: 'Stok Menipis'"},
+      {"type": "assertion", "description": "Lists affected product names"}
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Background online order polling + notification",
+    "category": "Online Orders",
+    "priority": "Medium",
+    "steps": [
+      {"type": "action", "description": "Place order via web storefront"},
+      {"type": "action", "description": "Wait for 2-min background poll"},
+      {"type": "assertion", "description": "'Pesanan Online Baru' notification appears"},
+      {"type": "assertion", "description": "Order appears in Pesanan Online screen"}
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Supabase Realtime — live order insertion",
+    "category": "Online Orders",
+    "priority": "Medium",
+    "steps": [
+      {"type": "action", "description": "Stay on Pesanan Online screen"},
+      {"type": "action", "description": "Place order via web storefront"},
+      {"type": "assertion", "description": "New order appears in list without manual refresh (Realtime)"}
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Checkout validation: empty cart, insufficient cash",
+    "category": "POS & Checkout",
+    "priority": "Medium",
+    "steps": [
+      {"type": "action", "description": "Go to checkout with empty cart → tap Bayar"},
+      {"type": "assertion", "description": "'Keranjang kosong' error toast"},
+      {"type": "action", "description": "Add item, go to checkout, enter cash < total → tap Bayar"},
+      {"type": "assertion", "description": "'Jumlah dibayarkan kurang' error toast"}
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Checkout validation: insufficient stock",
+    "category": "POS & Checkout",
+    "priority": "Medium",
+    "steps": [
+      {"type": "action", "description": "Set product stock to 0"},
+      {"type": "action", "description": "Add product to cart, go to checkout, tap Bayar"},
+      {"type": "assertion", "description": "'Stok tidak cukup' error toast with available stock"}
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Promo validation: expired, quota exhausted, min spend",
+    "category": "Promo",
+    "priority": "Medium",
+    "steps": [
+      {"type": "action", "description": "Apply invalid promo code → verify error"},
+      {"type": "action", "description": "Apply promo with minBelanja > subtotal → verify error"},
+      {"type": "action", "description": "Apply promo with maxUses reached → verify error"}
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Google backup upload and restore",
+    "category": "Settings",
+    "priority": "Medium",
+    "steps": [
+      {"type": "action", "description": "Pengaturan → link Google account"},
+      {"type": "action", "description": "Tap 'Pindah Device' → confirm"},
+      {"type": "assertion", "description": "'Data tersimpan di cloud' toast appears"},
+      {"type": "action", "description": "Fresh install → activate → login Google → restore"},
+      {"type": "assertion", "description": "All data restored correctly"}
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Theme toggle (light/dark/system)",
+    "category": "Settings",
+    "priority": "Low",
+    "steps": [
+      {"type": "action", "description": "Pengaturan → tap 'Gelap'"},
+      {"type": "assertion", "description": "App switches to dark theme"},
+      {"type": "action", "description": "Kill and restart app"},
+      {"type": "assertion", "description": "Dark theme persists"}
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Printer: Bluetooth scan and connect",
+    "category": "Settings",
+    "priority": "Low",
+    "steps": [
+      {"type": "action", "description": "Pengaturan → tap Printer"},
+      {"type": "assertion", "description": "Bluetooth device scan starts"},
+      {"type": "action", "description": "Select a printer"},
+      {"type": "assertion", "description": "Printer address saved"}
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "WhatsApp open from online order",
+    "category": "Online Orders",
+    "priority": "Low",
+    "steps": [
+      {"type": "action", "description": "On Pesanan Online, tap 'WA' button on order"},
+      {"type": "assertion", "description": "WhatsApp opens with customer phone number pre-filled"}
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Empty state handling — all list screens",
+    "category": "UI/UX",
+    "priority": "Low",
+    "steps": [
+      {"type": "action", "description": "Visit Produk, Transaksi, Pelanggan, Promo, Pesanan Online with empty data"},
+      {"type": "assertion", "description": "Each screen shows empty state (not blank or crash)"},
+      {"type": "action", "description": "Visit Pesanan Online → each tab with no matching orders"},
+      {"type": "assertion", "description": "Empty state message shown per tab"}
+    ]
+  }
+]

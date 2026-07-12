@@ -46,12 +46,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     {'id': 'transaksi', 'label': 'Transaksi', 'icon': 'transaction'},
     {'id': 'pelanggan', 'label': 'Pelanggan', 'icon': 'customer'},
     {'id': 'promo', 'label': 'Promo', 'icon': 'promotion'},
+    {'id': 'pesanan_online', 'label': 'Online', 'icon': 'online'},
     {'id': 'laporan', 'label': 'Laporan', 'icon': 'finance'},
     {'id': 'presensi', 'label': 'Presensi', 'icon': 'notification'},
     {'id': 'karyawan', 'label': 'Karyawan', 'icon': 'employee'},
     {'id': 'keuangan', 'label': 'Keuangan', 'icon': 'finance'},
     {'id': 'spreadsheet', 'label': 'Spreadsheet', 'icon': 'table'},
     {'id': 'supplier', 'label': 'Supplier', 'icon': 'supplier'},
+    {'id': 'ai_chat', 'label': 'AI Chat', 'icon': 'ai'},
     {'id': 'pengaturan', 'label': 'Pengaturan', 'icon': 'settings'},
   ];
 
@@ -550,6 +552,8 @@ class MenuIcon extends StatelessWidget {
     'table': Icons.table_chart_outlined,
     'supplier': Icons.local_shipping_outlined,
     'employee': Icons.people_alt_outlined,
+    'online': Icons.shopping_cart_outlined,
+    'ai': Icons.auto_awesome_outlined,
   };
 
   @override

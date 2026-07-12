@@ -68,6 +68,10 @@ void main() async {
   // Apply pending device-migration backup BEFORE opening the database.
   await _applyPendingRestore();
 
+  // Register background tasks (stock check + online order polling)
+  registerStokCheck();
+  registerOnlineCheck();
+
   // Load persisted theme mode before app starts.
   final db = AppDatabase();
   final persistedTheme =

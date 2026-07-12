@@ -268,15 +268,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: NusaConfig.primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        tooltip: 'Pindai Barcode',
-        onPressed: () => _scanBarcode(context),
-        child: const Icon(Icons.qr_code_2_rounded),
-      ),
+      floatingActionButton: null,
     );
   }
 
@@ -351,15 +343,27 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           hintText: 'Cari produk...',
           hintStyle: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
           prefixIcon: const Icon(Icons.search_rounded, color: NusaConfig.textSecondary, size: 22),
-          suffixIcon: _search.text.isNotEmpty
-              ? GestureDetector(
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Barcode scanner button inside search bar
+              GestureDetector(
+                onTap: () => _scanBarcode(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: const Icon(Icons.qr_code_scanner, color: NusaConfig.textSecondary, size: 22),
+                ),
+              ),
+              if (_search.text.isNotEmpty)
+                GestureDetector(
                   onTap: () {
                     _search.clear();
                     setState(() {});
                   },
                   child: const Icon(Icons.clear_rounded, color: NusaConfig.textSecondary, size: 20),
-                )
-              : null,
+                ),
+            ],
+          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
@@ -370,7 +374,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
 
   Widget _buildCartBar(bool isDark, int totalItems, int totalPrice) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 68), // extra bottom to avoid FAB overlap
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),

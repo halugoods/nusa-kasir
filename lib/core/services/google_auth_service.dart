@@ -19,7 +19,9 @@ class GoogleAuthService {
       if (account == null) return null;
       await SecureStore.write(key: _key, value: account.id);
       return account.id;
-    } catch (_) {
+    } catch (e) {
+      // ignore: avoid_print
+      print('[GoogleAuth] Gagal sign in: $e');
       return null;
     }
   }
@@ -28,7 +30,10 @@ class GoogleAuthService {
   Future<void> signOut() async {
     try {
       await _signIn.disconnect();
-    } catch (_) {}
+    } catch (e) {
+      // ignore: avoid_print
+      print('[GoogleAuth] Gagal disconnect: $e');
+    }
     await SecureStore.delete(key: _key);
   }
 

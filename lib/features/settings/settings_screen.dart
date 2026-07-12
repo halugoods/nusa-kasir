@@ -14,6 +14,7 @@ import 'package:nusa_kasir/features/settings/backup_sheet.dart';
 import 'package:nusa_kasir/features/settings/printer_settings_sheet.dart';
 import 'package:nusa_kasir/core/services/update_service.dart';
 import 'package:nusa_kasir/core/services/google_auth_service.dart';
+import 'package:go_router/go_router.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -223,6 +224,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ],
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Toko Online
+              NusaCard(
+                InkWell(
+                  onTap: () => context.push('/toko_online_setup'),
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Icon(Icons.shopping_bag_outlined, color: Color(0xFFE63946)),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Toko Online',
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                              SizedBox(height: 4),
+                              Text('Aktifkan & atur toko online (Vercel)',
+                                  style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                      ],
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -499,7 +530,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // url_launcher is already a dependency
     try {
       launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } catch (_) {}
+    } catch (e) {
+      // ignore: avoid_print
+      print('[Settings] Gagal buka URL: $e');
+    }
   }
 
   Widget _themeChip(String label, String mode, IconData icon) {
