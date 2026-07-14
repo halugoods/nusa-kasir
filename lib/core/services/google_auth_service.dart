@@ -44,4 +44,9 @@ class GoogleAuthService {
   /// True if a Google user ID is stored.
   static Future<bool> isLinked() async =>
       (await SecureStore.read(key: _key)) != null;
+
+  /// Ensure a Google user ID is stored (used after signIn elsewhere).
+  static Future<void> ensureStored(String userId) async {
+    await SecureStore.write(key: _key, value: userId);
+  }
 }

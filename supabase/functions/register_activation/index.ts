@@ -1,8 +1,16 @@
+// ============================================================================
+// NUSA KASIR — Register Activation Edge Function (v2 — Google Auth)
+// Deploy: supabase functions deploy register_activation --project-ref sakeuhcbcnueplzlkltm
+// ============================================================================
+// Actions:
+//   { key, googleUserId }          — activate a license with Google ID
+//   { googleUserId } (no key)      — check if Google ID has a license
+// ============================================================================
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import * as ed from 'https://esm.sh/@noble/ed25519@2';
 import { sha512 } from "https://esm.sh/@noble/hashes@1/sha512";
 
-// Polyfill sync sha512 for noble-ed25519 (Deno needs explicit hash setup)
 ed.etc.sha512Sync = (...msgs: Uint8Array[]): Uint8Array => {
   const h = sha512.create();
   for (const m of msgs) h.update(m);
@@ -10,10 +18,6 @@ ed.etc.sha512Sync = (...msgs: Uint8Array[]): Uint8Array => {
 };
 
 const PUBLIC_KEY_HEX = Deno.env.get('NUSA_PUBLIC_KEY') ?? '';
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-);
 
 function b32decode(s: string): number[] {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -28,42 +32,123 @@ function b32decode(s: string): number[] {
   return out;
 }
 
-Deno.serve(async (req) => {
-  const { key, deviceId } = await req.json();
-  if (!key || !deviceId) return json({ error: 'bad_request' }, 400);
-
-  const cleaned = String(key).toUpperCase().replace('NUSA-', '').replace(/-/g, '');
-  const serial = cleaned.slice(0, 8);
-  const sig = new Uint8Array(b32decode(cleaned.slice(8)));
-
-  // verify signature (Ed25519) offline-style
-  const ok = await ed.verify(sig, new TextEncoder().encode(serial), hexToBytes(PUBLIC_KEY_HEX));
-  if (!ok) return json({ error: 'invalid_key' }, 403);
-
-  const { data: lic } = await supabase
-    .from('licenses').select('id,status').eq('key', key).maybeSingle();
-  if (!lic) return json({ error: 'not_found' }, 404);
-  if (lic.status === 'revoked') return json({ error: 'revoked' }, 403);
-
-  const { data: existing } = await supabase
-    .from('activations').select('id').eq('license_id', (lic as any).id).eq('device_id', deviceId).maybeSingle();
-  if (existing) return json({ success: true }, 200);
-
-  const can = await supabase.rpc('can_activate', { lid: (lic as any).id });
-  if (!can.data) return json({ error: 'max_devices' }, 409);
-
-  await supabase.from('activations').insert({ license_id: (lic as any).id, device_id: deviceId });
-  if ((lic as any).status !== 'activated') {
-    await supabase.from('licenses').update({ status: 'activated' }).eq('id', (lic as any).id);
-  }
-  return json({ success: true }, 200);
-});
-
 function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'content-type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'content-type',
+    },
+  });
 }
+
 function hexToBytes(hex: string): Uint8Array {
   const out = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
   return out;
 }
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type' } });
+  }
+
+  try {
+    const body = await req.json();
+    const { key, googleUserId } = body;
+
+    if (!googleUserId) return json({ error: 'googleUserId wajib' }, 400);
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+
+    // ─── CHECK action (no key provided) ──────────────────────────
+    if (!key) {
+      const { data: license } = await supabase
+        .from('licenses')
+        .select('id, key, serial, status, google_user_id')
+        .eq('google_user_id', googleUserId)
+        .maybeSingle();
+
+      if (!license) {
+        return json({ has_license: false }, 200);
+      }
+
+      return json({
+        has_license: true,
+        license_id: license.id,
+        status: license.status,
+        key: license.key,
+        serial: license.serial,
+      }, 200);
+    }
+
+    // ─── ACTIVATE action (key provided) ──────────────────────────
+
+    // 1. Verify Ed25519 signature
+    const cleaned = String(key).toUpperCase().replace('NUSA-', '').replace(/-/g, '');
+    const serial = cleaned.slice(0, 8);
+    const sig = new Uint8Array(b32decode(cleaned.slice(8)));
+
+    const ok = await ed.verify(sig, new TextEncoder().encode(serial), hexToBytes(PUBLIC_KEY_HEX));
+    if (!ok) return json({ error: 'invalid_key' }, 403);
+
+    // 2. Check license
+    const { data: lic } = await supabase
+      .from('licenses')
+      .select('id,status,google_user_id')
+      .eq('key', key)
+      .maybeSingle();
+
+    if (!lic) return json({ error: 'not_found' }, 404);
+    if (lic.status === 'revoked') return json({ error: 'revoked', message: 'Key ini sudah dibatalkan' }, 403);
+
+    // 3. Check can_activate
+    const can = await supabase.rpc('can_activate', {
+      lid: lic.id,
+      gid: googleUserId,
+    });
+    if (!can.data) {
+      return json({
+        error: 'already_activated',
+        message: 'Akun Google ini sudah dipakai untuk license lain. Gunakan license yang sama atau hubungi seller.',
+      }, 409);
+    }
+
+    // 4. Link Google ID to license
+    if (!lic.google_user_id) {
+      await supabase
+        .from('licenses')
+        .update({ google_user_id: googleUserId, status: 'activated' })
+        .eq('id', lic.id);
+    } else if (lic.status !== 'activated') {
+      await supabase
+        .from('licenses')
+        .update({ status: 'activated' })
+        .eq('id', lic.id);
+    }
+
+    // 5. Insert activation record
+    const { error: insertErr } = await supabase
+      .from('activations')
+      .insert({
+        license_id: lic.id,
+        google_user_id: googleUserId,
+        device_id: 'android-' + googleUserId.slice(0, 12),
+      });
+
+    if (insertErr && insertErr.code === '23505') {
+      return json({ success: true, message: 'Sudah teraktivasi sebelumnya' }, 200);
+    }
+    if (insertErr) {
+      return json({ error: 'db_error', message: insertErr.message }, 500);
+    }
+
+    return json({ success: true }, 200);
+  } catch (e) {
+    return json({ error: 'server_error', message: String(e) }, 500);
+  }
+});

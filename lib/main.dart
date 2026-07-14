@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:nusa_kasir/app.dart';
 import 'package:nusa_kasir/core/auth/employee_session.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/core/services/notification_service.dart';
 import 'package:nusa_kasir/core/services/stok_alert_worker.dart';
@@ -31,8 +32,6 @@ void _setupErrorHandlers() {
 }
 
 /// Swap a pending encrypted backup into place BEFORE the database opens.
-/// downloadAndRestore() stages a .pending file + flag; we commit it here
-/// while the app is still single-threaded and no DB handle exists.
 Future<void> _applyPendingRestore() async {
   if (!await SecureStore.hasPendingRestore()) return;
   try {
@@ -40,7 +39,7 @@ Future<void> _applyPendingRestore() async {
     final pending = File(p.join(dir.path, 'nusa_kasir.sqlite.pending'));
     final target = File(p.join(dir.path, 'nusa_kasir.sqlite'));
     if (await pending.exists()) {
-      await pending.copy(target.path); // atomic replace
+      await pending.copy(target.path);
       await pending.delete();
     }
     await SecureStore.clearPendingRestore();
@@ -53,7 +52,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   _setupErrorHandlers();
 
-  // Workmanager: initialise first so the callback dispatcher is registered.
+  // Workmanager
   await Workmanager().initialize(stokCallbackDispatcher, isInDebugMode: false);
 
   // Local notifications
@@ -63,12 +62,11 @@ void main() async {
     await Supabase.initialize(
         url: NusaConfig.supabaseUrl, publishableKey: NusaConfig.supabaseAnon);
   }
-  final activated = (await SecureStore.getActivation()) != null;
 
   // Apply pending device-migration backup BEFORE opening the database.
   await _applyPendingRestore();
 
-  // Register background tasks (stock check + online order polling)
+  // Register background tasks
   registerStokCheck();
   registerOnlineCheck();
 
@@ -77,15 +75,21 @@ void main() async {
   final persistedTheme =
       await SettingsRepository(db).getThemeMode() ?? 'system';
 
-  // Try to restore a remembered employee session.
+  // New startup flow: always go to /activation first
+  // ActivationScreen handles Google Sign-In → key activation or PIN login
+  // If already activated AND has valid session → skip to /home
   String initialLocation;
+  final activated = (await SecureStore.getActivation()) != null;
+
   if (!activated) {
+    // Not activated — go through activation flow (Google → key input)
     initialLocation = '/activation';
   } else {
+    // Activated — try to restore session
     final session = await EmployeeSession.restore();
     initialLocation = (session != null && !session.isExpired)
-        ? '/home'   // valid session → skip login
-        : '/login';
+        ? '/home'   // valid session → skip to dashboard
+        : '/activation';  // need Google sign-in again (PIN screen in activation)
   }
   await db.close();
 

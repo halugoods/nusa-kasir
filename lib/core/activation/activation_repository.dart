@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/activation/activation_key.dart';
 import 'package:nusa_kasir/core/activation/activation_public_key.dart';
-import 'package:nusa_kasir/core/utils/device_id.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -18,26 +17,38 @@ class ActivationRepository {
   final SupabaseClient? client;
   ActivationRepository(this.client);
 
-  Future<bool> get isActivated async => (await SecureStore.getActivation()) != null;
+  Future<bool> get isActivated async =>
+      (await SecureStore.getActivation()) != null;
 
-  Future<ActivationResult> activate(String rawKey) async {
+  /// Activate with Google ID (new flow).
+  /// - Verifies Ed25519 signature locally
+  /// - Sends key + googleUserId to register_activation edge function
+  /// - Links license ↔ Google ID in cloud
+  Future<ActivationResult> activate(String rawKey, String googleUserId) async {
     final key = rawKey.trim().toUpperCase();
     final valid = await ActivationKey.verify(key, nusaActivationPublicKey);
     if (!valid) return ActivationResult(false, 'Key tidak valid');
+
     await SecureStore.saveActivation(key);
+
     if (client != null) {
       try {
-        final deviceId = await getDeviceId();
         final res = await client!.functions.invoke('register_activation',
-            body: {'key': key, 'deviceId': deviceId});
+            body: {'key': key, 'googleUserId': googleUserId});
         if (res.status >= 400) {
-          if (res.status == 409) {
-            return ActivationResult(false, 'Key sudah dipakai di 2 device (hubungi seller)');
-          }
+          final data = res.data as Map<String, dynamic>?;
+          final err = data?['error'] as String? ?? 'Aktivasi gagal';
           if (res.status == 403) {
             await SecureStore.clearActivation();
-            return ActivationResult(false, 'Key dibatalkan');
+            return ActivationResult(false, 'Key dibatalkan atau tidak valid');
           }
+          if (res.status == 409) {
+            await SecureStore.clearActivation();
+            return ActivationResult(false,
+                data?['message'] as String? ?? 'Akun Google sudah dipakai untuk license lain');
+          }
+          await SecureStore.clearActivation();
+          return ActivationResult(false, err);
         }
       } catch (_) {
         // offline: keep local activation

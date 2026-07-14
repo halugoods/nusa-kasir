@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:nusa_kasir/app.dart';
 import 'package:nusa_kasir/core/auth/employee_session.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
 import 'package:nusa_kasir/data/repositories/report_repository.dart';
+import 'package:nusa_kasir/data/repositories/branch_repository.dart';
+import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/features/auth/rbac.dart';
 import 'package:nusa_kasir/shared/widgets/dashboard_header.dart';
 import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/profile_stats_card.dart';
-import 'package:nusa_kasir/data/repositories/branch_repository.dart';
-import 'package:nusa_kasir/data/database/app_database.dart';
 
 // ignore_for_file: use_build_context_synchronously
 
@@ -34,13 +34,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   List<Branche> _branches = [];
   Branche? _activeBranch;
 
-  // Last cashier session (for display)
+  // Current session info
+  String _currentName = '';
+  String _currentRole = '';
+  int? _currentEmployeeId;
+
+  // Attendance tracking
+  bool _hasCheckedIn = false;
+  String _checkInTime = '';
+
+  // Last cashier session
   String? _lastCashierName;
   String _lastCashierRole = '';
   String _lastCashierTime = '';
   List<Employee> _employees = [];
 
-  final List<Map<String, String>> _items = const [
+  final List<Map<String, dynamic>> _items = const [
     {'id': 'produk', 'label': 'Produk', 'icon': 'product'},
     {'id': 'stok', 'label': 'Stok', 'icon': 'inventory'},
     {'id': 'transaksi', 'label': 'Transaksi', 'icon': 'transaction'},
@@ -64,9 +73,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Future<void> _init() async {
-    // Try to restore remembered session
+    // Restore session
     await ref.read(employeeSessionProvider.notifier).restore();
+    final session = ref.read(employeeSessionProvider);
+    if (session != null) {
+      ref.read(authProvider.notifier).state = session.role;
+      _currentName = session.name;
+      _currentRole = session.role;
+      _currentEmployeeId = session.employeeId;
+      // Check attendance for today
+      await _checkAttendance(session.employeeId);
+    }
     await _load();
+  }
+
+  Future<void> _checkAttendance(int employeeId) async {
+    try {
+      final attRepo = AttendanceRepository(ref.read(databaseProvider));
+      final today = await attRepo.getToday(employeeId);
+      if (mounted) {
+        setState(() {
+          _hasCheckedIn = today != null && today.checkIn != null;
+          _checkInTime = today?.checkIn ?? '';
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _load() async {
@@ -78,11 +109,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final reportRepo = ReportRepository(ref.read(databaseProvider));
     final sum = await reportRepo.summary(from: today, to: now);
 
-    // Load employees
     final attRepo = AttendanceRepository(ref.read(databaseProvider));
     final emps = await attRepo.getEmployees();
 
-    // Load last cashier session for display
     final cashierRepo =
         CashierSessionRepository(ref.read(databaseProvider));
     final lastSession = await cashierRepo.getLast();
@@ -105,6 +134,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
     }
 
+    // Check attendance for each employee — who hasn't checked in today?
+    // (we'll use this to show badge on employee picker)
+    // For now just reload the list
+
     if (mounted) {
       setState(() {
         _storeName = name.isNotEmpty ? name : 'NUSA';
@@ -124,13 +157,121 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  // ── Menu navigation with RBAC guard ────────────────────────────────
+
+  Future<void> _handleMenuTap(String route) async {
+    final session = ref.read(employeeSessionProvider);
+    final role = session?.role ?? 'Kasir';
+
+    // 1. Login required
+    if (session == null) {
+      await _pickAndLogin();
+      if (ref.read(employeeSessionProvider) == null) return;
+    }
+
+    final currentRole = ref.read(employeeSessionProvider)?.role ?? 'Kasir';
+
+    // 2. Owner-only guard
+    if (isOwnerOnly(route) && currentRole != 'Owner' && currentRole != 'Manager') {
+      _showOwnerOnlyDialog(route);
+      return;
+    }
+
+    // 3. PIN guard for sensitive menus (kasir)
+    if (needsPinGuard(route)) {
+      final pinOk = await _requirePinReentry();
+      if (!pinOk) return;
+    }
+
+    // 4. Attendance check: if not checked in, check in now
+    if (!_hasCheckedIn && session != null) {
+      final attRepo = AttendanceRepository(ref.read(databaseProvider));
+      await attRepo.checkIn(session.employeeId);
+      if (mounted) setState(() => _hasCheckedIn = true);
+    }
+
+    // Navigate
+    if (route == 'presensi') {
+      await context.push('/$route');
+      if (mounted) await _load();
+    } else {
+      context.push('/$route');
+    }
+  }
+
+  /// Show "Hanya owner" dialog with lock icon.
+  void _showOwnerOnlyDialog(String route) {
+    final label = _items.firstWhere(
+      (i) => i['id'] == route,
+      orElse: () => {'label': route},
+    )['label'] as String;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_rounded, color: NusaConfig.primaryColor, size: 28),
+            SizedBox(width: 10),
+            Text('Akses Terbatas', style: TextStyle(fontSize: 17)),
+          ],
+        ),
+        content: Text(
+          'Menu "$label" hanya bisa diakses oleh Owner/Manager. '
+          'Silakan minta Owner untuk login jika perlu mengakses menu ini.',
+          style: const TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: NusaConfig.primaryColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Mengerti'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Force PIN re-entry for sensitive operations.
+  Future<bool> _requirePinReentry() async {
+    final session = ref.read(employeeSessionProvider);
+    if (session == null) return false;
+
+    final emp = _employees.cast<Employee?>().firstWhere(
+          (e) => e!.id == session.employeeId,
+          orElse: () => null,
+        );
+    if (emp == null) return false;
+
+    final result = await PinDialog.show(
+      context: context,
+      employeeName: emp.name,
+      employeeRole: emp.role,
+      correctPin: emp.pin,
+    );
+
+    if (result == null || !result.success) {
+      return false;
+    }
+
+    // Touch session on successful PIN
+    ref.read(employeeSessionProvider.notifier).touch();
+    return true;
+  }
+
+  // ── Employee Picker + Login ────────────────────────────────────────
+
   Future<void> _pickAndLogin() async {
     if (_employees.isEmpty) {
       TopToast.info(context, 'Belum ada karyawan. Tambah di menu Karyawan.');
       return;
     }
 
-    // Show employee picker
+    // Show employee picker with attendance badges
     final emp = await _showEmployeePicker();
     if (emp == null || !mounted) return;
 
@@ -144,54 +285,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     if (result == null || !result.success || !mounted) return;
 
-    // Login (session only — check-in is for attendance, not cashier)
+    // Login
     final session = EmployeeSession(
       employeeId: emp.id,
       name: emp.name,
       role: emp.role,
       remember: result.remember,
     );
-    ref.read(employeeSessionProvider.notifier).login(
-          session,
-          remember: result.remember,
-        );
+    ref.read(employeeSessionProvider.notifier).login(session, remember: result.remember);
     ref.read(authProvider.notifier).state = emp.role;
 
-    // Touch session to extend the 8h window
+    // Touch session
     ref.read(employeeSessionProvider.notifier).touch();
 
+    // Auto check-in if not yet checked in today
+    try {
+      final attRepo = AttendanceRepository(ref.read(databaseProvider));
+      await attRepo.checkIn(emp.id);
+      await _checkAttendance(emp.id);
+    } catch (_) {}
+
     if (mounted) {
+      _currentName = emp.name;
+      _currentRole = emp.role;
+      _currentEmployeeId = emp.id;
       TopToast.success(context, 'Halo, ${emp.name}! 👋');
     }
   }
 
-  Future<void> _handlePresensiTap() async {
-    // Presensi is attendance management — no login gate needed
-    await context.push('/presensi');
-    if (mounted) {
-      await _load();
-    }
-  }
+  // ── Buka Kasir ─────────────────────────────────────────────────────
 
-  Future<void> _handleMenuTap(String route) async {
-    final session = ref.read(employeeSessionProvider);
-
-    if (session == null) {
-      // No session → login first, then navigate
-      await _pickAndLogin();
-      if (ref.read(employeeSessionProvider) == null) return;
-    }
-
-    // Navigate to target route
-    if (route == 'presensi') {
-      await context.push('/$route');
-      if (mounted) await _load();
-    } else {
-      context.push('/$route');
-    }
-  }
-
-  /// Buka Kasir: PIN → auto-create session (saldo=0) → langsung POS.
   Future<void> _bukaKasir() async {
     // Need a logged-in employee session first
     final session = ref.read(employeeSessionProvider);
@@ -201,9 +324,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
     if (!mounted) return;
 
+    // PIN re-entry for security
+    final pinOk = await _requirePinReentry();
+    if (!pinOk) return;
+    if (!mounted) return;
+
     final s = ref.read(employeeSessionProvider)!;
 
-    // Check if there's already an active (unclosed) cashier session
+    // Check if there's already an active cashier session
     final cashierRepo = CashierSessionRepository(ref.read(databaseProvider));
     final active = await cashierRepo.getActive();
     if (active != null) {
@@ -214,7 +342,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       return;
     }
 
-    // Create cashier session immediately with saldo = 0
+    // Auto check-in if not yet
+    if (!_hasCheckedIn) {
+      try {
+        final attRepo = AttendanceRepository(ref.read(databaseProvider));
+        await attRepo.checkIn(s.employeeId);
+        setState(() => _hasCheckedIn = true);
+      } catch (_) {}
+    }
+
+    // Create cashier session with saldo = 0
     try {
       final sessionId = await cashierRepo.open(
         employeeId: s.employeeId,
@@ -231,7 +368,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  Future<void> _handlePresensiTap() async {
+    await context.push('/presensi');
+    if (mounted) {
+      await _load();
+    }
+  }
+
+  // ── Employee Picker with Attendance Badge ─────────────────────────
+
   Future<Employee?> _showEmployeePicker() async {
+    // Build attendance status map for today
+    final attRepo = AttendanceRepository(ref.read(databaseProvider));
+    final Map<int, bool> checkedInMap = {};
+    for (final e in _employees) {
+      final att = await attRepo.getToday(e.id);
+      checkedInMap[e.id] = att != null && att.checkIn != null;
+    }
+
+    if (!mounted) return null;
+
     return showDialog<Employee>(
       context: context,
       builder: (ctx) {
@@ -274,25 +430,76 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         const SizedBox(height: 4),
                     itemBuilder: (_, i) {
                       final e = _employees[i];
+                      final checkedIn = checkedInMap[e.id] ?? false;
                       return ListTile(
                         leading: CircleAvatar(
                           backgroundColor:
                               NusaConfig.primaryColor.withValues(alpha: 0.12),
-                          child: Text(
-                            e.name[0].toUpperCase(),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: NusaConfig.primaryColor,
-                            ),
+                          child: Stack(
+                            children: [
+                              Center(
+                                child: Text(
+                                  e.name[0].toUpperCase(),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: NusaConfig.primaryColor,
+                                  ),
+                                ),
+                              ),
+                              // Attendance reminder badge
+                              if (!checkedIn)
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    width: 14,
+                                    height: 14,
+                                    decoration: BoxDecoration(
+                                      color: NusaConfig.accentGold,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 1.5),
+                                    ),
+                                    child: const Icon(
+                                      Icons.warning_amber_rounded,
+                                      size: 8,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                        title: Text(
-                          e.name,
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        title: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                e.name,
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (!checkedIn) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: NusaConfig.accentGold.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Belum absen',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: NusaConfig.accentGold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         subtitle: Text(e.role,
-                            style:
-                                const TextStyle(fontSize: 12)),
+                            style: const TextStyle(fontSize: 12)),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                         onTap: () => Navigator.of(ctx).pop(e),
@@ -308,21 +515,54 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
+  // ── Build ──────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(employeeSessionProvider);
     final role = session?.role ?? 'Owner';
-    final visible = _items.where((i) => hasAccess(role, i['id']!)).toList();
 
-    // Build card props — show last cashier (from CashierSession)
+    // Build menu items with access indicators
+    final menuItems = _items.map((item) {
+      final id = item['id'] as String;
+      final label = item['label'] as String;
+      final icon = item['icon'] as String;
+
+      String accessType;
+      if (isOwnerOnly(id) && role != 'Owner' && role != 'Manager') {
+        accessType = '🔒';
+      } else if (needsPinGuard(id)) {
+        accessType = '🔐';
+      } else if (hasAccess(role, id)) {
+        accessType = '✅';
+      } else {
+        accessType = '🔒';
+      }
+
+      return {
+        'id': id,
+        'label': label,
+        'icon': icon,
+        'access': accessType,
+      };
+    }).toList();
+
+    // Build card props
     String initials, userName, roleText, attendanceText;
-    if (_lastCashierName != null) {
+    if (_currentName.isNotEmpty) {
+      initials = _currentName[0].toUpperCase();
+      userName = _currentName;
+      roleText = _currentRole;
+      attendanceText = _hasCheckedIn
+          ? 'Hadir • $_checkInTime'
+          : '⚠️  Belum absen hari ini — buka kasir untuk absen otomatis';
+    } else if (_lastCashierName != null) {
       initials = _lastCashierName!.isNotEmpty
           ? _lastCashierName![0].toUpperCase()
           : '?';
       userName = _lastCashierName!;
       roleText = _lastCashierRole;
-      attendanceText = 'Kasir terakhir • ${_lastCashierTime}';
+      attendanceText = 'Kasir terakhir • $_lastCashierTime';
     } else {
       initials = '?';
       userName = 'Belum ada sesi kasir';
@@ -340,7 +580,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               userName: userName,
               role: roleText,
               branch: _storeName,
-              hasNotification: false,
+              hasNotification: !_hasCheckedIn && _currentName.isNotEmpty,
               onBellTap: () {},
             ),
 
@@ -436,7 +676,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
             const SizedBox(height: 20),
 
-            // Menu grid
+            // Menu grid with lock indicators
             Expanded(
               child: GridView.count(
                 crossAxisCount: 3,
@@ -444,11 +684,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
                 childAspectRatio: 0.85,
-                children: visible.map((item) {
+                children: menuItems.map((item) {
                   return _MenuItem(
-                    label: item['label']!,
-                    icon: item['icon']!,
-                    onTap: () => _handleMenuTap(item['id']!),
+                    label: item['label'] as String,
+                    icon: item['icon'] as String,
+                    access: item['access'] as String,
+                    onTap: () => _handleMenuTap(item['id'] as String),
                   );
                 }).toList(),
               ),
@@ -468,21 +709,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-/// Individual menu item — matches reference: 52×52 red icon bg, label below.
+/// Individual menu item with access indicator.
 class _MenuItem extends StatelessWidget {
   final String label;
   final String icon;
+  final String access;
   final VoidCallback? onTap;
 
   const _MenuItem({
     required this.label,
     required this.icon,
+    required this.access,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isLocked = access == '🔒';
+    final isPinGuard = access == '🔐';
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -490,7 +736,11 @@ class _MenuItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+          border: Border.all(
+            color: isLocked
+                ? (isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor)
+                : (isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+          ),
           boxShadow: const [
             BoxShadow(
               color: Color(0x0A111827),
@@ -502,34 +752,67 @@ class _MenuItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: NusaConfig.primaryColor,
+            // Icon with access overlay
+            Stack(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: isLocked
+                        ? (isDark ? NusaConfig.darkSurface2 : const Color(0xFFE5E7EB))
+                        : NusaConfig.primaryColor,
+                  ),
+                  alignment: Alignment.center,
+                  child: MenuIcon(
+                    name: icon,
+                    color: isLocked
+                        ? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)
+                        : Colors.white,
+                  ),
                 ),
-                alignment: Alignment.center,
-                child: MenuIcon(
-                  name: icon,
-                  color: Colors.white,
-                ),
+                // Lock badge
+                if (isLocked || isPinGuard)
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: isPinGuard
+                            ? NusaConfig.accentGold
+                            : NusaConfig.primaryColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: isDark ? NusaConfig.darkSurface : Colors.white, width: 1.5),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        isPinGuard ? '🔐' : '🔒',
+                        style: const TextStyle(fontSize: 7),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: isLocked
+                    ? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)
+                    : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
               ),
-              const SizedBox(height: 12),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
+      ),
     );
   }
 }

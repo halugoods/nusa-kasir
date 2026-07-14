@@ -4,7 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:nusa_kasir/app.dart';
+import 'package:nusa_kasir/core/providers.dart';
 import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';

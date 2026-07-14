@@ -47,10 +47,19 @@ abstract class NusaConfig {
   static const List<String> categories = ["Makanan", "Minuman", "Sembako", "Lainnya"];
   static const List<String> roles = ["Owner", "Manager", "Kasir", "Gudang", "Finance"];
   static const Map<String, List<String>> roleAccess = {
-    "Owner": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet","pesanan_online"],
-    "Manager": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet","pesanan_online"],
-    "Kasir": ["home","kasir","produk","transaksi","pelanggan"],
+    "Owner": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet","pesanan_online","ai_chat"],
+    "Manager": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet","pesanan_online","ai_chat"],
+    "Kasir": ["home","kasir","produk","stok","transaksi","pelanggan","ai_chat"],
     "Gudang": ["home","produk","stok","laporan","supplier"],
     "Finance": ["home","transaksi","keuangan","laporan","presensi","karyawan","supplier"],
   };
+
+  /// Menu yang perlu PIN re-entry untuk keamanan (POS/Kasir).
+  static const List<String> pinGuardScreens = ['kasir'];
+
+  /// Menu yang HANYA bisa dibuka Owner (block dengan dialog).
+  static const List<String> ownerOnlyScreens = [
+    'laporan', 'promo', 'pesanan_online', 'karyawan',
+    'keuangan', 'spreadsheet', 'supplier', 'pengaturan',
+  ];
 }

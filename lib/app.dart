@@ -1,17 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/theme/nusa_theme.dart';
-import 'package:nusa_kasir/data/database/app_database.dart';
-import 'package:nusa_kasir/data/repositories/customer_repository.dart';
-import 'package:nusa_kasir/data/repositories/settings_repository.dart';
-import 'package:nusa_kasir/data/repositories/transaction_repository.dart';
-import 'package:nusa_kasir/core/activation/activation_repository.dart';
-// activation_screen already defines activationRepoProvider; hide it so the
-// local definition below is the single source of truth.
-import 'package:nusa_kasir/core/activation/activation_screen.dart'
-    hide activationRepoProvider;
+import 'package:nusa_kasir/core/providers.dart';
+import 'package:nusa_kasir/core/activation/activation_screen.dart';
 import 'package:nusa_kasir/features/auth/login_screen.dart';
 import 'package:nusa_kasir/features/onboarding/onboarding_screen.dart';
 import 'package:nusa_kasir/features/dashboard/dashboard_screen.dart';
@@ -35,24 +27,6 @@ import 'package:nusa_kasir/features/setup/setup_screen.dart';
 import 'package:nusa_kasir/features/online_orders/online_orders_screen.dart';
 import 'package:nusa_kasir/features/online_orders/online_store_setup_screen.dart';
 import 'package:nusa_kasir/features/ai_assistant/ai_chat_screen.dart';
-
-final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
-final authProvider = StateProvider<String?>((ref) => null);
-final themeModeProvider = StateProvider<String>((ref) => 'system');
-final activeBranchProvider = StateProvider<Branche?>((ref) => null);
-final settingsRepoProvider =
-    Provider((ref) => SettingsRepository(ref.watch(databaseProvider)));
-final transactionRepoProvider =
-    Provider((ref) => TransactionRepository(ref.watch(databaseProvider)));
-final customerRepoProvider =
-    Provider((ref) => CustomerRepository(ref.watch(databaseProvider)));
-final activationRepoProvider = Provider<ActivationRepository>((ref) {
-  try {
-    return ActivationRepository(Supabase.instance.client);
-  } catch (_) {
-    return ActivationRepository(null);
-  }
-});
 
 GoRouter buildRouter(String initialLocation) => GoRouter(
       initialLocation: initialLocation,
