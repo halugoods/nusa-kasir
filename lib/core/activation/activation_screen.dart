@@ -16,16 +16,19 @@ import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-/// Google-first activation screen with 3 branches:
+/// Activation & auth screen with 4 branches:
 ///
-///   1. Google Sign-In dulu (WAJIB — pintu masuk app)
+///   1. Welcome Screen — user memilih "Masuk dengan Google" secara manual
 ///   2. Setelah Google ID didapat:
 ///      a. Belum aktivasi key → minta input key aktivasi
-///      b. Sudah aktivasi key → minta PIN untuk sign in (karyawan/owner)
+///         → ada tombol "Belum punya key?" → buka landing page
+///      b. Sudah aktivasi key → minta PIN untuk sign in
 ///   3. PIN → cek role → auto check-in attendance → dashboard
+///   4. Restore prompt for cloud backup
 ///
-/// Backup/restore handled automatically for returning users.
+/// Tidak ada auto-trigger Google sign-in — user memilih sendiri.
 class ActivationScreen extends ConsumerStatefulWidget {
   const ActivationScreen({super.key});
   @override
@@ -33,43 +36,32 @@ class ActivationScreen extends ConsumerStatefulWidget {
 }
 
 class _ActivationScreenState extends ConsumerState<ActivationScreen> {
-  // Step 0: Google Sign-In
-  bool _googleLoading = true;
+  // Google Sign-In state
+  bool _googleLoading = false;
   String? _googleError;
   String? _googleId;
 
-  // Step 1a: Activation key input (new user)
+  // Activation key input (new user)
   final _keyCtrl = TextEditingController();
   bool _keyLoading = false;
   String? _keyError;
 
-  // Step 1b: PIN input (returning user)
+  // PIN input (returning user)
   final _pinCtrl = TextEditingController();
   bool _pinLoading = false;
   String? _pinError;
 
-  // Which screen: 'google' | 'pin' | 'key' | 'restore_prompt'
-  String _screen = 'google';
+  // Screen state: 'welcome' | 'google_loading' | 'pin' | 'key' | 'restore_prompt'
+  String _screen = 'welcome';
 
-  // Track if we've restored backup
   bool _didRestore = false;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_screen == 'google' && !_googleLoading && _googleError == null) {
-      // Already resolved
-      return;
-    }
-    if (_googleId != null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startGoogleSignIn());
-  }
-
   Future<void> _startGoogleSignIn() async {
-    if (_googleLoading && _googleId != null) return;
+    if (_googleLoading) return;
     setState(() {
       _googleLoading = true;
       _googleError = null;
+      _screen = 'google_loading';
     });
     try {
       final googleAuth = GoogleAuthService();
@@ -78,22 +70,28 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
         setState(() {
           _googleLoading = false;
           _googleError = 'Login Google diperlukan untuk menggunakan NUSA Kasir';
-          _screen = 'google';
+          _screen = 'welcome';
         });
         return;
       }
       _googleId = googleId;
       await GoogleAuthService.ensureStored(googleId);
 
-      // Now check: does this Google account have a license?
       setState(() => _googleLoading = false);
       if (mounted) await _checkLicenseStatus(googleId);
     } catch (e) {
       setState(() {
         _googleLoading = false;
         _googleError = 'Gagal login Google: $e';
-        _screen = 'google';
+        _screen = 'welcome';
       });
+    }
+  }
+
+  Future<void> _openLandingPage() async {
+    final uri = Uri.parse(NusaConfig.landingPageUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -385,22 +383,144 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     }
 
     switch (_screen) {
-      case 'google':
-        return _buildGoogleScreen(isDark);
+      case 'welcome':
+        return _buildWelcomeScreen(isDark);
+      case 'google_loading':
+        return _buildGoogleLoadingScreen(isDark);
       case 'pin':
         return _buildPinScreen(isDark);
       case 'key':
         return _buildKeyScreen(isDark);
       case 'restore_prompt':
-        return _buildGoogleScreen(isDark); // Show loading while restore dialog is up
+        return _buildGoogleLoadingScreen(isDark);
       default:
-        return _buildGoogleScreen(isDark);
+        return _buildWelcomeScreen(isDark);
     }
   }
 
-  // ── Google Sign-In Screen ──────────────────────────────────────────
+  // ── Welcome Screen (first screen — user chooses to sign in) ────────
 
-  Widget _buildGoogleScreen(bool isDark) {
+  Widget _buildWelcomeScreen(bool isDark) {
+    return Scaffold(
+      backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+                // Logo
+                Container(
+                  width: 88, height: 88,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [NusaConfig.primaryColor, NusaConfig.primaryDark],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: NusaConfig.primaryColor.withValues(alpha: 0.35),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.store_rounded, color: Colors.white, size: 44),
+                ),
+                const SizedBox(height: 28),
+                // Brand
+                Text('NUSA', style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: NusaConfig.primaryColor, fontWeight: FontWeight.w800, letterSpacing: -1.5)),
+                const SizedBox(height: 6),
+                Text(NusaConfig.appSubtitle, textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                const SizedBox(height: 48),
+
+                // Google Sign-In button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _startGoogleSignIn,
+                    icon: Image.asset(
+                      'assets/icons/google_logo.png',
+                      width: 22,
+                      height: 22,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 28, color: Color(0xFF4285F4)),
+                    ),
+                    label: const Text(
+                      'Masuk dengan Google',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF1F2937),
+                      elevation: 1,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(color: isDark ? NusaConfig.darkBorder : const Color(0xFFD1D5DB)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Akun Google Anda digunakan untuk verifikasi lisensi',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                ),
+
+                // Error message
+                if (_googleError != null) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: NusaConfig.primaryColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, size: 20, color: NusaConfig.primaryColor.withValues(alpha: 0.7)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(_googleError!, style: const TextStyle(color: NusaConfig.textSecondary, fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 40),
+                // Bottom text
+                Text('Belum punya akun?', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                const SizedBox(height: 6),
+                GestureDetector(
+                  onTap: _startGoogleSignIn,
+                  child: const Text('Daftar', style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: NusaConfig.primaryColor,
+                    decoration: TextDecoration.underline,
+                  )),
+                ),
+
+                const SizedBox(height: 48),
+                // Footer
+                Text('v${NusaConfig.appVersion}+${NusaConfig.appBuildNumber}',
+                  style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Google Sign-In Loading Screen (shown while signing in) ──────────
+
+  Widget _buildGoogleLoadingScreen(bool isDark) {
     return Scaffold(
       backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
       body: Center(
@@ -676,6 +796,14 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
               TextButton.icon(onPressed: _scan, icon: const Icon(Icons.qr_code_scanner), label: const Text('Scan Barcode Kartu')),
               TextButton.icon(onPressed: _tapNfc, icon: const Icon(Icons.nfc), label: const Text('Tap NFC')),
               const SizedBox(height: 8),
+              // "Belum punya key?" → open landing page
+              TextButton.icon(
+                onPressed: _openLandingPage,
+                icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+                label: const Text('Belum punya key aktivasi?'),
+                style: TextButton.styleFrom(foregroundColor: NusaConfig.accentPurple),
+              ),
+              const SizedBox(height: 4),
               TextButton(
                 onPressed: _startGoogleSignIn,
                 child: const Text('Ganti akun Google', style: TextStyle(color: NusaConfig.textSecondary)),
