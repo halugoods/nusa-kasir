@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -29,6 +27,7 @@ class OnlineOrderService {
     String? address,
     String? openHours,
     bool isActive = false,
+    String? slug,
   }) async {
     final sid = await storeId;
     if (sid == null) return false;
@@ -37,6 +36,7 @@ class OnlineOrderService {
         'action': 'upsert_store',
         'store_id': sid,
         'store_name': storeName,
+        'slug': slug ?? '',
         'description': description ?? '',
         'whatsapp': whatsapp ?? '',
         'address': address ?? '',

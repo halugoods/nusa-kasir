@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -24,7 +23,6 @@ class OnlineStoreSetupScreen extends ConsumerStatefulWidget {
 class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen> {
   bool _loading = true;
   bool _saving = false;
-  String? _storeId;
   String? _storeUrl;
   bool _isActive = false;
 
@@ -38,6 +36,18 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
   void initState() {
     super.initState();
     _load();
+  }
+
+  /// Convert store name to URL-safe slug.
+  /// Example: "Toko Berkah Jaya 99" → "toko-berkah-jaya-99"
+  String _slugify(String name) {
+    return name
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
+        .replaceAll(RegExp(r'\s+'), '-')
+        .replaceAll(RegExp(r'-+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '');
   }
 
   @override
@@ -57,13 +67,16 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
       return;
     }
 
-    _storeId = key;
-    _storeUrl = 'https://nusa-online.vercel.app/toko/$key';
+    // activation key stays as storeId for internal API — never exposed in URL
 
-    // Load store name from local settings
+    // Load store name from local settings as fallback
     final repo = ref.read(settingsRepoProvider);
     final name = await repo.getStoreName();
     if (name.isNotEmpty) _nameCtrl.text = name;
+
+    // Build fallback URL from local name
+    final fallbackSlug = _slugify(name);
+    _storeUrl = 'https://nusa-online.vercel.app/toko/$fallbackSlug';
 
     // Load from Supabase
     try {
@@ -76,6 +89,9 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
         _waCtrl.text = store['whatsapp'] as String? ?? '';
         _addressCtrl.text = store['address'] as String? ?? '';
         _hoursCtrl.text = store['open_hours'] as String? ?? '08:00 - 21:00';
+        // Use cloud slug if available, otherwise regenerate from name
+        final cloudSlug = store['slug'] as String?;
+        _storeUrl = 'https://nusa-online.vercel.app/toko/${cloudSlug ?? _slugify(_nameCtrl.text)}';
       }
     } catch (e) {
       // ignore: avoid_print
@@ -98,8 +114,10 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
 
     try {
       final svc = OnlineOrderService(Supabase.instance.client);
+      final slug = _slugify(name);
       final ok = await svc.upsertStore(
         storeName: name,
+        slug: slug,
         description: _descCtrl.text.trim(),
         whatsapp: _waCtrl.text.trim(),
         address: _addressCtrl.text.trim(),
@@ -111,13 +129,19 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
         // Also save store name locally
         await ref.read(settingsRepoProvider).setStoreName(name);
 
+        // Update store URL with clean slug
+        _storeUrl = 'https://nusa-online.vercel.app/toko/$slug';
+
         // If activating, sync all online products
         if (isActive) {
           await _syncProducts();
         }
 
         if (mounted) {
-          setState(() => _isActive = isActive);
+          setState(() {
+            _isActive = isActive;
+            _storeUrl = 'https://nusa-online.vercel.app/toko/$slug';
+          });
           TopToast.success(context, isActive
               ? 'Toko online diaktifkan! 🎉'
               : 'Pengaturan disimpan');
