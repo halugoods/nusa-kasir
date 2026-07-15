@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -11,7 +12,6 @@ import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class OnlineStoreSetupScreen extends ConsumerStatefulWidget {
@@ -184,12 +184,6 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
     }
   }
 
-  Future<void> _shareLink() async {
-    if (_storeUrl == null) return;
-    final message = '🛒 Pesan online dari ${_nameCtrl.text.trim()}!\n\n$_storeUrl';
-    await Share.share(message, subject: 'Toko Online ${_nameCtrl.text.trim()}');
-  }
-
   Future<void> _openPreview() async {
     if (_storeUrl == null) return;
     final uri = Uri.parse(_storeUrl!);
@@ -268,15 +262,22 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
 
                   // Store link (only visible when active)
                   if (_isActive && _storeUrl != null) ...[
-                    NusaCard(
-                      Column(
+                    // Link URL with copy button
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+                      ),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text('🔗 Link Toko Online',
                               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                           const SizedBox(height: 10),
                           Container(
-                            padding: const EdgeInsets.all(14),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             decoration: BoxDecoration(
                               color: isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
                               borderRadius: BorderRadius.circular(12),
@@ -288,40 +289,51 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                                   child: Text(
                                     _storeUrl!,
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 12,
                                       fontFamily: 'monospace',
                                       color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                                     ),
                                   ),
                                 ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () {
+                                    Clipboard.setData(ClipboardData(text: _storeUrl!));
+                                    TopToast.success(context, 'Link disalin! 📋');
+                                  },
+                                  child: Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: NusaConfig.primarySoft,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Icons.copy, size: 18, color: NusaConfig.primaryColor),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: NusaButton('📋 Salin Link',
-                                    fullWidth: true,
-                                    onPressed: () => _shareLink()),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _openPreview,
-                                  icon: const Icon(Icons.open_in_browser, size: 18),
-                                  label: const Text('Preview'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: NusaConfig.primaryColor,
-                                    side: const BorderSide(color: NusaConfig.primaryColor),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Buka Website button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _openPreview,
+                        icon: const Icon(Icons.open_in_browser, size: 18),
+                        label: const Text('Buka Website',
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: NusaConfig.primaryColor,
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),

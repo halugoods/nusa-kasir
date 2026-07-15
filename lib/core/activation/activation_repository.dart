@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/activation/activation_key.dart';
 import 'package:nusa_kasir/core/activation/activation_public_key.dart';
@@ -99,7 +101,8 @@ class ActivationRepository {
     }
   }
 
-  /// Upload current local DB to cloud. Uses Google user ID for encryption.
+  /// Upload current local DB + product images to cloud.
+  /// Packed as a single archive, encrypted with Google user ID.
   Future<bool> uploadBackupNow() async {
     if (client == null) return false;
     final uid = await _googleUserId();
@@ -107,18 +110,37 @@ class ActivationRepository {
     final path = '$uid/backup.sqlite.enc';
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final file = File(p.join(dir.path, 'nusa_kasir.sqlite'));
-      if (!await file.exists()) return false;
-      final raw = await file.readAsBytes();
-      final encrypted = await BackupCrypto.encrypt(raw, uid);
+      final dbFile = File(p.join(dir.path, 'nusa_kasir.sqlite'));
+      if (!await dbFile.exists()) return false;
+
+      // Pack SQLite + product images into single archive
+      final files = <String, Uint8List>{};
+      files['nusa_kasir.sqlite'] = await dbFile.readAsBytes();
+
+      // Collect all product_* image files
+      final dirContents = dir.listSync();
+      for (final entity in dirContents) {
+        if (entity is File) {
+          final name = p.basename(entity.path);
+          if (name.startsWith('product_') &&
+              (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png') || name.endsWith('.webp'))) {
+            files[name] = await entity.readAsBytes();
+          }
+        }
+      }
+
+      final packed = BackupCrypto.packFiles(files);
+      final encrypted = await BackupCrypto.encrypt(packed, uid);
       await client!.storage.from('nusa-backups').uploadBinary(
         path,
         encrypted,
         fileOptions: const FileOptions(upsert: true, contentType: 'application/octet-stream'),
       );
       await SecureStore.saveLastBackupTime(DateTime.now());
+      debugPrint('[Backup] Uploaded DB + ${files.length - 1} images (${encrypted.length} bytes encrypted)');
       return true;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Backup] uploadBackupNow error: $e');
       return false;
     }
   }

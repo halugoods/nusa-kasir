@@ -15,6 +15,7 @@ import 'package:nusa_kasir/core/services/notification_service.dart';
 import 'package:nusa_kasir/core/services/stok_alert_worker.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
+import 'package:nusa_kasir/core/services/backup_crypto.dart';
 
 /// Catch all unhandled Flutter errors and display them instead of blank screen.
 void _setupErrorHandlers() {
@@ -31,19 +32,39 @@ void _setupErrorHandlers() {
   };
 }
 
-/// Swap a pending encrypted backup into place BEFORE the database opens.
+/// Swap a pending backup into place BEFORE the database opens.
+///
+/// Supports both legacy format (raw SQLite bytes) and new NUS1 archive format
+/// (SQLite + product images packed together).
 Future<void> _applyPendingRestore() async {
   if (!await SecureStore.hasPendingRestore()) return;
   try {
     final dir = await getApplicationDocumentsDirectory();
     final pending = File(p.join(dir.path, 'nusa_kasir.sqlite.pending'));
-    final target = File(p.join(dir.path, 'nusa_kasir.sqlite'));
-    if (await pending.exists()) {
-      await pending.copy(target.path);
-      await pending.delete();
+    if (!await pending.exists()) {
+      await SecureStore.clearPendingRestore();
+      return;
     }
+
+    final bytes = await pending.readAsBytes();
+
+    // Try NUS1 archive format first (new — includes images)
+    final files = BackupCrypto.unpackFiles(bytes);
+
+    var imageCount = 0;
+    for (final entry in files.entries) {
+      final dest = File(p.join(dir.path, entry.key));
+      await dest.writeAsBytes(entry.value, flush: true);
+      if (entry.key != 'nusa_kasir.sqlite') imageCount++;
+    }
+    if (imageCount > 0) {
+      debugPrint('[Restore] Extracted $imageCount product images');
+    }
+
+    await pending.delete();
     await SecureStore.clearPendingRestore();
-  } catch (_) {
+  } catch (e) {
+    debugPrint('[Restore] _applyPendingRestore error: $e');
     await SecureStore.clearPendingRestore();
   }
 }

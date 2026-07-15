@@ -24,12 +24,14 @@ class PinDialog extends StatefulWidget {
   final String employeeName;
   final String employeeRole;
   final String correctPin;
+  final bool showRemember;
 
   const PinDialog({
     super.key,
     required this.employeeName,
     required this.employeeRole,
     required this.correctPin,
+    this.showRemember = true,
   });
 
   /// Show the dialog. Returns [PinResult] or null if cancelled.
@@ -38,6 +40,7 @@ class PinDialog extends StatefulWidget {
     required String employeeName,
     required String employeeRole,
     required String correctPin,
+    bool showRemember = true,
   }) {
     return showDialog<PinResult>(
       context: context,
@@ -46,6 +49,7 @@ class PinDialog extends StatefulWidget {
         employeeName: employeeName,
         employeeRole: employeeRole,
         correctPin: correctPin,
+        showRemember: showRemember,
       ),
     );
   }
@@ -90,7 +94,7 @@ class _PinDialogState extends State<PinDialog>
   void _submit() {
     if (_ctrl.text.trim() == widget.correctPin) {
       Navigator.of(context).pop(
-        PinResult(success: true, remember: _remember),
+        PinResult(success: true, remember: widget.showRemember ? _remember : false),
       );
     } else {
       setState(() {
@@ -253,38 +257,41 @@ class _PinDialogState extends State<PinDialog>
 
               const SizedBox(height: 16),
 
-              // Remember checkbox
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: Checkbox(
-                      value: _remember,
-                      onChanged: (v) =>
-                          setState(() => _remember = v ?? false),
-                      activeColor: NusaConfig.primaryColor,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5)),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () =>
-                        setState(() => _remember = !_remember),
-                    child: Text(
-                      'Ingat PIN selama 8 jam',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark
-                            ? NusaConfig.darkTextSecondary
-                            : NusaConfig.textSecondary,
+              // Remember checkbox (only for login, not for buka kasir PIN re-entry)
+              if (widget.showRemember) ...[
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: Checkbox(
+                        value: _remember,
+                        onChanged: (v) =>
+                            setState(() => _remember = v ?? false),
+                        activeColor: NusaConfig.primaryColor,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5)),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () =>
+                          setState(() => _remember = !_remember),
+                      child: Text(
+                        'Ingat PIN selama 8 jam',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark
+                              ? NusaConfig.darkTextSecondary
+                              : NusaConfig.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
 
               const SizedBox(height: 24),
 

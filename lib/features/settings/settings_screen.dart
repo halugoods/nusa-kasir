@@ -13,6 +13,7 @@ import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/features/settings/backup_sheet.dart';
 import 'package:nusa_kasir/features/settings/printer_settings_sheet.dart';
 import 'package:nusa_kasir/core/services/update_service.dart';
+import 'package:nusa_kasir/data/repositories/role_repository.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -328,6 +329,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: 24),
               _sectionHeader('DATA'),
+              // Kelola Role/Jabatan
+              NusaCard(
+                InkWell(
+                  onTap: () => _showManageRoles(),
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Icon(Icons.admin_panel_settings, color: NusaConfig.accentPurple),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Kelola Role & Jabatan',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                              SizedBox(height: 4),
+                              Text('Tambah, edit, atau hapus role karyawan',
+                                  style: TextStyle(
+                                      fontSize: 13, color: NusaConfig.textSecondary)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               NusaCard(
                 InkWell(
                   onTap: () => showBackupSheet(context, ref),
@@ -450,6 +483,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _checkUpdate() async {
+    final mountedCheck = mounted;
+    if (!mountedCheck) return;
+
     setState(() => _checkingUpdate = true);
     final info = await UpdateService.checkForUpdate();
     if (mounted) {
@@ -459,6 +495,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       });
       if (info.hasUpdate) {
         _showUpdateDialog();
+      } else if (info.error != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(info.error!),
+              backgroundColor: Colors.orange.shade700,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Aplikasi sudah versi terbaru ✨'),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
@@ -588,6 +646,234 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       // ignore: avoid_print
       print('[Settings] Gagal buka URL: $e');
     }
+  }
+
+  // ── Kelola Role / Jabatan ─────────────────────────────────
+
+  Future<void> _showManageRoles() async {
+    final roleRepo = RoleRepository();
+    final roles = await roleRepo.getRoles();
+
+    if (!mounted) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSt) {
+          return AlertDialog(
+            title: const Text('Kelola Role & Jabatan',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // List existing roles
+                  ...roles.map((r) {
+                    final name = r['name'] as String;
+                    final color = Color(r['color'] as int);
+                    final isDefault = RoleRepository.defaultRoleNames.contains(name);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32, height: 32,
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(Icons.badge, size: 18, color: color),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(name,
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                            ),
+                            if (!isDefault)
+                              GestureDetector(
+                                onTap: () async {
+                                  Navigator.of(ctx).pop();
+                                  await _showRoleForm(roleRepo, existing: r);
+                                  if (mounted) _showManageRoles();
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: Icon(Icons.edit, size: 18, color: NusaConfig.textSecondary),
+                                ),
+                              ),
+                            if (!isDefault)
+                              GestureDetector(
+                                onTap: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: ctx,
+                                    builder: (_) => AlertDialog(
+                                      title: const Text('Hapus Role'),
+                                      content: Text('Hapus role "$name"? Karyawan dg role ini akan perlu diubah manual.'),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Batal')),
+                                        TextButton(
+                                          onPressed: () => Navigator.of(ctx).pop(true),
+                                          child: const Text('Hapus', style: TextStyle(color: NusaConfig.primaryColor)),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirm == true) {
+                                    await roleRepo.deleteRole(name);
+                                    if (mounted) {
+                                      Navigator.of(ctx).pop();
+                                      _showManageRoles();
+                                    }
+                                  }
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: Icon(Icons.delete_outline, size: 18, color: NusaConfig.primaryColor),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Tutup')),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.of(ctx).pop();
+                  await _showRoleForm(roleRepo);
+                  if (mounted) _showManageRoles();
+                },
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Tambah Role'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: NusaConfig.primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showRoleForm(RoleRepository roleRepo, {Map<String, dynamic>? existing}) async {
+    final isEdit = existing != null;
+    final nameCtrl = TextEditingController(text: existing?['name'] as String?);
+    var selectedColor = existing != null ? (existing['color'] as int) : 0xFF3B82F6;
+    final accessList = <String>[];
+    if (existing != null) {
+      accessList.addAll((existing['access'] as List).cast<String>());
+    }
+
+    final allScreens = [
+      'home', 'kasir', 'produk', 'stok', 'transaksi', 'pelanggan',
+      'promo', 'laporan', 'presensi', 'karyawan', 'keuangan',
+      'pengaturan', 'supplier', 'spreadsheet', 'pesanan_online', 'ai_chat',
+    ];
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          title: Text(isEdit ? 'Edit Role' : 'Tambah Role Baru',
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                NusaInput('Nama Role', controller: nameCtrl),
+                const SizedBox(height: 12),
+                const Text('Warna', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8, runSpacing: 8,
+                  children: [0xFFE63946, 0xFF3B82F6, 0xFF10B981, 0xFF8B5CF6, 0xFFF59E0B, 0xFFEC4899, 0xFF6366F1, 0xFF14B8A6]
+                      .map((c) => GestureDetector(
+                        onTap: () => setSt(() => selectedColor = c),
+                        child: Container(
+                          width: 36, height: 36,
+                          decoration: BoxDecoration(
+                            color: Color(c),
+                            borderRadius: BorderRadius.circular(10),
+                            border: selectedColor == c
+                                ? Border.all(color: Colors.black, width: 3)
+                                : null,
+                          ),
+                        ),
+                      ))
+                      .toList(),
+                ),
+                const SizedBox(height: 16),
+                const Text('Akses Menu',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 8),
+                ...allScreens.map((s) => CheckboxListTile(
+                  title: Text(s, style: const TextStyle(fontSize: 13)),
+                  value: accessList.contains(s),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  onChanged: (v) {
+                    setSt(() {
+                      if (v == true) {
+                        accessList.add(s);
+                      } else {
+                        accessList.remove(s);
+                      }
+                    });
+                  },
+                )),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Batal')),
+            ElevatedButton(
+              onPressed: () async {
+                final name = nameCtrl.text.trim();
+                if (name.isEmpty) return;
+                if (isEdit) {
+                  await roleRepo.updateRole(
+                      existing['name'] as String, name, selectedColor, accessList);
+                } else {
+                  await roleRepo.addRole(name, selectedColor, accessList);
+                }
+                if (mounted) Navigator.of(ctx).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: NusaConfig.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _themeChip(String label, String mode, IconData icon) {

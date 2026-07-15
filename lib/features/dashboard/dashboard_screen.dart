@@ -270,6 +270,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       employeeName: emp.name,
       employeeRole: emp.role,
       correctPin: emp.pin,
+      showRemember: false,
     );
 
     if (result == null || !result.success) {
@@ -761,57 +762,71 @@ class _MenuItem extends StatelessWidget {
     this.onTap,
   });
 
+  static const _iconColors = {
+    'product': NusaConfig.accentGreen,
+    'inventory': Color(0xFF6366F1),
+    'transaction': Color(0xFF3B82F6),
+    'customer': Color(0xFFEC4899),
+    'promotion': NusaConfig.accentGold,
+    'finance': Color(0xFF14B8A6),
+    'settings': Color(0xFF6B7280),
+    'notification': NusaConfig.primaryColor,
+    'table': NusaConfig.accentGreen,
+    'supplier': Color(0xFFF97316),
+    'employee': NusaConfig.accentPurple,
+    'online': Color(0xFF0EA5E9),
+    'ai': Color(0xFFD946EF),
+  };
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isLocked = access == '🔒';
-    final isPinGuard = access == '🔐';
+    final iconColor = _iconColors[icon] ?? NusaConfig.primaryColor;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
         decoration: BoxDecoration(
           color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isLocked
-                ? (isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor)
-                : (isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+            color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor,
           ),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Color(0x0A111827),
-              blurRadius: 2,
-              offset: Offset(0, 1),
+              color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon with access overlay
+            // Icon
             Stack(
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     color: isLocked
-                        ? (isDark ? NusaConfig.darkSurface2 : const Color(0xFFE5E7EB))
-                        : NusaConfig.primaryColor,
+                        ? (isDark ? NusaConfig.darkSurface2 : const Color(0xFFF3F4F6))
+                        : iconColor.withValues(alpha: 0.12),
                   ),
                   alignment: Alignment.center,
                   child: MenuIcon(
                     name: icon,
                     color: isLocked
                         ? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)
-                        : Colors.white,
+                        : iconColor,
                   ),
                 ),
                 // Lock badge
-                if (isLocked || isPinGuard)
+                if (isLocked)
                   Positioned(
                     right: -2,
                     bottom: -2,
@@ -819,27 +834,22 @@ class _MenuItem extends StatelessWidget {
                       width: 18,
                       height: 18,
                       decoration: BoxDecoration(
-                        color: isPinGuard
-                            ? NusaConfig.accentGold
-                            : NusaConfig.primaryColor,
+                        color: NusaConfig.primaryColor,
                         shape: BoxShape.circle,
                         border: Border.all(color: isDark ? NusaConfig.darkSurface : Colors.white, width: 1.5),
                       ),
                       alignment: Alignment.center,
-                      child: Text(
-                        isPinGuard ? '🔐' : '🔒',
-                        style: const TextStyle(fontSize: 7),
-                      ),
+                      child: const Text('🔒', style: TextStyle(fontSize: 7)),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               label,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
                 color: isLocked
                     ? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)
                     : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
@@ -918,32 +928,74 @@ class _StatMiniCard extends StatelessWidget {
   }
 }
 
-/// "Buka Kasir" CTA button.
+/// "Buka Kasir" CTA card — subtle gradient card, not just a flat button.
 class _BukaKasirCTA extends StatelessWidget {
   final VoidCallback? onTap;
   const _BukaKasirCTA({this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: onTap,
-        icon: const Icon(Icons.calculate_outlined, size: 20),
-        label: const Text('Buka Kasir'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: NusaConfig.primaryColor,
-          foregroundColor: Colors.white,
-          elevation: 6,
-          shadowColor: NusaConfig.primaryColor.withValues(alpha: 0.28),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              NusaConfig.primaryColor,
+              NusaConfig.primaryDark,
+            ],
           ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
+          boxShadow: [
+            BoxShadow(
+              color: NusaConfig.primaryColor.withValues(alpha: 0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.calculate_outlined, size: 22, color: Colors.white),
+            ),
+            const SizedBox(width: 14),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Buka Kasir',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  'Mulai sesi transaksi',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white70),
+          ],
         ),
       ),
     );

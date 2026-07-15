@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -30,8 +31,12 @@ class OnlineOrderService {
     String? slug,
   }) async {
     final sid = await storeId;
-    if (sid == null) return false;
+    if (sid == null) {
+      debugPrint('[OnlineOrderService] upsertStore: no store_id (activation key missing)');
+      return false;
+    }
     try {
+      debugPrint('[OnlineOrderService] upsertStore: invoking online-store edge function...');
       final res = await supabase.functions.invoke('online-store', body: {
         'action': 'upsert_store',
         'store_id': sid,
@@ -43,8 +48,10 @@ class OnlineOrderService {
         'open_hours': openHours ?? '08:00 - 21:00',
         'is_active': isActive,
       });
+      debugPrint('[OnlineOrderService] upsertStore: status=${res.status}');
       return res.status < 400;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[OnlineOrderService] upsertStore ERROR: $e');
       return false;
     }
   }

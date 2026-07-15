@@ -5,6 +5,7 @@ import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
+import 'package:nusa_kasir/data/repositories/role_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
@@ -76,7 +77,7 @@ class EmployeesScreen extends ConsumerStatefulWidget {
 }
 
 class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
-  final _roles = const ['Owner', 'Manager', 'Kasir', 'Gudang', 'Finance'];
+  List<String> _roles = const ['Owner', 'Manager', 'Kasir', 'Gudang', 'Finance'];
   List<Employee> _employees = [];
   bool _loading = false;
   final _searchCtrl = TextEditingController();
@@ -87,6 +88,15 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     super.initState();
     _searchCtrl.addListener(() => setState(() => _query = _searchCtrl.text.toLowerCase()));
     _load();
+    _loadRoles();
+  }
+
+  Future<void> _loadRoles() async {
+    final repo = RoleRepository();
+    final roles = await repo.getRoles();
+    if (mounted) {
+      setState(() => _roles = roles.map((r) => r['name'] as String).toList());
+    }
   }
 
   @override
@@ -138,7 +148,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                   obscure: true),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: role,
+                value: _roles.contains(role) ? role : _roles.first,
                 decoration: InputDecoration(
                   labelText: 'Role',
                   filled: true,

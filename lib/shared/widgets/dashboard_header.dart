@@ -30,72 +30,30 @@ class DashboardHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Left: Logo + user info
+          // Left: NUSA wordmark + subtitle only (user info shown in ProfileStatsCard below)
           Expanded(
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // NUSA wordmark + divider + app name
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'NUSA',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                        color: NusaConfig.primaryColor,
-                        height: 1,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Aplikasi Kasir untuk Toko Kelontong',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
+                Text(
+                  'NUSA',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    color: NusaConfig.primaryColor,
+                    height: 1,
+                  ),
                 ),
-                // Vertical divider
-                Container(
-                  height: 20,
-                  width: 1,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                  color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
-                ),
-                // User info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        userName,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
-                          height: 1.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        '$role • $branch',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
-                          height: 1.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                SizedBox(height: 2),
+                Text(
+                  'Aplikasi Kasir untuk Toko Kelontong',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
+                    height: 1.3,
                   ),
                 ),
               ],

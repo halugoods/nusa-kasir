@@ -14,6 +14,7 @@ class UpdateInfo {
   final String? downloadUrl;
   final String? changelog;
   final int? fileSizeBytes;
+  final String? error; // non-null means check failed
 
   const UpdateInfo({
     required this.hasUpdate,
@@ -22,15 +23,20 @@ class UpdateInfo {
     this.downloadUrl,
     this.changelog,
     this.fileSizeBytes,
+    this.error,
   });
 
   factory UpdateInfo.noUpdate() => const UpdateInfo(hasUpdate: false);
+  factory UpdateInfo.error(String msg) => UpdateInfo(hasUpdate: false, error: msg);
 }
 
 /// Checks GitHub Releases for newer versions.
 ///
-/// Release tags must follow the format `v1.0.0+2` where the suffix
-/// after `+` is the build number (must be an integer > current build).
+/// Release tags should follow the format `v1.0.0+2` where the suffix
+/// after `+` is the build number.
+///
+/// Falls back to plain semver (`v1.0.0` → build number from release ID)
+/// and also tries `v1.0.0+2` without `v` prefix.
 class UpdateService {
   static const _apiBase = 'https://api.github.com';
   static const _userAgent = 'nusa-kasir-updater';
@@ -49,14 +55,25 @@ class UpdateService {
       req.headers.set(HttpHeaders.userAgentHeader, _userAgent);
       final res = await req.close().timeout(_timeout);
 
-      if (res.statusCode != 200) return UpdateInfo.noUpdate();
+      if (res.statusCode == 403 || res.statusCode == 429) {
+        return UpdateInfo.error('Terlalu banyak permintaan. Coba lagi nanti.');
+      }
+      if (res.statusCode == 404) {
+        return UpdateInfo.error('Repository tidak ditemukan.');
+      }
+      if (res.statusCode != 200) {
+        return UpdateInfo.error('Gagal memeriksa update (${res.statusCode}).');
+      }
 
       final body = await res.transform(utf8.decoder).join();
       final json = jsonDecode(body) as Map<String, dynamic>;
 
       final tag = (json['tag_name'] as String?) ?? '';
-      final parsed = _parseTag(tag);
-      if (parsed == null) return UpdateInfo.noUpdate();
+      final releaseId = (json['id'] as int?) ?? 0;
+      final parsed = _parseTag(tag, fallbackBuildNumber: releaseId);
+      if (parsed == null) {
+        return UpdateInfo.error('Format versi tidak dikenal: $tag');
+      }
 
       final (version, buildNumber) = parsed;
 
@@ -86,18 +103,36 @@ class UpdateService {
         fileSizeBytes: fileSizeBytes,
       );
     } on TimeoutException {
-      return UpdateInfo.noUpdate();
-    } catch (_) {
-      return UpdateInfo.noUpdate();
+      return UpdateInfo.error('Waktu koneksi habis. Periksa koneksi internet.');
+    } catch (e) {
+      debugPrint('[UpdateService] checkForUpdate error: $e');
+      return UpdateInfo.error('Tidak dapat memeriksa update. Periksa koneksi internet.');
     }
   }
 
   /// Parses a tag like "v1.2.3+5" → (version, buildNumber).
-  /// Returns null if the tag doesn't match the expected format.
-  static (String, int)? _parseTag(String tag) {
-    final m = RegExp(r'^v?(\d+\.\d+\.\d+)\+(\d+)$').firstMatch(tag.trim());
-    if (m == null) return null;
-    return (m.group(1)!, int.parse(m.group(2)!));
+  ///
+  /// Tries multiple formats in order:
+  ///   1. `v1.2.3+5` — version + explicit build number
+  ///   2. `1.2.3+5` — same without 'v' prefix
+  ///   3. `v1.2.3`  — plain semver, uses [fallbackBuildNumber] as build
+  ///   4. `1.2.3`   — same without 'v' prefix
+  ///
+  /// Returns null if no format matches.
+  static (String, int)? _parseTag(String tag, {int fallbackBuildNumber = 0}) {
+    final t = tag.trim();
+
+    // Try vX.Y.Z+N or X.Y.Z+N
+    var m = RegExp(r'^v?(\d+\.\d+\.\d+)\+(\d+)$').firstMatch(t);
+    if (m != null) return (m.group(1)!, int.parse(m.group(2)!));
+
+    // Try plain vX.Y.Z or X.Y.Z — use release ID as build number
+    m = RegExp(r'^v?(\d+\.\d+\.\d+)$').firstMatch(t);
+    if (m != null && fallbackBuildNumber > 0) {
+      return (m.group(1)!, fallbackBuildNumber);
+    }
+
+    return null;
   }
 
   /// Formats file size for display.
