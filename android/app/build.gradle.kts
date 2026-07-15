@@ -2,8 +2,7 @@ plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    // Google Services — UNCOMMENT setelah google-services.json ditaruh di android/app/
-    // id("com.google.gms.google-services")
+    id("com.google.gms.google-services")
 }
 
 android {

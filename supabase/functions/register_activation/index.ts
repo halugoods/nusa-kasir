@@ -69,12 +69,36 @@ Deno.serve(async (req: Request) => {
     if (!key) {
       const { data: license } = await supabase
         .from('licenses')
-        .select('id, key, serial, status, google_user_id')
+        .select('id, key, serial, status, google_user_id, expires_at')
         .eq('google_user_id', googleUserId)
         .maybeSingle();
 
       if (!license) {
         return json({ has_license: false }, 200);
+      }
+
+      // Block revoked/cancelled/suspended licenses — treat as no license
+      if (license.status === 'Cancelled' || license.status === 'Suspended' || license.status === 'Expired') {
+        return json({
+          has_license: false,
+          status: license.status,
+          message: license.status === 'Cancelled'
+            ? 'Lisensi Anda telah dibatalkan.'
+            : license.status === 'Suspended'
+            ? 'Lisensi Anda sedang dinonaktifkan.'
+            : 'Lisensi Anda telah kedaluwarsa.',
+        }, 200);
+      }
+
+      // Check if trial has expired (via expires_at)
+      const isExpired = license.expires_at && new Date(license.expires_at) < new Date();
+      if (isExpired && license.status === 'Trial') {
+        return json({
+          has_license: false,
+          status: 'Expired',
+          is_expired: true,
+          message: 'Masa trial Anda telah berakhir. Silakan beli lisensi penuh.',
+        }, 200);
       }
 
       return json({
@@ -83,6 +107,8 @@ Deno.serve(async (req: Request) => {
         status: license.status,
         key: license.key,
         serial: license.serial,
+        expires_at: license.expires_at,
+        is_expired: isExpired,
       }, 200);
     }
 
@@ -99,12 +125,18 @@ Deno.serve(async (req: Request) => {
     // 2. Check license
     const { data: lic } = await supabase
       .from('licenses')
-      .select('id,status,google_user_id')
+      .select('id,status,google_user_id,expires_at')
       .eq('key', key)
       .maybeSingle();
 
     if (!lic) return json({ error: 'not_found' }, 404);
-    if (lic.status === 'revoked') return json({ error: 'revoked', message: 'Key ini sudah dibatalkan' }, 403);
+    if (lic.status === 'Cancelled') return json({ error: 'cancelled', message: 'Key ini sudah dibatalkan' }, 403);
+    if (lic.status === 'Suspended') return json({ error: 'suspended', message: 'Key ini sedang dinonaktifkan' }, 403);
+
+    // Accept both 'Generated' and 'Trial' statuses for activation
+    if (lic.status !== 'Generated' && lic.status !== 'Trial') {
+      return json({ error: 'already_activated', message: 'Key ini sudah diaktivasi' }, 409);
+    }
 
     // 3. Check can_activate
     const can = await supabase.rpc('can_activate', {
@@ -122,12 +154,12 @@ Deno.serve(async (req: Request) => {
     if (!lic.google_user_id) {
       await supabase
         .from('licenses')
-        .update({ google_user_id: googleUserId, status: 'activated' })
+        .update({ google_user_id: googleUserId, status: 'Active' })
         .eq('id', lic.id);
-    } else if (lic.status !== 'activated') {
+    } else if (lic.status !== 'Active') {
       await supabase
         .from('licenses')
-        .update({ status: 'activated' })
+        .update({ status: 'Active' })
         .eq('id', lic.id);
     }
 
@@ -141,13 +173,13 @@ Deno.serve(async (req: Request) => {
       });
 
     if (insertErr && insertErr.code === '23505') {
-      return json({ success: true, message: 'Sudah teraktivasi sebelumnya' }, 200);
+      return json({ success: true, message: 'Sudah teraktivasi sebelumnya', expires_at: lic.expires_at }, 200);
     }
     if (insertErr) {
       return json({ error: 'db_error', message: insertErr.message }, 500);
     }
 
-    return json({ success: true }, 200);
+    return json({ success: true, expires_at: lic.expires_at }, 200);
   } catch (e) {
     return json({ error: 'server_error', message: String(e) }, 500);
   }
