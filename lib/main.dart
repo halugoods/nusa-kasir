@@ -101,9 +101,6 @@ void main() async {
   // Apply pending device-migration backup BEFORE opening the database.
   await _applyPendingRestore();
 
-  // Cloud sync: check if cloud backup is newer than local on startup
-  await _syncCloudOnStartup();
-
   // Register background tasks
   registerStokCheck();
   registerOnlineCheck();

@@ -93,9 +93,9 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
         final cloudSlug = store['slug'] as String?;
         _storeUrl = 'https://nusa-online.vercel.app/toko/${cloudSlug ?? _slugify(_nameCtrl.text)}';
       }
+      // Note: if store is null (never saved), keep isActive = false — that's correct
     } catch (e) {
-      // ignore: avoid_print
-      print('[OnlineStoreSetup] Gagal memuat data Supabase: $e');
+      // Cached state preserved — don't reset _isActive on failed fetch
     }
 
     if (mounted) setState(() => _loading = false);

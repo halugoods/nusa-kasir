@@ -93,6 +93,15 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     return int.tryParse(v.trim());
   }
 
+  void _toggleBarcode(bool v) {
+    setState(() {
+      _barcodeOn = v;
+      if (v && _existing == null) {
+        _barcode = ActivationKey.generateSerial();
+      }
+    });
+  }
+
   Future<void> _pickImage() async {
     final result = await FilePicker.pickFiles(
       type: FileType.image,
@@ -277,8 +286,20 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   const SizedBox(height: 16),
 
                   // ── Barcode toggle ──
-                  NusaCard(
-                    Column(
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? NusaConfig.darkSurface
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? NusaConfig.darkBorder
+                            : const Color(0xFFF3F4F6),
+                      ),
+                    ),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
@@ -304,17 +325,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                 ),
                                 const SizedBox(width: 4),
                                 Switch(
+                                  key: const ValueKey('barcode_switch'),
                                   value: _barcodeOn,
                                   activeColor: NusaConfig.primaryColor,
-                                  onChanged: (v) {
-                                    setState(() {
-                                      _barcodeOn = v;
-                                      if (v && _existing == null) {
-                                        _barcode =
-                                            ActivationKey.generateSerial();
-                                      }
-                                    });
-                                  },
+                                  onChanged: _toggleBarcode,
                                 ),
                               ],
                             ),
@@ -339,8 +353,20 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   const SizedBox(height: 12),
 
                   // ── Toko Online toggle ──
-                  NusaCard(
-                    Column(
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? NusaConfig.darkSurface
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? NusaConfig.darkBorder
+                            : const Color(0xFFF3F4F6),
+                      ),
+                    ),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
@@ -366,6 +392,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                 ),
                                 const SizedBox(width: 4),
                                 Switch(
+                                  key: const ValueKey('online_switch'),
                                   value: _isOnline,
                                   activeColor: NusaConfig.primaryColor,
                                   onChanged: (v) => setState(() => _isOnline = v),
