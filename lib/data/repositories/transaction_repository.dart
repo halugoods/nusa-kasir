@@ -67,6 +67,26 @@ class TransactionRepository {
   Future<List<Transaction>> getTransactions() =>
       db.select(db.transactions).get();
 
+  /// Get transactions ordered by date descending with customer name/phone joined.
+  /// Returns maps with all Transaction fields plus 'customerName' and 'customerPhone'.
+  Future<List<Map<String, dynamic>>> getTransactionsWithCustomer() async {
+    final query = db.select(db.transactions).join([
+      leftOuterJoin(db.customers, db.customers.id.equalsExp(db.transactions.customerId)),
+    ]);
+    query.orderBy([OrderingTerm(expression: db.transactions.date, mode: OrderingMode.desc)]);
+
+    final rows = await query.get();
+    return rows.map((row) {
+      final tx = row.readTable(db.transactions);
+      final cust = row.readTableOrNull(db.customers);
+      return {
+        ...tx.toJson(),
+        'customerName': cust?.name,
+        'customerPhone': cust?.phone,
+      };
+    }).toList();
+  }
+
   Future<List<Transaction>> getToday() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

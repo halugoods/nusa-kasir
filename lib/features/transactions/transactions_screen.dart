@@ -5,6 +5,8 @@ import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
+import 'package:nusa_kasir/data/repositories/customer_repository.dart';
+import 'package:nusa_kasir/features/checkout/receipt_sheet.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
@@ -120,6 +122,45 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         TopToast.success(context, 'Transaksi #${tx.invoice} berhasil di-void');
         setState(() => _refreshKey++);
       }
+    }
+  }
+
+  Future<void> _reprintTransaction(Transaction tx) async {
+    // Look up customer name/phone if customerId exists
+    String? custName;
+    String? custPhone;
+    if (tx.customerId != null) {
+      final custRepo = CustomerRepository(ref.read(databaseProvider));
+      final cust = await custRepo.byId(tx.customerId!);
+      if (cust != null) {
+        custName = cust.name;
+        custPhone = cust.phone;
+      }
+    }
+
+    // Parse items JSON
+    final rawItems = _parseItems(tx.items);
+    final dateStr =
+        '${tx.date.day.toString().padLeft(2, '0')}/${tx.date.month.toString().padLeft(2, '0')}/${tx.date.year} '
+        '${tx.date.hour.toString().padLeft(2, '0')}:${tx.date.minute.toString().padLeft(2, '0')}';
+
+    if (mounted) {
+      await ReceiptSheet.show(
+        context,
+        sheet: ReceiptSheet.fromMaps(
+          rawItems: rawItems,
+          total: tx.total,
+          discount: tx.discount,
+          paymentMethod: tx.paymentMethod,
+          cashGiven: tx.cashGiven,
+          cashReturn: tx.cashReturn,
+          cashierName: tx.cashierName,
+          customerName: custName,
+          customerPhone: custPhone,
+          invoice: tx.invoice,
+          dateStr: dateStr,
+        ),
+      );
     }
   }
 
@@ -249,10 +290,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                           itemCount: list.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (_, i) => _TransactionCard(
-                            tx: list[i],
-                            onVoid: () => _voidTransaction(list[i]),
-                          ),
+                        itemBuilder: (_, i) => _TransactionCard(
+                          tx: list[i],
+                          onVoid: () => _voidTransaction(list[i]),
+                          onReprint: () => _reprintTransaction(list[i]),
+                        ),
                         ),
                       ),
                     ],
@@ -291,7 +333,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 class _TransactionCard extends StatefulWidget {
   final Transaction tx;
   final VoidCallback onVoid;
-  const _TransactionCard({required this.tx, required this.onVoid});
+  final VoidCallback onReprint;
+  const _TransactionCard({required this.tx, required this.onVoid, required this.onReprint});
 
   @override
   State<_TransactionCard> createState() => _TransactionCardState();
@@ -469,6 +512,25 @@ class _TransactionCardState extends State<_TransactionCard> {
                   ),
                 ),
               ],
+              // Reprint receipt button (always visible in expanded view)
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: widget.onReprint,
+                  icon: const Icon(Icons.receipt_long, size: 18),
+                  label: const Text('Lihat / Cetak Struk',
+                      style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF3B82F6),
+                    side: const BorderSide(color: Color(0xFF3B82F6)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
             ],
           ],
         ),

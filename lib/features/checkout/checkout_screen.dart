@@ -251,28 +251,46 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       if (!mounted) return;
 
-      // Show receipt sheet and wait for it to be dismissed
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (ctx) => ReceiptSheet(
-          items: cart,
-          total: _total,
-          discount: _totalDiscount,
-          paymentMethod: _paymentMethod,
-          cashGiven: cashGiven,
-          cashReturn: cashReturn,
-          cashierName: cashierName,
-        ),
-      );
-      // Return to POS screen after receipt is dismissed
-      if (mounted && widget.sessionId != null) {
-        context.go('/kasir?sessionId=${widget.sessionId}');
-      } else if (mounted) {
-        context.go('/home');
+      // Build receipt data
+      final now = DateTime.now();
+      final dateStr = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} '
+          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+      final invoice = 'INV${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}'
+          '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+
+      // Show receipt as centered dialog (GAS thermal style)
+      if (mounted) {
+        await ReceiptSheet.show(
+          context,
+          sheet: ReceiptSheet.fromCart(
+            cartItems: cart,
+            total: _total,
+            discount: _totalDiscount,
+            paymentMethod: _paymentMethod,
+            cashGiven: cashGiven,
+            cashReturn: cashReturn,
+            cashierName: cashierName,
+            customerName: _selectedCustomer?.name,
+            customerPhone: _selectedCustomer?.phone,
+            invoice: invoice,
+            dateStr: dateStr,
+          ),
+          onDismiss: () {
+            // Return to POS screen after receipt is dismissed
+            if (mounted && widget.sessionId != null) {
+              context.go('/kasir?sessionId=${widget.sessionId}');
+            } else if (mounted) {
+              context.go('/home');
+            }
+          },
+        );
+      } else {
+        // Return to POS screen if not mounted
+        if (widget.sessionId != null) {
+          context.go('/kasir?sessionId=${widget.sessionId}');
+        } else {
+          context.go('/home');
+        }
       }
     } catch (e) {
       if (mounted) {
