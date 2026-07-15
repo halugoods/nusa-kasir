@@ -1,9 +1,10 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/core/theme/nusa_theme.dart';
 import 'package:nusa_kasir/core/providers.dart';
-import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/core/activation/activation_screen.dart';
 import 'package:nusa_kasir/features/auth/login_screen.dart';
 import 'package:nusa_kasir/features/onboarding/onboarding_screen.dart';
@@ -138,6 +139,8 @@ class NusaApp extends ConsumerStatefulWidget {
 class _NusaAppState extends ConsumerState<NusaApp> with WidgetsBindingObserver {
   late final GoRouter _router = buildRouter(widget.initialLocation);
   bool _didUpload = false;
+  Timer? _debounceTimer;
+  DateTime? _lastUploadTime;
 
   @override
   void initState() {
@@ -148,6 +151,7 @@ class _NusaAppState extends ConsumerState<NusaApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
@@ -155,24 +159,39 @@ class _NusaAppState extends ConsumerState<NusaApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused && !_didUpload) {
       _didUpload = true;
-      _autoUploadBackup();
+      _scheduleBackup();
     } else if (state == AppLifecycleState.resumed) {
       _didUpload = false;
     }
   }
 
-  Future<void> _autoUploadBackup() async {
+  /// Schedule a cloud backup with 30s debounce.
+  /// Backups use Google user ID for encryption — activation key not needed.
+  void _scheduleBackup() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(seconds: 30), () async {
+      await _doBackup();
+    });
+  }
+
+  Future<void> _doBackup() async {
     try {
-      final activationKey = await SecureStore.getActivation();
-      if (activationKey == null) return;
-      final repo = ref.read(activationRepoProvider);
-      final ok = await repo.uploadBackup(activationKey);
-      if (ok) {
-        await SecureStore.saveLastBackupTime(DateTime.now());
+      // Only backup if online
+      try {
+        final result = await InternetAddress.lookup('supabase.co');
+        if (result.isEmpty) return;
+      } catch (_) {
+        return; // offline
       }
-    } catch (_) {
-      // Silent — don't interrupt the user
-    }
+      // Don't spam — max once per 5 minutes
+      if (_lastUploadTime != null &&
+          DateTime.now().difference(_lastUploadTime!) < const Duration(minutes: 5)) {
+        return;
+      }
+      final repo = ref.read(activationRepoProvider);
+      final ok = await repo.uploadBackupNow();
+      if (ok) _lastUploadTime = DateTime.now();
+    } catch (_) {}
   }
 
   ThemeMode _toThemeMode(String mode) {

@@ -113,17 +113,22 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     if (mounted) setState(() => _screen = 'pin');
   }
 
-  /// Auto-restore cloud backup without dialog. Returns true if restore was triggered.
+  /// Auto-restore cloud backup if cloud is newer than local.
+  /// Uses Google user ID for decryption — no activation key needed.
   Future<bool> _autoRestoreIfNeeded() async {
-    final key = await SecureStore.getActivation();
-    if (key == null) return false;
     final repo = ref.read(activationRepoProvider);
     final hasBak = await repo.hasBackup();
     if (!hasBak) return false;
-    // Auto download + stage pending restore
-    final ok = await repo.downloadAndRestore(key);
+
+    // Compare timestamps — only restore if cloud is newer
+    final localTime = await SecureStore.getLastBackupTime();
+    final cloudTime = await repo.getBackupTimestamp();
+    if (cloudTime != null && localTime != null && !cloudTime.isAfter(localTime)) {
+      return false; // local is same or newer
+    }
+
+    final ok = await repo.restoreFromCloud();
     if (ok) {
-      // Brief notification then restart
       if (mounted) {
         await showDialog(
           context: context,
@@ -134,11 +139,11 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
               children: [
                 Icon(Icons.cloud_download_outlined, color: NusaConfig.primaryColor, size: 28),
                 SizedBox(width: 10),
-                Text('Memulihkan Data', style: TextStyle(fontSize: 17)),
+                Text('Menyinkronkan Data', style: TextStyle(fontSize: 17)),
               ],
             ),
             content: const Text(
-              'Data toko sebelumnya ditemukan di cloud.\nSedang dipulihkan...',
+              'Data toko ditemukan di cloud.\nSedang dipulihkan...',
               style: TextStyle(fontSize: 14, height: 1.5),
             ),
             actions: [
@@ -379,21 +384,20 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     }
   }
 
-  // ── Welcome Screen (first screen — user chooses to sign in) ────────
+  // ── Welcome Screen ──────────────────────────────────────────────────
 
   Widget _buildWelcomeScreen(bool isDark) {
     return Scaffold(
-      backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
+      backgroundColor: isDark ? NusaConfig.darkBackground : const Color(0xFFF5F5F5),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
             child: Column(
               children: [
-                const SizedBox(height: 40),
-                // Logo
+                // Logo + Brand
                 Container(
-                  width: 88, height: 88,
+                  width: 72, height: 72,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const LinearGradient(
@@ -402,167 +406,101 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                     boxShadow: [
                       BoxShadow(
                         color: NusaConfig.primaryColor.withValues(alpha: 0.35),
-                        blurRadius: 24,
-                        offset: const Offset(0, 10),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.store_rounded, color: Colors.white, size: 44),
+                  child: const Icon(Icons.store_rounded, color: Colors.white, size: 36),
                 ),
-                const SizedBox(height: 28),
-                // Brand
-                Text('NUSA', style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: NusaConfig.primaryColor, fontWeight: FontWeight.w800, letterSpacing: -1.5)),
-                const SizedBox(height: 6),
-                Text(NusaConfig.appSubtitle, textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                const SizedBox(height: 48),
+                const SizedBox(height: 20),
+                Text('NUSA', style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: NusaConfig.primaryColor, fontWeight: FontWeight.w800, letterSpacing: -1)),
+                const SizedBox(height: 4),
+                Text(NusaConfig.appSubtitle,
+                  style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                const SizedBox(height: 36),
 
-                // Google Sign-In button
-                SizedBox(
+                // ── Card ──
+                Container(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _startGoogleSignIn,
-                    icon: Image.asset(
-                      'assets/icons/google_logo.png',
-                      width: 22,
-                      height: 22,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 28, color: Color(0xFF4285F4)),
-                    ),
-                    label: const Text(
-                      'Masuk dengan Google',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF1F2937),
-                      elevation: 1,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(color: isDark ? NusaConfig.darkBorder : const Color(0xFFD1D5DB)),
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: isDark ? NusaConfig.darkSurface : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Akun Google Anda digunakan untuk verifikasi lisensi',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                ),
+                  child: Column(
+                    children: [
+                      Text('Masuk ke NUSA',
+                        style: TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.w700,
+                          color: isDark ? NusaConfig.darkTextPrimary : const Color(0xFF151717),
+                        )),
+                      const SizedBox(height: 4),
+                      Text('Gunakan akun Google untuk melanjutkan',
+                        style: TextStyle(fontSize: 13,
+                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                      const SizedBox(height: 24),
 
-                // Error message
-                if (_googleError != null) ...[
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: NusaConfig.primaryColor.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.error_outline, size: 20, color: NusaConfig.primaryColor.withValues(alpha: 0.7)),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(_googleError!, style: const TextStyle(color: NusaConfig.textSecondary, fontSize: 13)),
+                      // Google Sign-In button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          onPressed: _startGoogleSignIn,
+                          icon: Image.asset(
+                            'assets/icons/google_logo.png',
+                            width: 20, height: 20,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 24, color: Color(0xFF4285F4)),
+                          ),
+                          label: const Text('Masuk dengan Google',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: isDark ? NusaConfig.darkTextPrimary : const Color(0xFF151717),
+                            side: BorderSide(color: isDark ? NusaConfig.darkBorder : const Color(0xFFEDEDEF)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+
+                      // Error message
+                      if (_googleError != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: NusaConfig.primaryColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline, size: 18,
+                                color: NusaConfig.primaryColor.withValues(alpha: 0.7)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(_googleError!,
+                                  style: const TextStyle(fontSize: 12, color: NusaConfig.textSecondary)),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 40),
-                // Bottom text
-                Text('Belum punya akun?', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: _startGoogleSignIn,
-                  child: const Text('Daftar', style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: NusaConfig.primaryColor,
-                    decoration: TextDecoration.underline,
-                  )),
-                ),
-
-                const SizedBox(height: 48),
-                // Footer
-                Text('v${NusaConfig.appVersion}+${NusaConfig.appBuildNumber}',
-                  style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Google Sign-In Loading Screen (shown while signing in) ──────────
-
-  // ── Trial Expired Screen ─────────────────────────────────────────────
-
-  Widget _buildTrialExpiredScreen(bool isDark) {
-    return Scaffold(
-      backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                const SizedBox(height: 60),
-                Container(
-                  width: 80, height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.amber.shade100,
-                  ),
-                  child: Icon(Icons.timer_off_rounded, size: 40, color: Colors.amber.shade700),
-                ),
-                const SizedBox(height: 24),
-                Text('Masa Trial Habis', style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700, color: isDark ? Colors.white : NusaConfig.textPrimary)),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    _googleError ?? 'Masa trial 30 hari Anda telah berakhir.\nBeli lisensi seumur hidup untuk melanjutkan menggunakan NUSA Kasir.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, height: 1.6, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                    ],
                   ),
                 ),
+
                 const SizedBox(height: 32),
-                // Buy CTA → open landing page
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _openLandingPage,
-                    icon: const Icon(Icons.shopping_bag_outlined, size: 20),
-                    label: const Text('Beli Lisensi (Rp 199K)'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: NusaConfig.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Back to welcome
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: _startGoogleSignIn,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: const Text('Ganti Akun Google'),
-                  ),
-                ),
+                Text('v${NusaConfig.appVersion}+${NusaConfig.appBuildNumber}',
+                  style: TextStyle(fontSize: 11,
+                    color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
               ],
             ),
           ),
@@ -570,9 +508,10 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
       ),
     );
   }
+
+  // ── Google Sign-In Loading Screen ─────────────────────────────────────
 
   Widget _buildGoogleLoadingScreen(bool isDark) {
-    // Determine status text based on current phase
     final statusText = _googleLoading
         ? 'Menghubungkan ke Google...'
         : _googleError != null
@@ -580,29 +519,37 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
             : 'Memeriksa lisensi...';
 
     return Scaffold(
-      backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
+      backgroundColor: isDark ? NusaConfig.darkBackground : const Color(0xFFF5F5F5),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
               const SizedBox(height: 60),
-
               if (_googleError != null) ...[
-                // Error state — show error with retry
+                // Card error state
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(28),
                   decoration: BoxDecoration(
-                    color: NusaConfig.primaryColor.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
+                    color: isDark ? NusaConfig.darkSurface : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
-                      Icon(Icons.error_outline, size: 40, color: NusaConfig.primaryColor.withValues(alpha: 0.7)),
+                      Icon(Icons.error_outline, size: 40,
+                        color: NusaConfig.primaryColor.withValues(alpha: 0.7)),
                       const SizedBox(height: 12),
                       Text(_googleError!, textAlign: TextAlign.center,
                         style: const TextStyle(color: NusaConfig.textSecondary, fontSize: 14)),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
@@ -610,10 +557,10 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                           icon: const Icon(Icons.login, size: 20),
                           label: const Text('Login Google'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: NusaConfig.primaryColor,
+                            backgroundColor: const Color(0xFF151717),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                         ),
                       ),
@@ -621,10 +568,96 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                   ),
                 ),
               ] else ...[
-                // Loading state — fancy NUSA animation
                 NusaLoadingAnimation(statusText: statusText!),
               ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Trial Expired Screen ─────────────────────────────────────────────
+
+  Widget _buildTrialExpiredScreen(bool isDark) {
+    return Scaffold(
+      backgroundColor: isDark ? NusaConfig.darkBackground : const Color(0xFFF5F5F5),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+                Container(
+                  width: 72, height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.amber.shade100,
+                  ),
+                  child: Icon(Icons.timer_off_rounded, size: 36, color: Colors.amber.shade700),
+                ),
+                const SizedBox(height: 20),
+                Text('Masa Trial Habis', style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : NusaConfig.textPrimary)),
+                const SizedBox(height: 28),
+                // Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: isDark ? NusaConfig.darkSurface : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        _googleError ?? 'Masa trial 30 hari Anda telah berakhir.\nBeli lisensi seumur hidup untuk melanjutkan.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, height: 1.6,
+                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _openLandingPage,
+                          icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+                          label: const Text('Beli Lisensi (Rp 199K)'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: NusaConfig.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: _startGoogleSignIn,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: NusaConfig.textSecondary,
+                            side: const BorderSide(color: Color(0xFFEDEDEF)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: const Text('Ganti Akun Google'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -635,10 +668,10 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
 
   Widget _buildPinScreen(bool isDark) {
     return Scaffold(
-      backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
+      backgroundColor: isDark ? NusaConfig.darkBackground : const Color(0xFFF5F5F5),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
           child: Column(
             children: [
               const SizedBox(height: 40),
@@ -650,103 +683,126 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                     colors: [NusaConfig.primaryColor, NusaConfig.primaryDark],
                   ),
                   boxShadow: [
-                    BoxShadow(color: NusaConfig.primaryColor.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6)),
+                    BoxShadow(
+                      color: NusaConfig.primaryColor.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
                   ],
                 ),
-                child: const Icon(Icons.lock_rounded, color: Colors.white, size: 36),
+                child: const Icon(Icons.lock_rounded, color: Colors.white, size: 34),
               ),
-              const SizedBox(height: 20),
-              Text('Masuk ke NUSA', style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
-              )),
-              const SizedBox(height: 4),
-              Text('Masukkan PIN untuk melanjutkan',
-                style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
               const SizedBox(height: 32),
-
-              SizedBox(
-                width: 220,
-                child: TextField(
-                  controller: _pinCtrl,
-                  obscureText: true,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600, letterSpacing: 12),
-                  maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                  onSubmitted: (_) => _submitPin(),
-                  decoration: InputDecoration(
-                    counterText: '',
-                    filled: true,
-                    fillColor: isDark ? NusaConfig.darkSurface : Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+              // Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: isDark ? NusaConfig.darkSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 2),
-                    ),
-                  ),
+                  ],
                 ),
-              ),
-
-              if (_pinError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(_pinError!, style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13)),
-                ),
-
-              const SizedBox(height: 20),
-              // Remember checkbox
-              GestureDetector(
-                onTap: () => setState(() => _rememberPin = !_rememberPin),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Column(
                   children: [
-                    SizedBox(
-                      width: 22, height: 22,
-                      child: Checkbox(
-                        value: _rememberPin,
-                        onChanged: (v) => setState(() => _rememberPin = v ?? false),
-                        activeColor: NusaConfig.primaryColor,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    Text('Masuk', style: TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.w700,
+                      color: isDark ? NusaConfig.darkTextPrimary : const Color(0xFF151717))),
+                    const SizedBox(height: 4),
+                    Text('Masukkan PIN untuk melanjutkan',
+                      style: TextStyle(fontSize: 13,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                    const SizedBox(height: 24),
+                    // PIN input
+                    TextField(
+                      controller: _pinCtrl,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: 12),
+                      maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                      onSubmitted: (_) => _submitPin(),
+                      decoration: InputDecoration(
+                        counterText: '',
+                        hintText: '••••••',
+                        hintStyle: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary, fontSize: 24),
+                        filled: true,
+                        fillColor: isDark ? NusaConfig.darkBackground : const Color(0xFFF9FAFB),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: const Color(0xFFECEDEC)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: const Color(0xFFECEDEC)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFF2D79F3), width: 1.5),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text('Ingat PIN selama 8 jam',
-                      style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                    if (_pinError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(_pinError!,
+                          style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13)),
+                      ),
+                    const SizedBox(height: 16),
+                    // Remember toggle
+                    InkWell(
+                      onTap: () => setState(() => _rememberPin = !_rememberPin),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 20, height: 20,
+                            child: Checkbox(
+                              value: _rememberPin,
+                              onChanged: (v) => setState(() => _rememberPin = v ?? false),
+                              activeColor: const Color(0xFF2D79F3),
+                              side: const BorderSide(color: Color(0xFFD1D5DB)),
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('Ingat PIN selama 8 jam',
+                            style: TextStyle(fontSize: 13,
+                              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _pinLoading ? null : _submitPin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF151717),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: Text(
+                          _pinLoading ? 'Memeriksa...' : 'Masuk',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _pinLoading ? null : _submitPin,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: NusaConfig.primaryColor,
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: Text(
-                    _pinLoading ? 'Memeriksa...' : 'Masuk',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 12),
               TextButton(
                 onPressed: _startGoogleSignIn,
-                child: const Text('Ganti akun Google', style: TextStyle(color: NusaConfig.textSecondary)),
+                child: const Text('Ganti akun Google', style: TextStyle(color: NusaConfig.textSecondary, fontSize: 13)),
               ),
             ],
           ),
@@ -759,10 +815,10 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
 
   Widget _buildKeyScreen(bool isDark) {
     return Scaffold(
-      backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
+      backgroundColor: isDark ? NusaConfig.darkBackground : const Color(0xFFF5F5F5),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
           child: Column(
             children: [
               const SizedBox(height: 40),
@@ -774,82 +830,122 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                     colors: [NusaConfig.primaryColor, NusaConfig.primaryDark],
                   ),
                   boxShadow: [
-                    BoxShadow(color: NusaConfig.primaryColor.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6)),
+                    BoxShadow(
+                      color: NusaConfig.primaryColor.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
                   ],
                 ),
-                child: const Icon(Icons.vpn_key_rounded, color: Colors.white, size: 36),
+                child: const Icon(Icons.vpn_key_rounded, color: Colors.white, size: 34),
               ),
-              const SizedBox(height: 20),
-              Text('Aktivasi NUSA', style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
-              )),
-              const SizedBox(height: 4),
-              Text('Masukkan key aktivasi dari seller',
-                style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
               const SizedBox(height: 32),
-
-              TextField(
-                controller: _keyCtrl,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 15, letterSpacing: 1),
-                decoration: InputDecoration(
-                  hintText: 'NUSA-XXXX-XXXX-...',
-                  hintStyle: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                  filled: true,
-                  fillColor: isDark ? NusaConfig.darkSurface : Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(14)),
-                    borderSide: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(14)),
-                    borderSide: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(14)),
-                    borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 2),
-                  ),
-                ),
-              ),
-              if (_keyError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(_keyError!, style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13)),
-                ),
-              const SizedBox(height: 16),
-              SizedBox(
+              // Card
+              Container(
                 width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: NusaConfig.primaryColor,
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  onPressed: _keyLoading ? null : _submitKey,
-                  child: Text(
-                    _keyLoading ? 'Memproses...' : 'Aktivasi',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: isDark ? NusaConfig.darkSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Text('Aktivasi NUSA', style: TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.w700,
+                      color: isDark ? NusaConfig.darkTextPrimary : const Color(0xFF151717))),
+                    const SizedBox(height: 4),
+                    Text('Masukkan key aktivasi dari seller',
+                      style: TextStyle(fontSize: 13,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                    const SizedBox(height: 24),
+                    // Key input
+                    TextField(
+                      controller: _keyCtrl,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 13, fontFamily: 'monospace', letterSpacing: 0.5),
+                      decoration: InputDecoration(
+                        hintText: 'NUSA-XXXX-XXXX-...',
+                        hintStyle: TextStyle(fontSize: 13,
+                          color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                        filled: true,
+                        fillColor: isDark ? NusaConfig.darkBackground : const Color(0xFFF9FAFB),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: const Color(0xFFECEDEC)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: const Color(0xFFECEDEC)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFF2D79F3), width: 1.5),
+                        ),
+                      ),
+                    ),
+                    if (_keyError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(_keyError!,
+                          style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13)),
+                      ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _keyLoading ? null : _submitKey,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF151717),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: Text(
+                          _keyLoading ? 'Memproses...' : 'Aktivasi',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
-              TextButton.icon(onPressed: _scan, icon: const Icon(Icons.qr_code_scanner), label: const Text('Scan Barcode Kartu')),
-              TextButton.icon(onPressed: _tapNfc, icon: const Icon(Icons.nfc), label: const Text('Tap NFC')),
-              const SizedBox(height: 8),
-              // "Belum punya key?" → open landing page
-              TextButton.icon(
-                onPressed: _openLandingPage,
-                icon: const Icon(Icons.shopping_bag_outlined, size: 18),
-                label: const Text('Belum punya key aktivasi?'),
-                style: TextButton.styleFrom(foregroundColor: NusaConfig.accentPurple),
+              // Scan / NFC
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton.icon(
+                    onPressed: _scan,
+                    icon: const Icon(Icons.qr_code_scanner, size: 18),
+                    label: const Text('Scan', style: TextStyle(fontSize: 13)),
+                    style: TextButton.styleFrom(foregroundColor: NusaConfig.textSecondary),
+                  ),
+                  TextButton.icon(
+                    onPressed: _tapNfc,
+                    icon: const Icon(Icons.nfc, size: 18),
+                    label: const Text('NFC', style: TextStyle(fontSize: 13)),
+                    style: TextButton.styleFrom(foregroundColor: NusaConfig.textSecondary),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               TextButton(
+                onPressed: _openLandingPage,
+                child: Text('Belum punya key aktivasi?',
+                  style: TextStyle(fontSize: 13, color: const Color(0xFF2D79F3), fontWeight: FontWeight.w500)),
+              ),
+              TextButton(
                 onPressed: _startGoogleSignIn,
-                child: const Text('Ganti akun Google', style: TextStyle(color: NusaConfig.textSecondary)),
+                child: const Text('Ganti akun Google', style: TextStyle(color: NusaConfig.textSecondary, fontSize: 13)),
               ),
             ],
           ),

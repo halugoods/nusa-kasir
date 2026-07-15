@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,20 @@ import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
+
+/// Mapping category → emoji for image placeholder.
+const _catEmoji = <String, String>{
+  'Makanan': '🍜',
+  'Minuman': '🥤',
+  'Sembako': '📦',
+  'Lainnya': '🧴',
+};
+const _catGradients = <String, List<Color>>{
+  'Makanan': [Color(0xFFFEF3C7), Color(0xFFFDE68A), Color(0xFFFEF9C3)],
+  'Minuman': [Color(0xFFDBEAFE), Color(0xFFBFDBFE), Color(0xFFEFF6FF)],
+  'Sembako': [Color(0xFFFEE2E2), Color(0xFFFECACA), Color(0xFFFEF2F2)],
+  'Lainnya': [Color(0xFFF3E8FF), Color(0xFFE9D5FF), Color(0xFFFAF5FF)],
+};
 
 class ProductsScreen extends ConsumerStatefulWidget {
   const ProductsScreen({super.key});
@@ -143,12 +158,40 @@ class _ProductTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final low = product.stock <= product.minStock;
+    final hasImage = product.imagePath != null && product.imagePath!.isNotEmpty && File(product.imagePath!).existsSync();
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: NusaCard(
         Row(
           children: [
+            // ── Product thumbnail ──
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 56,
+                height: 56,
+                child: hasImage
+                    ? Image.file(File(product.imagePath!), fit: BoxFit.cover)
+                    : Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: _catGradients[product.category] ?? _catGradients['Lainnya']!,
+                          ),
+                        ),
+                        child: Center(
+                          child: Opacity(
+                            opacity: 0.4,
+                            child: Text(_catEmoji[product.category] ?? '📦', style: const TextStyle(fontSize: 22)),
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

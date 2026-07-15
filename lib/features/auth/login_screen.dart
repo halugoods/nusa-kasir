@@ -24,6 +24,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _ctrl = TextEditingController();
   String? _error;
   bool _loading = false;
+  bool _remember = false;
 
   Future<void> _submit() async {
     final pin = _ctrl.text.trim();
@@ -58,14 +59,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
 
-      // Create session (remembered by default for owner login screen)
+      // Create session (only remembered if checkbox is checked)
       final session = EmployeeSession(
         employeeId: emp.id,
         name: emp.name,
         role: emp.role,
-        remember: true,
+        remember: _remember,
       );
-      ref.read(employeeSessionProvider.notifier).login(session, remember: true);
+      ref.read(employeeSessionProvider.notifier).login(session, remember: _remember);
       ref.read(authProvider.notifier).state = emp.role;
 
       final name = await ref.read(settingsRepoProvider).getStoreName();
@@ -118,6 +119,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Text(_error!,
                     style: const TextStyle(color: NusaConfig.primaryColor)),
               ],
+              const SizedBox(height: 16),
+              // Remember checkbox
+              GestureDetector(
+                onTap: () => setState(() => _remember = !_remember),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 22, height: 22,
+                      child: Checkbox(
+                        value: _remember,
+                        onChanged: (v) => setState(() => _remember = v ?? false),
+                        activeColor: NusaConfig.primaryColor,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('Ingat PIN selama 8 jam', style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+                  ],
+                ),
+              ),
               const SizedBox(height: 16),
               NusaButton(_loading ? 'Memeriksa...' : 'Masuk',
                   onPressed: _loading ? null : _submit),

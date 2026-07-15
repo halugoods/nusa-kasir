@@ -20,6 +20,10 @@ class ActivationRepository {
   Future<bool> get isActivated async =>
       (await SecureStore.getActivation()) != null;
 
+  /// Get the Google user ID (used as encryption key for backups).
+  static Future<String?> _googleUserId() async =>
+      SecureStore.read(key: 'nusa_google_user_id');
+
   /// Activate with Google ID (new flow).
   /// - Verifies Ed25519 signature locally
   /// - Sends key + googleUserId to register_activation edge function
@@ -59,7 +63,7 @@ class ActivationRepository {
 
   /// Build the backup path using the stored Google user ID.
   static Future<String?> _backupPath() async {
-    final uid = await SecureStore.read(key: 'nusa_google_user_id');
+    final uid = await _googleUserId();
     if (uid == null) return null;
     return '$uid/backup.sqlite.enc';
   }
@@ -67,12 +71,10 @@ class ActivationRepository {
   /// Check if an encrypted backup exists in Supabase Storage for the linked Google account.
   Future<bool> hasBackup() async {
     if (client == null) return false;
-    final uid = await SecureStore.read(key: 'nusa_google_user_id');
+    final uid = await _googleUserId();
     if (uid == null) return false;
     try {
-      final res = await client!.storage
-          .from('nusa-backups')
-          .list(path: uid);
+      final res = await client!.storage.from('nusa-backups').list(path: uid);
       return res.any((f) => f.name == 'backup.sqlite.enc');
     } catch (_) {
       return false;
@@ -80,15 +82,12 @@ class ActivationRepository {
   }
 
   /// Get the cloud backup's last-modified timestamp.
-  /// Returns null if no backup exists or offline.
   Future<DateTime?> getBackupTimestamp() async {
     if (client == null) return null;
-    final uid = await SecureStore.read(key: 'nusa_google_user_id');
+    final uid = await _googleUserId();
     if (uid == null) return null;
     try {
-      final res = await client!.storage
-          .from('nusa-backups')
-          .list(path: uid);
+      final res = await client!.storage.from('nusa-backups').list(path: uid);
       for (final f in res) {
         if (f.name == 'backup.sqlite.enc') {
           return f.updatedAt != null ? DateTime.tryParse(f.updatedAt!) : null;
@@ -100,16 +99,66 @@ class ActivationRepository {
     }
   }
 
-  Future<bool> uploadBackup(String key) async {
+  /// Upload current local DB to cloud. Uses Google user ID for encryption.
+  Future<bool> uploadBackupNow() async {
     if (client == null) return false;
-    final path = await _backupPath();
-    if (path == null) return false;
+    final uid = await _googleUserId();
+    if (uid == null) return false;
+    final path = '$uid/backup.sqlite.enc';
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File(p.join(dir.path, 'nusa_kasir.sqlite'));
       if (!await file.exists()) return false;
       final raw = await file.readAsBytes();
-      final encrypted = await BackupCrypto.encrypt(raw, key);
+      final encrypted = await BackupCrypto.encrypt(raw, uid);
+      await client!.storage.from('nusa-backups').uploadBinary(
+        path,
+        encrypted,
+        fileOptions: const FileOptions(upsert: true, contentType: 'application/octet-stream'),
+      );
+      await SecureStore.saveLastBackupTime(DateTime.now());
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Download backup from cloud and stage it for restore on next launch.
+  /// Uses Google user ID for decryption.
+  Future<bool> restoreFromCloud() async {
+    if (client == null) return false;
+    final uid = await _googleUserId();
+    if (uid == null) return false;
+    final path = '$uid/backup.sqlite.enc';
+    try {
+      final bytes = await client!.storage.from('nusa-backups').download(path);
+      if (bytes.isEmpty) return false;
+      final decrypted = await BackupCrypto.decrypt(bytes, uid);
+      final dir = await getApplicationDocumentsDirectory();
+      final pending = File(p.join(dir.path, 'nusa_kasir.sqlite.pending'));
+      await pending.writeAsBytes(decrypted, flush: true);
+      await SecureStore.savePendingRestore();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ── Legacy methods (kept for backward compatibility with old activation-key based backups) ──
+
+  /// Upload using old activation-key encryption. Used for migration.
+  @Deprecated('Use uploadBackupNow() which encrypts with Google ID')
+  Future<bool> uploadBackup(String activationKey) async {
+    if (client == null) return false;
+    final uid = await _googleUserId();
+    if (uid == null) return false;
+    final path = '$uid/backup.sqlite.enc';
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dir.path, 'nusa_kasir.sqlite'));
+      if (!await file.exists()) return false;
+      final raw = await file.readAsBytes();
+      final encrypted = await BackupCrypto.encrypt(raw, activationKey);
       await client!.storage.from('nusa-backups').uploadBinary(
         path,
         encrypted,
@@ -121,17 +170,15 @@ class ActivationRepository {
     }
   }
 
-  /// Download encrypted backup and stage it for restore on next launch.
-  Future<bool> downloadAndRestore(String key) async {
+  @Deprecated('Use restoreFromCloud() which decrypts with Google ID')
+  Future<bool> downloadAndRestore(String activationKey) async {
     if (client == null) return false;
     final path = await _backupPath();
     if (path == null) return false;
     try {
-      final bytes = await client!.storage
-          .from('nusa-backups')
-          .download(path);
+      final bytes = await client!.storage.from('nusa-backups').download(path);
       if (bytes.isEmpty) return false;
-      final decrypted = await BackupCrypto.decrypt(bytes, key);
+      final decrypted = await BackupCrypto.decrypt(bytes, activationKey);
       final dir = await getApplicationDocumentsDirectory();
       final pending = File(p.join(dir.path, 'nusa_kasir.sqlite.pending'));
       await pending.writeAsBytes(decrypted, flush: true);

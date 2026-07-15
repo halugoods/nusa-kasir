@@ -9,12 +9,9 @@ import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
-import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/features/settings/backup_sheet.dart';
 import 'package:nusa_kasir/features/settings/printer_settings_sheet.dart';
 import 'package:nusa_kasir/core/services/update_service.dart';
-import 'package:nusa_kasir/core/services/google_auth_service.dart';
-import 'package:go_router/go_router.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -29,6 +26,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String? _printerName;
   bool _checkingUpdate = false;
   UpdateInfo? _updateInfo;
+  bool _backingUp = false;
 
   @override
   void initState() {
@@ -58,100 +56,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.dispose();
   }
 
-  Future<void> _pindahDevice() async {
-    final key = _activationKey ?? '';
-
-    // Ensure Google is linked for backup identity
-    final googleLinked = await GoogleAuthService.isLinked();
-    if (!googleLinked) {
-      final link = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.login, color: NusaConfig.primaryColor),
-              SizedBox(width: 10),
-              Text('Login Google', style: TextStyle(fontSize: 17)),
-            ],
-          ),
-          content: const Text(
-            'Pindah device perlu akun Google agar data bisa dikenali di device baru.',
-            style: TextStyle(fontSize: 14, height: 1.5),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nanti')),
-            FilledButton.icon(
-              onPressed: () => Navigator.pop(ctx, true),
-              icon: const Icon(Icons.login, size: 18),
-              label: const Text('Login Google'),
-              style: FilledButton.styleFrom(
-                backgroundColor: NusaConfig.primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
+  Future<void> _backupNow() async {
+    setState(() => _backingUp = true);
+    final ok = await ref.read(activationRepoProvider).uploadBackupNow();
+    if (mounted) {
+      setState(() => _backingUp = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ok ? 'Backup berhasil disimpan ke cloud' : 'Gagal backup. Periksa koneksi internet.'),
+          backgroundColor: ok ? Colors.green.shade700 : Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
-      if (link != true) return;
-
-      final googleAuth = GoogleAuthService();
-      final googleId = await googleAuth.signIn();
-      if (googleId == null) {
-        if (mounted) TopToast.error(context, 'Login Google dibutuhkan untuk pindah device.');
-        return;
-      }
-      if (mounted) TopToast.success(context, 'Google terhubung!');
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.phone_android, color: NusaConfig.primaryColor),
-            SizedBox(width: 10),
-            Text('Pindah Device?', style: TextStyle(fontSize: 17)),
-          ],
-        ),
-        content: const Text(
-          'Seluruh data toko akan dienkripsi & disimpan ke cloud. '
-          'Kamu bisa memasangnya lagi di device baru dengan key aktivasi yang sama.',
-          style: TextStyle(fontSize: 14, height: 1.5),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: NusaConfig.primaryColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ya, Pindah'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-
-    TopToast.info(context, 'Mengenkripsi & mengupload backup...');
-
-    final ok = key.isNotEmpty
-        ? await ref.read(activationRepoProvider).uploadBackup(key)
-        : false;
-
-    if (ok) {
-      await ref.read(activationRepoProvider).deactivate();
-      if (mounted) {
-        TopToast.success(context, 'Data tersimpan di cloud. Silakan aktivasi di device baru.');
-        context.go('/activation');
-      }
-    } else {
-      // Upload failed — don't deactivate, user can try again
-      if (mounted) {
-        TopToast.error(context, 'Gagal upload. Periksa koneksi internet & coba lagi.');
-      }
     }
   }
 
@@ -191,16 +108,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: 4),
                     const Text('Aktif', style: TextStyle(color: Colors.green)),
                     const SizedBox(height: 12),
-                    OutlinedButton(
+                    OutlinedButton.icon(
+                      onPressed: _backingUp ? null : _backupNow,
+                      icon: _backingUp
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.cloud_upload_outlined, size: 18),
+                      label: Text(_backingUp ? 'Menyimpan...' : 'Backup ke Cloud'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: NusaConfig.primaryColor,
                         side: BorderSide(color: NusaConfig.primaryColor),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onPressed: () => _pindahDevice(),
-                      child: const Text('Pindah Device'),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Data otomatis disinkronkan ke cloud dengan akun Google Anda.',
+                      style: TextStyle(fontSize: 11, color: NusaConfig.textTertiary.withValues(alpha: 0.8)),
                     ),
                   ],
                 ),

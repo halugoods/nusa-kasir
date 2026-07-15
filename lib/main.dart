@@ -7,7 +7,6 @@ import 'package:workmanager/workmanager.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:nusa_kasir/app.dart';
-import 'package:nusa_kasir/core/activation/activation_repository.dart';
 import 'package:nusa_kasir/core/auth/employee_session.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -46,40 +45,6 @@ Future<void> _applyPendingRestore() async {
     await SecureStore.clearPendingRestore();
   } catch (_) {
     await SecureStore.clearPendingRestore();
-  }
-}
-
-/// On startup, compare local backup timestamp vs cloud.
-/// If cloud is newer → download + stage pending restore → restart.
-/// If local is newer → push local to cloud.
-Future<void> _syncCloudOnStartup() async {
-  if (NusaConfig.supabaseUrl.isEmpty) return;
-  try {
-    final key = await SecureStore.getActivation();
-    if (key == null) return;
-    final supabase = Supabase.instance.client;
-    final repo = ActivationRepository(supabase);
-    final localTime = await SecureStore.getLastBackupTime();
-    final cloudTime = await repo.getBackupTimestamp();
-
-    if (cloudTime != null && (localTime == null || cloudTime.isAfter(localTime))) {
-      // Cloud is newer — pull it down
-      final ok = await repo.downloadAndRestore(key);
-      if (ok) {
-        // Restart to apply the restored DB
-        await _applyPendingRestore();
-        // Update local timestamp
-        await SecureStore.saveLastBackupTime(cloudTime);
-      }
-    } else if (localTime != null && (cloudTime == null || localTime.isAfter(cloudTime))) {
-      // Local is newer — push up
-      final ok = await repo.uploadBackup(key);
-      if (ok) {
-        await SecureStore.saveLastBackupTime(DateTime.now());
-      }
-    }
-  } catch (_) {
-    // Offline or error — skip sync, use local data
   }
 }
 
