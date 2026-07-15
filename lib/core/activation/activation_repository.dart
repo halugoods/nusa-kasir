@@ -79,6 +79,27 @@ class ActivationRepository {
     }
   }
 
+  /// Get the cloud backup's last-modified timestamp.
+  /// Returns null if no backup exists or offline.
+  Future<DateTime?> getBackupTimestamp() async {
+    if (client == null) return null;
+    final uid = await SecureStore.read(key: 'nusa_google_user_id');
+    if (uid == null) return null;
+    try {
+      final res = await client!.storage
+          .from('nusa-backups')
+          .list(path: uid);
+      for (final f in res) {
+        if (f.name == 'backup.sqlite.enc') {
+          return f.updatedAt != null ? DateTime.tryParse(f.updatedAt!) : null;
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<bool> uploadBackup(String key) async {
     if (client == null) return false;
     final path = await _backupPath();

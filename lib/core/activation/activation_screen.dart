@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:nusa_kasir/core/activation/activation_repository.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/services/google_auth_service.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -13,6 +12,7 @@ import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
+import 'package:nusa_kasir/core/widgets/nusa_loading_animation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -50,11 +50,10 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   final _pinCtrl = TextEditingController();
   bool _pinLoading = false;
   String? _pinError;
+  bool _rememberPin = false;
 
-  // Screen state: 'welcome' | 'google_loading' | 'pin' | 'key' | 'restore_prompt'
+  // Screen state: 'welcome' | 'google_loading' | 'pin' | 'key'
   String _screen = 'welcome';
-
-  bool _didRestore = false;
 
   Future<void> _startGoogleSignIn() async {
     if (_googleLoading) return;
@@ -77,6 +76,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
       _googleId = googleId;
       await GoogleAuthService.ensureStored(googleId);
 
+      // Show "checking license" state — keep spinner active during cloud call
       setState(() => _googleLoading = false);
       if (mounted) await _checkLicenseStatus(googleId);
     } catch (e) {
@@ -95,13 +95,77 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     }
   }
 
+  /// Check if employees exist. If not, try cloud restore first, then redirect to /setup.
+  Future<void> _goToPinOrSetup() async {
+    try {
+      final db = ref.read(databaseProvider);
+      final repo = AttendanceRepository(db);
+      final emps = await repo.getEmployees();
+      if (emps.isEmpty) {
+        // No employees — try cloud auto-restore first
+        final restored = await _autoRestoreIfNeeded();
+        if (restored) return; // app will restart
+        // No backup or restore failed — setup from scratch
+        if (mounted) context.go('/setup');
+        return;
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _screen = 'pin');
+  }
+
+  /// Auto-restore cloud backup without dialog. Returns true if restore was triggered.
+  Future<bool> _autoRestoreIfNeeded() async {
+    final key = await SecureStore.getActivation();
+    if (key == null) return false;
+    final repo = ref.read(activationRepoProvider);
+    final hasBak = await repo.hasBackup();
+    if (!hasBak) return false;
+    // Auto download + stage pending restore
+    final ok = await repo.downloadAndRestore(key);
+    if (ok) {
+      // Brief notification then restart
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.cloud_download_outlined, color: NusaConfig.primaryColor, size: 28),
+                SizedBox(width: 10),
+                Text('Memulihkan Data', style: TextStyle(fontSize: 17)),
+              ],
+            ),
+            content: const Text(
+              'Data toko sebelumnya ditemukan di cloud.\nSedang dipulihkan...',
+              style: TextStyle(fontSize: 14, height: 1.5),
+            ),
+            actions: [
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: NusaConfig.primaryColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => SystemNavigator.pop(),
+                child: const Text('Buka Ulang'),
+              ),
+            ],
+          ),
+        );
+      }
+      return true;
+    }
+    return false;
+  }
+
   /// Check if this Google account already has an activated license.
   Future<void> _checkLicenseStatus(String googleUserId) async {
     // First check local storage
     final isActivated = await ref.read(activationRepoProvider).isActivated;
 
     if (isActivated) {
-      setState(() => _screen = 'pin');
+      _goToPinOrSetup();
       return;
     }
 
@@ -113,17 +177,23 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
       );
       final data = res.data as Map<String, dynamic>?;
       if (data?['has_license'] == true) {
-        // Has license in cloud → restore backup, then PIN
-        final key = data!['key'] as String;
-        await SecureStore.saveActivation(key);
-
-        final repo = ref.read(activationRepoProvider);
-        final hasBak = await repo.hasBackup();
-        if (hasBak) {
-          setState(() => _screen = 'restore_prompt');
-        } else {
-          setState(() => _screen = 'pin');
+        // Check if trial expired
+        final isExpired = data!['is_expired'] == true;
+        
+        if (isExpired) {
+          // Trial expired → redirect to landing page
+          setState(() {
+            _googleLoading = false;
+            _googleError = 'Masa trial Anda telah habis.\nBeli lisensi seumur hidup untuk melanjutkan.';
+            _screen = 'trial_expired';
+          });
+          return;
         }
+
+        // Has valid license → go to PIN or setup (handles auto-restore)
+        final key = data['key'] as String;
+        await SecureStore.saveActivation(key);
+        _goToPinOrSetup();
         return;
       }
     } catch (_) {
@@ -133,90 +203,6 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     setState(() => _screen = 'key');
   }
 
-  /// Prompt restore from cloud backup.
-  Future<void> _handleRestore() async {
-    final key = await SecureStore.getActivation();
-    if (key == null || !mounted) return;
-
-    final doRestore = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.cloud_download_outlined, color: NusaConfig.primaryColor, size: 28),
-            SizedBox(width: 10),
-            Text('Data Ditemukan', style: TextStyle(fontSize: 17)),
-          ],
-        ),
-        content: const Text(
-          'Data toko sebelumnya ditemukan di cloud. '
-          'Mau dipulihkan sekarang?',
-          style: TextStyle(fontSize: 14, height: 1.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Nanti', style: TextStyle(color: NusaConfig.textSecondary)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: NusaConfig.primaryColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Pulihkan'),
-          ),
-        ],
-      ),
-    );
-
-    if (doRestore != true) {
-      if (mounted) setState(() => _screen = 'pin');
-      return;
-    }
-
-    setState(() => _keyLoading = true);
-    final repo = ref.read(activationRepoProvider);
-    final ok = await repo.downloadAndRestore(key);
-    if (mounted) {
-      setState(() => _keyLoading = false);
-      if (ok) {
-        _didRestore = true;
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle, color: NusaConfig.accentGreen, size: 28),
-                SizedBox(width: 10),
-                Text('Data Siap!', style: TextStyle(fontSize: 17)),
-              ],
-            ),
-            content: const Text(
-              'App akan keluar. Buka lagi NUSA Kasir untuk melanjutkan.',
-              style: TextStyle(fontSize: 14, height: 1.5),
-            ),
-            actions: [
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: NusaConfig.primaryColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () => SystemNavigator.pop(),
-                child: const Text('Oke'),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
-      setState(() => _screen = 'pin');
-    }
-  }
 
   // ── Key Activation Submit ──────────────────────────────────────────
 
@@ -289,14 +275,14 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
         return;
       }
 
-      // Create session
+      // Create session (only remembered if checkbox is checked)
       final session = EmployeeSession(
         employeeId: emp.id,
         name: emp.name,
         role: emp.role,
-        remember: true,
+        remember: _rememberPin,
       );
-      ref.read(employeeSessionProvider.notifier).login(session, remember: true);
+      ref.read(employeeSessionProvider.notifier).login(session, remember: _rememberPin);
       ref.read(authProvider.notifier).state = emp.role;
 
       // Auto check-in attendance
@@ -377,22 +363,17 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Restore prompt screen
-    if (_screen == 'restore_prompt') {
-      _handleRestore();
-    }
-
     switch (_screen) {
       case 'welcome':
         return _buildWelcomeScreen(isDark);
       case 'google_loading':
         return _buildGoogleLoadingScreen(isDark);
+      case 'trial_expired':
+        return _buildTrialExpiredScreen(isDark);
       case 'pin':
         return _buildPinScreen(isDark);
       case 'key':
         return _buildKeyScreen(isDark);
-      case 'restore_prompt':
-        return _buildGoogleLoadingScreen(isDark);
       default:
         return _buildWelcomeScreen(isDark);
     }
@@ -520,7 +501,84 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
 
   // ── Google Sign-In Loading Screen (shown while signing in) ──────────
 
+  // ── Trial Expired Screen ─────────────────────────────────────────────
+
+  Widget _buildTrialExpiredScreen(bool isDark) {
+    return Scaffold(
+      backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const SizedBox(height: 60),
+                Container(
+                  width: 80, height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.amber.shade100,
+                  ),
+                  child: Icon(Icons.timer_off_rounded, size: 40, color: Colors.amber.shade700),
+                ),
+                const SizedBox(height: 24),
+                Text('Masa Trial Habis', style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700, color: isDark ? Colors.white : NusaConfig.textPrimary)),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    _googleError ?? 'Masa trial 30 hari Anda telah berakhir.\nBeli lisensi seumur hidup untuk melanjutkan menggunakan NUSA Kasir.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, height: 1.6, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                // Buy CTA → open landing page
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _openLandingPage,
+                    icon: const Icon(Icons.shopping_bag_outlined, size: 20),
+                    label: const Text('Beli Lisensi (Rp 199K)'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: NusaConfig.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Back to welcome
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _startGoogleSignIn,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text('Ganti Akun Google'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildGoogleLoadingScreen(bool isDark) {
+    // Determine status text based on current phase
+    final statusText = _googleLoading
+        ? 'Menghubungkan ke Google...'
+        : _googleError != null
+            ? null
+            : 'Memeriksa lisensi...';
+
     return Scaffold(
       backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
       body: Center(
@@ -529,49 +587,9 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
           child: Column(
             children: [
               const SizedBox(height: 60),
-              Container(
-                width: 80, height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [NusaConfig.primaryColor, NusaConfig.primaryDark],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: NusaConfig.primaryColor.withValues(alpha: 0.35),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.store_rounded, color: Colors.white, size: 40),
-              ),
-              const SizedBox(height: 24),
-              Text('NUSA', style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                color: NusaConfig.primaryColor, fontWeight: FontWeight.w800, letterSpacing: -1)),
-              const SizedBox(height: 4),
-              Text(NusaConfig.appSubtitle, textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-              const SizedBox(height: 48),
 
-              if (_googleLoading) ...[
-                const CircularProgressIndicator(color: NusaConfig.primaryColor),
-                const SizedBox(height: 20),
-                Text('Menghubungkan ke Google...',
-                  style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, fontSize: 14)),
-                const SizedBox(height: 16),
-                Container(
-                  width: 48, height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2))],
-                  ),
-                  child: const Center(
-                    child: Text('G', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF4285F4))),
-                  ),
-                ),
-              ] else if (_googleError != null) ...[
+              if (_googleError != null) ...[
+                // Error state — show error with retry
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -602,6 +620,9 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                     ],
                   ),
                 ),
+              ] else ...[
+                // Loading state — fancy NUSA animation
+                NusaLoadingAnimation(statusText: statusText!),
               ],
             ],
           ),
@@ -682,6 +703,28 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                 ),
 
               const SizedBox(height: 20),
+              // Remember checkbox
+              GestureDetector(
+                onTap: () => setState(() => _rememberPin = !_rememberPin),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 22, height: 22,
+                      child: Checkbox(
+                        value: _rememberPin,
+                        onChanged: (v) => setState(() => _rememberPin = v ?? false),
+                        activeColor: NusaConfig.primaryColor,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('Ingat PIN selama 8 jam',
+                      style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

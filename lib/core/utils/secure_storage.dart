@@ -27,6 +27,16 @@ class SecureStore {
   static Future<void> clearPendingRestore() =>
       _s.delete(key: 'nusa_pending_restore');
 
+  // -- Cloud backup timestamp (for conflict resolution) --
+  static Future<void> saveLastBackupTime(DateTime t) =>
+      _s.write(key: 'nusa_last_backup_at', value: t.toIso8601String());
+  static Future<DateTime?> getLastBackupTime() async {
+    final v = await _s.read(key: 'nusa_last_backup_at');
+    return v != null ? DateTime.tryParse(v) : null;
+  }
+  static Future<void> clearLastBackupTime() =>
+      _s.delete(key: 'nusa_last_backup_at');
+
   // -- Sheets tokens --
   static Future<void> saveSheetsTokens(String json) =>
       _s.write(key: AppConstants.sheetsTokenKey, value: json);

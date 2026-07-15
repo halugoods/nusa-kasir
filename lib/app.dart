@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/core/theme/nusa_theme.dart';
 import 'package:nusa_kasir/core/providers.dart';
+import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/core/activation/activation_screen.dart';
 import 'package:nusa_kasir/features/auth/login_screen.dart';
 import 'package:nusa_kasir/features/onboarding/onboarding_screen.dart';
@@ -134,8 +135,45 @@ class NusaApp extends ConsumerStatefulWidget {
   ConsumerState<NusaApp> createState() => _NusaAppState();
 }
 
-class _NusaAppState extends ConsumerState<NusaApp> {
+class _NusaAppState extends ConsumerState<NusaApp> with WidgetsBindingObserver {
   late final GoRouter _router = buildRouter(widget.initialLocation);
+  bool _didUpload = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused && !_didUpload) {
+      _didUpload = true;
+      _autoUploadBackup();
+    } else if (state == AppLifecycleState.resumed) {
+      _didUpload = false;
+    }
+  }
+
+  Future<void> _autoUploadBackup() async {
+    try {
+      final activationKey = await SecureStore.getActivation();
+      if (activationKey == null) return;
+      final repo = ref.read(activationRepoProvider);
+      final ok = await repo.uploadBackup(activationKey);
+      if (ok) {
+        await SecureStore.saveLastBackupTime(DateTime.now());
+      }
+    } catch (_) {
+      // Silent — don't interrupt the user
+    }
+  }
 
   ThemeMode _toThemeMode(String mode) {
     switch (mode) {
