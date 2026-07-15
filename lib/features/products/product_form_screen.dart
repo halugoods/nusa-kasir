@@ -10,9 +10,6 @@ import 'package:nusa_kasir/core/activation/activation_key.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:path/path.dart' as p;
@@ -33,7 +30,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _stock = TextEditingController();
   final _min = TextEditingController();
   String _category = NusaConfig.categories.first;
-  late final String _barcode;
+  late String _barcode;
   Product? _existing;
   bool _loading = true;
   bool _barcodeOn = false; // toggle — default off

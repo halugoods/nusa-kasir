@@ -12,10 +12,7 @@ import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/data/repositories/promo_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/features/pos/cart.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
-import "package:nusa_kasir/shared/widgets/top_toast.dart";
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/features/checkout/receipt_sheet.dart';
 
@@ -305,389 +302,444 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Widget build(BuildContext context) {
     ref.watch(cartProvider);
     final subtotal = _subtotal;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ScreenScaffold(
       'Pembayaran',
       ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // --- Customer Selector ---
-          NusaCard(
-            InkWell(
-              onTap: _pickCustomer,
-              borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    const Icon(Icons.person_outline, color: NusaConfig.primaryColor),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _selectedCustomer != null
-                            ? _selectedCustomer!.name
-                            : 'Pilih Pelanggan (opsional)',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: _selectedCustomer != null
-                              ? NusaConfig.textPrimary
-                              : NusaConfig.textSecondary,
-                        ),
-                      ),
-                    ),
-                    if (_selectedCustomer != null)
-                      GestureDetector(
-                        onTap: () => setState(() => _selectedCustomer = null),
-                        child: const Icon(Icons.close, size: 18, color: NusaConfig.textSecondary),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
+          // ── Customer Card ──
+          _buildCustomerCard(isDark),
+          const SizedBox(height: 14),
 
-          // --- Summary Card ---
-          NusaCard(
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _row('Subtotal', formatRupiah(subtotal)),
-                const SizedBox(height: 8),
+          // ── Ringkasan Belanja Card ──
+          _buildSummaryCard(isDark, subtotal),
+          const SizedBox(height: 14),
 
-                // Tier discount (auto, if customer selected)
-                if (_selectedCustomer != null) ...[
-                  _row(
-                    'Diskon ${_selectedCustomer!.level} (${CustomerRepository.tierDiscountPercent(_selectedCustomer!.level).toInt()}%)',
-                    '-${formatRupiah(_tierDiscount)}',
-                  ),
-                  const SizedBox(height: 4),
-                ],
+          // ── Metode Pembayaran Card ──
+          _buildPaymentMethodCard(isDark),
+          const SizedBox(height: 14),
 
-                // Promo code row
-                Row(
-                  children: [
-                    Expanded(
-                      child: NusaInput(
-                        'Kode Promo',
-                        controller: _promoCtrl,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (_appliedPromo != null)
-                      IconButton(
-                        onPressed: _clearPromo,
-                        icon: const Icon(Icons.close, color: NusaConfig.primaryColor),
-                        tooltip: 'Hapus promo',
-                      )
-                    else
-                      SizedBox(
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _applyPromo,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: NusaConfig.primaryColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text('Pakai'),
-                        ),
-                      ),
-                  ],
-                ),
-                if (_appliedPromo != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '✓ ${_appliedPromo!.name} (-${formatRupiah(_promoDiscount)})',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: NusaConfig.accentGreen,
-                    ),
-                  ),
-                ],
-
-                // Points redeem (if customer has points)
-                if (_selectedCustomer != null && _selectedCustomer!.points > 0) ...[
-                  const SizedBox(height: 8),
-                  _buildPointsRow(),
-                ],
-
-                if (_pointsUsed > 0) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '✓ Poin ditukar: -${formatRupiah(_pointsUsed)}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: NusaConfig.accentGreen,
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 8),
-                NusaInput(
-                  'Diskon Manual (Rp)',
-                  controller: _discountCtrl,
-                  type: TextInputType.number,
-                ),
-                const SizedBox(height: 8),
-                Divider(color: Colors.grey.shade300),
-                const SizedBox(height: 4),
-                _row('Total', formatRupiah(_total),
-                    bold: true, large: true),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // --- Payment Method ---
-          const Text('Metode Pembayaran',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: ['Tunai', 'QRIS', 'Transfer'].map((m) {
-              final sel = _paymentMethod == m;
-              return ChoiceChip(
-                label: Text(m),
-                selected: sel,
-                onSelected: (_) => setState(() => _paymentMethod = m),
-                selectedColor: NusaConfig.primarySoft,
-                backgroundColor: Colors.grey.shade100,
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-
-          // --- Payment Detail ---
-          if (_paymentMethod == 'Tunai') _buildTunai(),
-          if (_paymentMethod == 'QRIS') _buildQris(),
-          if (_paymentMethod == 'Transfer') _buildTransfer(),
+          // ── Detail Pembayaran Card ──
+          if (_paymentMethod == 'Tunai') _buildTunaiCard(isDark),
+          if (_paymentMethod == 'QRIS') _buildQrisCard(isDark),
+          if (_paymentMethod == 'Transfer') _buildTransferCard(isDark),
 
           const SizedBox(height: 24),
 
-          // --- Confirm Button ---
-          NusaButton(
-            _loading ? 'Memproses...' : 'Konfirmasi Pembayaran',
-            onPressed: _loading ? null : _confirmPayment,
-          ),
-          const SizedBox(height: 8),
-          NusaButton(
-            'Batal',
-            onPressed: _loading ? null : () => context.pop(),
-            fullWidth: false,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTunai() {
-    return NusaCard(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _cashCtrl,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: NusaConfig.textPrimary,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Jumlah Dibayarkan',
-              hintStyle: const TextStyle(
-                color: NusaConfig.textTertiary,
-                fontSize: 15,
+          // ── Konfirmasi Button ──
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [NusaConfig.primaryColor, NusaConfig.primaryDark],
               ),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 14),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    const BorderSide(color: NusaConfig.dividerColor),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    const BorderSide(color: NusaConfig.dividerColor),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                    color: NusaConfig.primaryColor, width: 1.5),
-              ),
-            ),
-            onChanged: (v) {
-              setState(() {
-                _cashGiven = int.tryParse(v);
-              });
-            },
-          ),
-          if (_kembalian != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Kembalian: ${formatRupiah(_kembalian!)}',
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQris() {
-    final qris = _qrisString;
-    return NusaCard(
-      Column(
-        children: [
-          if (qris != null && qris.isNotEmpty) ...[
-            QrImageView(
-              data: qris,
-              version: QrVersions.auto,
-              size: 200,
-            ),
-            const SizedBox(height: 8),
-            const Text('Scan QRIS untuk membayar',
-                style: TextStyle(color: Colors.grey)),
-          ] else ...[
-            const Icon(Icons.qr_code, size: 64, color: Colors.grey),
-            const SizedBox(height: 8),
-            const Text(
-              'Set QRIS di Pengaturan',
-              style: TextStyle(color: Colors.grey, fontSize: 15),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPointsRow() {
-    final maxRedeemable = (_selectedCustomer!.points).clamp(0, _subtotal - _manualDiscount - _promoDiscount - _tierDiscount);
-    final remaining = _selectedCustomer!.points - _pointsUsed;
-    return NusaCard(
-      padding: const EdgeInsets.all(12),
-      Row(
-        children: [
-          const Icon(Icons.redeem, size: 18, color: Colors.amber),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Poin: ${remaining} (Rp ${formatRupiah(remaining)})',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                Text('1 poin = Rp 1',
-                    style: const TextStyle(fontSize: 11, color: NusaConfig.textTertiary)),
+              boxShadow: [
+                BoxShadow(
+                  color: NusaConfig.primaryColor.withValues(alpha: 0.3),
+                  blurRadius: 12, offset: const Offset(0, 4)),
               ],
             ),
+            child: GestureDetector(
+              onTap: _loading ? null : _confirmPayment,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (_loading)
+                    const SizedBox(width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  else ...[
+                    const Icon(Icons.check_circle_outline, color: Colors.white, size: 22),
+                    const SizedBox(width: 10),
+                    const Text('Konfirmasi Pembayaran',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                  ],
+                ],
+              ),
+            ),
           ),
-          if (_pointsUsed > 0)
-            TextButton(
-              onPressed: () => setState(() => _pointsUsed = 0),
-              child: const Text('Batal'),
+          const SizedBox(height: 10),
+          Center(
+            child: TextButton(
+              onPressed: _loading ? null : () => context.pop(),
+              child: const Text('← Kembali ke Kasir',
+                  style: TextStyle(color: NusaConfig.textSecondary, fontWeight: FontWeight.w500)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Card Builders ────────────────────────────────────────────────
+
+  Widget _buildCustomerCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF1F5F9)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: InkWell(
+        onTap: _pickCustomer,
+        borderRadius: BorderRadius.circular(12),
+        child: Row(children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: NusaConfig.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.person_outline, color: NusaConfig.primaryColor, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_selectedCustomer != null ? _selectedCustomer!.name : 'Pilih Pelanggan',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600,
+                      color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+              const SizedBox(height: 2),
+              Text(_selectedCustomer != null
+                  ? 'Level: ${_selectedCustomer!.level} • Rp ${formatRupiah(_selectedCustomer!.totalSpent)}'
+                  : 'Opsional — dapatkan diskon member',
+                  style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+            ]),
+          ),
+          if (_selectedCustomer != null)
+            GestureDetector(
+              onTap: () => setState(() => _selectedCustomer = null),
+              child: Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.close, size: 16, color: NusaConfig.textSecondary),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard(bool isDark, int subtotal) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF1F5F9)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Header
+        Row(children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.receipt_long_outlined, color: Color(0xFF10B981), size: 18),
+          ),
+          const SizedBox(width: 10),
+          const Text('Ringkasan Belanja', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 14),
+
+        _summaryRow('Subtotal', formatRupiah(subtotal), isDark),
+        if (_selectedCustomer != null) ...[
+          const SizedBox(height: 6),
+          _summaryRow('Diskon ${_selectedCustomer!.level}',
+              '-${formatRupiah(_tierDiscount)}', isDark, isDiscount: true),
+        ],
+        if (_appliedPromo != null) ...[
+          const SizedBox(height: 6),
+          _summaryRow('Promo ${_appliedPromo!.name}',
+              '-${formatRupiah(_promoDiscount)}', isDark, isDiscount: true),
+        ],
+        if (_pointsUsed > 0) ...[
+          const SizedBox(height: 6),
+          _summaryRow('Tukar Poin', '-${formatRupiah(_pointsUsed)}', isDark, isDiscount: true),
+        ],
+
+        // ── Disc / Promo / Points Row ──
+        const SizedBox(height: 12),
+        Row(children: [
+          // Promo code
+          Expanded(
+            flex: 2,
+            child: SizedBox(
+              height: 42,
+              child: TextField(
+                controller: _promoCtrl,
+                style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+                decoration: InputDecoration(
+                  hintText: _appliedPromo != null ? _appliedPromo!.name : 'Kode promo...',
+                  hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                  prefixIcon: const Icon(Icons.local_offer_outlined, size: 16, color: NusaConfig.textSecondary),
+                  filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (_appliedPromo != null)
+            SizedBox(
+              height: 42,
+              child: ElevatedButton(
+                onPressed: _clearPromo,
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 14)),
+                child: const Text('Hapus', style: TextStyle(fontSize: 12)),
+              ),
             )
           else
             SizedBox(
-              height: 36,
+              height: 42,
               child: ElevatedButton(
-                onPressed: maxRedeemable <= 0 ? null : () => _pickPoints(maxRedeemable),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-                child: const Text('Tukar', style: TextStyle(fontSize: 12)),
+                onPressed: _applyPromo,
+                style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 14)),
+                child: const Text('Pakai', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
               ),
             ),
-        ],
-      ),
-    );
-  }
+        ]),
 
-  void _pickPoints(int maxRedeemable) {
-    showDialog(
-      context: context,
-      builder: (_) {
-        final ctrl = TextEditingController(text: maxRedeemable.toString());
-        return AlertDialog(
-          title: const Text('Tukar Poin'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Maksimal: ${formatRupiah(maxRedeemable)} (${maxRedeemable} poin)',
-                  style: const TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
-              const SizedBox(height: 12),
-              NusaInput('Jumlah poin', controller: ctrl,
-                  type: TextInputType.number),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal'),
+        // Diskon manual
+        const SizedBox(height: 10),
+        Row(children: [
+          Icon(Icons.discount_outlined, size: 16, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 100,
+            child: TextField(
+              controller: _discountCtrl,
+              keyboardType: TextInputType.number,
+              style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Diskon Rp',
+                hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              ),
             ),
-            NusaButton('Tukar', fullWidth: false, onPressed: () {
-              final val = int.tryParse(ctrl.text.trim()) ?? 0;
-              if (val <= 0) {
-                TopToast.error(context, 'Masukkan jumlah poin');
-                return;
-              }
-              if (val > maxRedeemable) {
-                TopToast.error(context, 'Poin tidak cukup');
-                return;
-              }
-              setState(() => _pointsUsed = val);
-              Navigator.pop(context);
-            }),
+          ),
+          const Spacer(),
+          // Poin tukar
+          if (_selectedCustomer != null && _selectedCustomer!.points > 0) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.stars_rounded, size: 14, color: Colors.amber),
+                const SizedBox(width: 4),
+                Text('${_selectedCustomer!.points} pts',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFB45309))),
+              ]),
+            ),
           ],
-        );
-      },
+        ]),
+
+        const SizedBox(height: 12),
+        Divider(color: Colors.grey.withValues(alpha: 0.2)),
+        const SizedBox(height: 8),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text('TOTAL', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 1)),
+          Text(formatRupiah(_total),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor, letterSpacing: -0.5)),
+        ]),
+      ]),
     );
   }
 
-  Widget _buildTransfer() {
-    return NusaCard(
-      const Column(
-        children: [
-          Icon(Icons.account_balance, size: 64, color: Colors.blueGrey),
-          SizedBox(height: 8),
-          Text(
-            'Transfer ke rekening NUSA\nBCA 1234567890 a.n. NUSA Kasir',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 15),
+  Widget _summaryRow(String label, String value, bool isDark, {bool isDiscount = false}) {
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      Text(label, style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+      Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+          color: isDiscount ? const Color(0xFF10B981) : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
+    ]);
+  }
+
+  Widget _buildPaymentMethodCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF1F5F9)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(color: const Color(0xFF6366F1).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.payment_outlined, color: Color(0xFF6366F1), size: 18),
           ),
-        ],
+          const SizedBox(width: 10),
+          const Text('Metode Pembayaran', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 14),
+        Row(children: [
+          _payCard('Tunai', Icons.money, isDark),
+          const SizedBox(width: 10),
+          _payCard('QRIS', Icons.qr_code_2, isDark),
+          const SizedBox(width: 10),
+          _payCard('Transfer', Icons.account_balance, isDark),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _payCard(String method, IconData icon, bool isDark) {
+    final active = _paymentMethod == method;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _paymentMethod = method),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: active ? NusaConfig.primarySoft : (isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB)),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: active ? NusaConfig.primaryColor : NusaConfig.dividerColor, width: active ? 2 : 1),
+          ),
+          child: Column(children: [
+            Icon(icon, size: 28, color: active ? NusaConfig.primaryColor : NusaConfig.textTertiary),
+            const SizedBox(height: 6),
+            Text(method, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                color: active ? NusaConfig.primaryColor : NusaConfig.textSecondary)),
+          ]),
+        ),
       ),
     );
   }
 
-  Widget _row(String label, String value,
-      {bool bold = false, bool large = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label,
-            style: TextStyle(
-              fontSize: large ? 16 : 14,
-              fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
-            )),
-        Text(value,
-            style: TextStyle(
-              fontSize: large ? 20 : 14,
-              fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
-            )),
-      ],
+  Widget _buildTunaiCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF1F5F9)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(color: NusaConfig.accentGreen.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.money, color: NusaConfig.accentGreen, size: 18),
+          ),
+          const SizedBox(width: 10),
+          const Text('Pembayaran Tunai', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _cashCtrl,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'Rp 0',
+            hintStyle: const TextStyle(color: NusaConfig.textTertiary, fontSize: 20),
+            filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 2)),
+          ),
+          onChanged: (v) => setState(() => _cashGiven = int.tryParse(v)),
+        ),
+        if (_kembalian != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: const Color(0xFFECFDF5), borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFA7F3D0))),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              const Text('Kembalian', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF065F46))),
+              Text(formatRupiah(_kembalian!),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF059669))),
+            ]),
+          ),
+        ],
+      ]),
+    );
+  }
+
+  Widget _buildQrisCard(bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF1F5F9)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(children: [
+        Container(
+          width: 32, height: 32,
+          decoration: BoxDecoration(color: const Color(0xFF6366F1).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+          child: const Icon(Icons.qr_code_2, color: Color(0xFF6366F1), size: 18),
+        ),
+        const SizedBox(height: 14),
+        if (_qrisString != null && _qrisString!.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: NusaConfig.dividerColor)),
+            child: QrImageView(data: _qrisString!, version: QrVersions.auto, size: 180),
+          ),
+          const SizedBox(height: 12),
+          const Text('Scan QRIS untuk membayar',
+              style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+        ] else ...[
+          const Icon(Icons.qr_code, size: 64, color: Colors.grey),
+          const SizedBox(height: 8),
+          const Text('Set QRIS di Pengaturan',
+              style: TextStyle(color: Colors.grey, fontSize: 15)),
+        ],
+      ]),
+    );
+  }
+
+  Widget _buildTransferCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF1F5F9)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(children: [
+        Container(
+          width: 48, height: 48,
+          decoration: BoxDecoration(color: const Color(0xFF6366F1).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
+          child: const Icon(Icons.account_balance, size: 26, color: Color(0xFF6366F1)),
+        ),
+        const SizedBox(height: 12),
+        const Text('Transfer ke rekening', style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(12)),
+          child: const Column(children: [
+            Text('BCA 1234567890', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+                fontFamily: 'monospace', letterSpacing: 1)),
+            SizedBox(height: 4),
+            Text('a.n. NUSA Kasir', style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+          ]),
+        ),
+      ]),
     );
   }
 }

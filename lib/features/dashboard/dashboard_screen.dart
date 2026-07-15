@@ -31,9 +31,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _trxCount = '0';
   String _avg = 'Rp 0';
   final String _topProduct = '—';
-  int _productCount = 0;
-  int _txCount = 0;
-  int _custCount = 0;
   List<Branche> _branches = [];
   Branche? _activeBranch;
 
@@ -88,7 +85,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       await _checkAttendance(session.employeeId);
     }
     await _load();
-    _loadQuickStats();
   }
 
   Future<void> _checkAttendance(int employeeId) async {
@@ -159,20 +155,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _lastCashierTime = lastCashierTime;
       });
     }
-  }
-
-  Future<void> _loadQuickStats() async {
-    final db = ref.read(databaseProvider);
-    try {
-      final prods = await db.select(db.products).get();
-      final txs = await db.select(db.transactions).get();
-      final custs = await db.select(db.customers).get();
-      if (mounted) setState(() {
-        _productCount = prods.length;
-        _txCount = txs.length;
-        _custCount = custs.length;
-      });
-    } catch (_) {}
   }
 
   // ── Menu navigation with RBAC guard ────────────────────────────────
@@ -593,7 +575,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async { await _load(); _loadQuickStats(); },
+          onRefresh: () async { await _load(); },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
@@ -697,21 +679,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   topProduct: _topProduct,
                 ),
 
-                const SizedBox(height: 8),
-
-                // ── Stat cards row ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Row(children: [
-                    _StatMiniCard(icon: Icons.inventory_2_outlined, label: 'Produk', value: '$_productCount', color: const Color(0xFF3B82F6)),
-                    const SizedBox(width: 10),
-                    _StatMiniCard(icon: Icons.receipt_long_outlined, label: 'Transaksi', value: '$_txCount', color: const Color(0xFF10B981)),
-                    const SizedBox(width: 10),
-                    _StatMiniCard(icon: Icons.people_outline, label: 'Pelanggan', value: '$_custCount', color: const Color(0xFF8B5CF6)),
-                  ]),
-                ),
-
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
                 // Menu grid with lock indicators
                 GridView.count(
@@ -893,39 +861,6 @@ class MenuIcon extends StatelessWidget {
         size: 26,
         color: color,
       );
-}
-
-class _StatMiniCard extends StatelessWidget {
-  final IconData icon;
-  final String label, value;
-  final Color color;
-  const _StatMiniCard({required this.icon, required this.label, required this.value, required this.color});
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isDark ? NusaConfig.darkSurface : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF3F4F6)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, size: 18, color: color),
-          ),
-          const SizedBox(height: 10),
-          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-        ]),
-      ),
-    );
-  }
 }
 
 /// "Buka Kasir" CTA card — subtle gradient card, not just a flat button.

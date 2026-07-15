@@ -319,20 +319,45 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                     ),
                     const SizedBox(height: 12),
 
-                    // Buka Website button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _openPreview,
-                        icon: const Icon(Icons.open_in_browser, size: 18),
-                        label: const Text('Buka Website',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: NusaConfig.primaryColor,
-                          foregroundColor: Colors.white,
-                          elevation: 2,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    // Buka Website button — gradient red card
+                    GestureDetector(
+                      onTap: _openPreview,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [NusaConfig.primaryColor, NusaConfig.primaryDark],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: NusaConfig.primaryColor.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.open_in_browser, size: 20, color: Colors.white),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text('Buka Website',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white70),
+                          ],
                         ),
                       ),
                     ),
