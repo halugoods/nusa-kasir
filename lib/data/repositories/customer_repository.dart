@@ -38,6 +38,10 @@ class CustomerRepository {
     return pointsToRedeem; // 1 poin = Rp 1
   }
 
+  Future<void> deleteCustomer(int id) async {
+    await (db.delete(db.customers)..where((t) => t.id.equals(id))).go();
+  }
+
   /// Get auto-discount percentage based on loyalty tier.
   static double tierDiscountPercent(String level) {
     switch (level) {

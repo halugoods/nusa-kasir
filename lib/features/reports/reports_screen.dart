@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
@@ -90,94 +91,137 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Widget _penjualanTab() {
     final (from, to) = _range();
     final repo = ReportRepository(ref.read(databaseProvider));
-    return Column(
-      children: [
-        const SizedBox(height: 12),
-        FutureBuilder<Map<String, dynamic>>(
-          key: ValueKey('sum_$_refreshKey'),
-          future: repo.summary(from: from, to: to),
-          builder: (context, snap) {
-            final omzet = snap.data?['omzet'] as int? ?? 0;
-            final count = snap.data?['count'] as int? ?? 0;
-            final avg = snap.data?['avg'] as int? ?? 0;
-            return Padding(
+    return RefreshIndicator(
+      onRefresh: () async => setState(() => _refreshKey++),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            // ── Bar Chart ──
+            Container(
+              height: 220,
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFF3F4F6))),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Tren Pendapatan 7 Hari', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: BarChart(
+                    BarChartData(
+                      barGroups: _chartBars(),
+                      gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 50000),
+                      titlesData: FlTitlesData(show: true, bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: _bottomTitle, reservedSize: 28)), leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 52, getTitlesWidget: (v, meta) => Text(formatRupiah(v.toInt()), style: const TextStyle(fontSize: 10, color: NusaConfig.textTertiary)))), topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)), rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false))),
+                      borderData: FlBorderData(show: false),
+                    ),
+                  ),
+                ),
+              ]),
+            ),
+            FutureBuilder<Map<String, dynamic>>(
+              key: ValueKey('sum_$_refreshKey'),
+              future: repo.summary(from: from, to: to),
+              builder: (context, snap) {
+                final omzet = snap.data?['omzet'] as int? ?? 0;
+                final count = snap.data?['count'] as int? ?? 0;
+                final avg = snap.data?['avg'] as int? ?? 0;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(child: _StatCard('Omzet', formatRupiah(omzet))),
+                      const SizedBox(width: 12),
+                      Expanded(
+                          child: _StatCard('Transaksi', count.toString())),
+                      const SizedBox(width: 12),
+                      Expanded(child: _StatCard('Rata-rata', formatRupiah(avg))),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Expanded(child: _StatCard('Omzet', formatRupiah(omzet))),
-                  const SizedBox(width: 12),
-                  Expanded(
-                      child: _StatCard('Transaksi', count.toString())),
-                  const SizedBox(width: 12),
-                  Expanded(child: _StatCard('Rata-rata', formatRupiah(avg))),
-                ],
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _exporting
-                  ? null
-                  : () async {
-                      final data = await repo.summary(from: from, to: to);
-                      final items = data['items'] as List<Transaction>;
-                      await _doExport(items);
-                    },
-              icon: _exporting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.share),
-              label: Text(_exporting ? 'Memproses...' : 'Export Laporan'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: NusaConfig.primaryColor,
-                foregroundColor: Colors.white,
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _exporting
+                      ? null
+                      : () async {
+                          final data = await repo.summary(from: from, to: to);
+                          final items = data['items'] as List<Transaction>;
+                          await _doExport(items);
+                        },
+                  icon: _exporting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.share),
+                  label: Text(_exporting ? 'Memproses...' : 'Export Laporan'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: NusaConfig.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: FutureBuilder<List<Transaction>>(
-            key: ValueKey('list_$_refreshKey'),
-            future: repo.getTransactions(from: from, to: to),
-            builder: (context, snap) {
-              if (snap.connectionState != ConnectionState.done) {
-                return const SkeletonList();
-              }
-              if (snap.hasError) {
-                return Center(
-                  child: Text('Gagal memuat: ${snap.error}',
-                      style: const TextStyle(color: Colors.grey)),
-                );
-              }
-              final list = snap.data ?? [];
-              if (list.isEmpty) {
-                return const EmptyState(
-                  icon: Icons.bar_chart_outlined,
-                  message: 'Belum ada transaksi',
-                );
-              }
-              return RefreshIndicator(
-                onRefresh: () async => setState(() => _refreshKey++),
-                child: ListView.separated(
+            const SizedBox(height: 8),
+            FutureBuilder<List<Transaction>>(
+              key: ValueKey('list_$_refreshKey'),
+              future: repo.getTransactions(from: from, to: to),
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: SkeletonList(),
+                  );
+                }
+                if (snap.hasError) {
+                  return Center(
+                    child: Text('Gagal memuat: ${snap.error}',
+                        style: const TextStyle(color: Colors.grey)),
+                  );
+                }
+                final list = snap.data ?? [];
+                if (list.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: EmptyState(
+                      icon: Icons.bar_chart_outlined,
+                      message: 'Belum ada transaksi',
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   itemCount: list.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (_, i) => _TxCard(tx: list[i]),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
+          ],
         ),
-      ],
+      ),
     );
+  }
+
+  List<BarChartGroupData> _chartBars() {
+    // Generate mock chart data for now — 7 days
+    return List.generate(7, (i) => BarChartGroupData(x: i, barRods: [
+      BarChartRodData(toY: (i + 1) * 15000 + (i * 5000).toDouble(), color: NusaConfig.primaryColor, width: 22, borderRadius: const BorderRadius.vertical(top: Radius.circular(6))),
+    ]));
+  }
+  Widget _bottomTitle(double v, TitleMeta meta) {
+    final days = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+    final idx = v.toInt();
+    if (idx < 0 || idx >= 7) return const SizedBox.shrink();
+    return Text(days[idx], style: const TextStyle(fontSize: 10, color: NusaConfig.textTertiary));
   }
 
   // ── LABA RUGI TAB ─────────────────────────────────────────────
@@ -221,7 +265,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 Column(
                   children: [
                     Text(
-                      labaBersih >= 0 ? '🟢 Laba Bersih' : '🔴 Rugi Bersih',
+                      labaBersih >= 0 ? 'Laba Bersih' : 'Rugi Bersih',
                       style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -250,7 +294,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               const SizedBox(height: 16),
 
               // Pendapatan
-              _plSection('📊 Pendapatan', [
+              _plSection('Pendapatan', [
                 _plRow('Pendapatan Penjualan', formatRupiah(pendapatan),
                     isHighlight: true),
                 _plRow('HPP (Harga Pokok Penjualan)',
@@ -266,7 +310,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               const SizedBox(height: 12),
 
               // Beban
-              _plSection('📉 Beban', [
+              _plSection('Beban', [
                 _plRow('Pengeluaran Operasional', formatRupiah(expenses),
                     isDeduct: true),
                 _plRow('Payroll / Gaji', formatRupiah(payroll), isDeduct: true),
@@ -294,7 +338,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             : NusaConfig.primaryColor),
                     const SizedBox(height: 4),
                     Text(
-                      labaBersih >= 0 ? 'Untung 🎉' : 'Rugi 😞',
+                      labaBersih >= 0 ? 'Untung' : 'Rugi',
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,

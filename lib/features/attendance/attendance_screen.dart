@@ -123,6 +123,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final total = _employees.length;
+    final hadir = _today.values.where((a) => a?.checkIn != null).length;
+    final selesai = _today.values.where((a) => a?.checkOut != null).length;
+    final belum = total - hadir;
+
     return ScreenScaffold(
       'Presensi',
       _employees.isEmpty
@@ -130,20 +135,39 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               icon: Icons.person_outline,
               message: 'Belum ada karyawan. Tambah lewat menu Karyawan.',
             )
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: _employees.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (_, i) => _EmployeeCard(
-                  employee: _employees[i],
-                  today: _today[_employees[i].id],
-                  isDark: isDark,
-                  onIn: () => _checkIn(_employees[i]),
-                  onOut: () => _checkOut(_employees[i]),
+          : Column(
+              children: [
+                // Summary row
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Row(
+                    children: [
+                      _SummaryChip(label: '$hadir/$total hadir', color: const Color(0xFF10B981)),
+                      const SizedBox(width: 8),
+                      _SummaryChip(label: '$belum belum absen', color: const Color(0xFFF59E0B)),
+                      const SizedBox(width: 8),
+                      _SummaryChip(label: '$selesai selesai', color: const Color(0xFF9CA3AF)),
+                    ],
+                  ),
                 ),
-              ),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _employees.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (_, i) => _EmployeeCard(
+                        employee: _employees[i],
+                        today: _today[_employees[i].id],
+                        isDark: isDark,
+                        onIn: () => _checkIn(_employees[i]),
+                        onOut: () => _checkOut(_employees[i]),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
       floatingActionButton: null,
     );
@@ -261,38 +285,32 @@ class _EmployeeCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          // Times row
-          Row(
+          // Times row — wraps on narrow screens
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Expanded(
-                child: _Info(
-                  icon: Icons.login_rounded,
-                  label: 'Masuk',
-                  value: inTime ?? '-',
-                  color: inTime != null ? NusaConfig.accentGreen : null,
-                ),
+              _Info(
+                icon: Icons.login_rounded,
+                label: 'Masuk',
+                value: inTime ?? '-',
+                color: inTime != null ? NusaConfig.accentGreen : null,
               ),
-              Expanded(
-                child: _Info(
-                  icon: Icons.logout_rounded,
-                  label: 'Pulang',
-                  value: outTime ?? '-',
-                  color: outTime != null ? NusaConfig.accentGreen : null,
-                ),
+              _Info(
+                icon: Icons.logout_rounded,
+                label: 'Pulang',
+                value: outTime ?? '-',
+                color: outTime != null ? NusaConfig.accentGreen : null,
               ),
-              Expanded(
-                child: _Info(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'Kas Awal',
-                  value: pettyCash != null ? formatRupiah(pettyCash) : '-',
-                ),
+              _Info(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'Kas Awal',
+                value: pettyCash != null ? formatRupiah(pettyCash) : '-',
               ),
-              Expanded(
-                child: _Info(
-                  icon: Icons.monetization_on_outlined,
-                  label: 'Kas Akhir',
-                  value: finalCash != null ? formatRupiah(finalCash) : '-',
-                ),
+              _Info(
+                icon: Icons.monetization_on_outlined,
+                label: 'Kas Akhir',
+                value: finalCash != null ? formatRupiah(finalCash) : '-',
               ),
             ],
           ),
@@ -357,6 +375,28 @@ class _ActionBtn extends StatelessWidget {
   }
 }
 
+class _SummaryChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _SummaryChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Flexible(
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
+          ),
+        ),
+      );
+}
 class _Info extends StatelessWidget {
   final IconData icon;
   final String label;

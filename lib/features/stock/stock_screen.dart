@@ -133,11 +133,11 @@ class _StockScreenState extends ConsumerState<StockScreen> {
                     labelColor: NusaConfig.primaryColor,
                     unselectedLabelColor: NusaConfig.textSecondary,
                     indicatorColor: NusaConfig.primaryColor,
-                    tabs: [
-                      Tab(text: 'Stok Menipis'),
-                      Tab(text: 'Masuk'),
-                      Tab(text: 'Keluar'),
-                      Tab(text: 'Riwayat'),
+                    tabs: const [
+                      Tab(icon: Icon(Icons.warning_amber_rounded), text: 'Stok Menipis'),
+                      Tab(icon: Icon(Icons.add_circle_outline), text: 'Masuk'),
+                      Tab(icon: Icon(Icons.remove_circle_outline), text: 'Keluar'),
+                      Tab(icon: Icon(Icons.history), text: 'Riwayat'),
                     ],
                   ),
                   Expanded(
@@ -193,31 +193,47 @@ class _LowStockTab extends StatelessWidget {
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (_, i) {
             final p = products[i];
+            final ratio = p.minStock > 0
+                ? (p.stock / p.minStock).clamp(0.0, 1.5)
+                : 0.0;
+            final barColor = ratio < 0.25
+                ? Colors.red
+                : ratio < 0.5
+                    ? Colors.orange
+                    : ratio < 1.0
+                        ? Colors.amber
+                        : NusaConfig.accentGreen;
             return InkWell(
               onTap: () => onTap(p),
               borderRadius: BorderRadius.circular(20),
               child: NusaCard(
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(p.name,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(p.name,
                               style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 4),
-                          Text('Stok: ${p.stock} / min ${p.minStock}',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: NusaConfig.textSecondary)),
-                        ],
+                        ),
+                        Text('Stok: ${p.stock}/${p.minStock}',
+                            style: TextStyle(
+                                color: barColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (ratio / 1.5).clamp(0.0, 1.0),
+                        backgroundColor: barColor.withValues(alpha: 0.15),
+                        valueColor: AlwaysStoppedAnimation(barColor),
+                        minHeight: 6,
                       ),
                     ),
-                    Text('Menipis',
-                        style: TextStyle(
-                            color: NusaConfig.primaryDark,
-                            fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -246,31 +262,37 @@ class _InTab extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DropdownButtonFormField<int>(
-              value: selectedId,
-              hint: const Text('Pilih produk'),
-              decoration: const InputDecoration(
-                labelText: 'Produk',
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(14))),
+  Widget build(BuildContext context) => RefreshIndicator(
+        onRefresh: () async {
+          // reload handled by parent
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DropdownButtonFormField<int>(
+                value: selectedId,
+                hint: const Text('Pilih produk'),
+                decoration: const InputDecoration(
+                  labelText: 'Produk',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(14))),
+                ),
+                items: products
+                    .map((p) =>
+                        DropdownMenuItem(value: p.id, child: Text(p.name)))
+                    .toList(),
+                onChanged: onChanged,
               ),
-              items: products
-                  .map((p) =>
-                      DropdownMenuItem(value: p.id, child: Text(p.name)))
-                  .toList(),
-              onChanged: onChanged,
-            ),
-            const SizedBox(height: 12),
-            NusaInput(hint,
-                controller: qtyController, type: TextInputType.number),
-            const SizedBox(height: 20),
-            NusaButton(buttonLabel, onPressed: onSave),
-          ],
+              const SizedBox(height: 12),
+              NusaInput(hint,
+                  controller: qtyController, type: TextInputType.number),
+              const SizedBox(height: 20),
+              NusaButton(buttonLabel, onPressed: onSave),
+            ],
+          ),
         ),
       );
 }

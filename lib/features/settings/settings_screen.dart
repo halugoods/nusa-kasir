@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -72,13 +73,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Widget _sectionHeader(String title) => Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 8),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: NusaConfig.textSecondary,
+            letterSpacing: 1.2,
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) => ScreenScaffold(
         'Pengaturan',
         SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _sectionHeader('TOKO'),
               NusaCard(
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -96,61 +112,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              NusaCard(
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text('Lisensi',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                    const SizedBox(height: 8),
-                    Text(_activationKey ?? '-'),
-                    const SizedBox(height: 4),
-                    const Text('Aktif', style: TextStyle(color: Colors.green)),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: _backingUp ? null : _backupNow,
-                      icon: _backingUp
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.cloud_upload_outlined, size: 18),
-                      label: Text(_backingUp ? 'Menyimpan...' : 'Backup ke Cloud'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: NusaConfig.primaryColor,
-                        side: BorderSide(color: NusaConfig.primaryColor),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Data otomatis disinkronkan ke cloud dengan akun Google Anda.',
-                      style: TextStyle(fontSize: 11, color: NusaConfig.textTertiary.withValues(alpha: 0.8)),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Theme toggle
-              NusaCard(
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Tampilan',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _themeChip('Terang', 'light', Icons.light_mode),
-                        const SizedBox(width: 8),
-                        _themeChip('Gelap', 'dark', Icons.dark_mode),
-                        const SizedBox(width: 8),
-                        _themeChip('Sistem', 'system', Icons.phone_android),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               // Toko Online
               NusaCard(
                 InkWell(
@@ -180,7 +142,88 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
+              _sectionHeader('SISTEM'),
+              NusaCard(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('Lisensi',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(_activationKey ?? '-',
+                              style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                        ),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: _activationKey != null
+                              ? () {
+                                  Clipboard.setData(
+                                      ClipboardData(text: _activationKey!));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Kode aktivasi disalin'),
+                                      behavior: SnackBarBehavior.floating,
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                                }
+                              : null,
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(Icons.copy, size: 16, color: NusaConfig.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('Aktif', style: TextStyle(color: Colors.green)),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _backingUp ? null : _backupNow,
+                      icon: _backingUp
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.cloud_upload_outlined, size: 18),
+                      label: Text(_backingUp ? 'Menyimpan...' : 'Backup ke Cloud'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: NusaConfig.primaryColor,
+                        side: BorderSide(color: NusaConfig.primaryColor),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Data otomatis disinkronkan ke cloud dengan akun Google Anda.',
+                      style: TextStyle(fontSize: 11, color: NusaConfig.textTertiary.withValues(alpha: 0.8)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              NusaCard(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Tampilan',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _themeChip('Terang', 'light', Icons.light_mode),
+                        const SizedBox(width: 8),
+                        _themeChip('Gelap', 'dark', Icons.dark_mode),
+                        const SizedBox(width: 8),
+                        _themeChip('Sistem', 'system', Icons.phone_android),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               // Printer
               NusaCard(
                 InkWell(
@@ -220,38 +263,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              NusaCard(
-                InkWell(
-                  onTap: () => showBackupSheet(context, ref),
-                  borderRadius: BorderRadius.circular(20),
-                  child: const Padding(
-                    padding: EdgeInsets.all(14),
-                    child: Row(
-                      children: [
-                        Icon(Icons.backup, color: NusaConfig.primaryColor),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Backup & Restore',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                              SizedBox(height: 4),
-                              Text('Simpan atau muat file database',
-                                  style: TextStyle(
-                                      fontSize: 13, color: NusaConfig.textSecondary)),
-                            ],
-                          ),
-                        ),
-                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               // Update check
               NusaCard(
                 InkWell(
@@ -314,10 +326,128 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
+              _sectionHeader('DATA'),
+              NusaCard(
+                InkWell(
+                  onTap: () => showBackupSheet(context, ref),
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Icon(Icons.backup, color: NusaConfig.primaryColor),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Backup & Restore',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                              SizedBox(height: 4),
+                              Text('Simpan atau muat file database',
+                                  style: TextStyle(
+                                      fontSize: 13, color: NusaConfig.textSecondary)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Tentang Aplikasi
+              _sectionHeader('TENTANG APLIKASI'),
+              NusaCard(
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline,
+                              size: 20, color: NusaConfig.textSecondary),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Nusa Kasir',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16)),
+                                const SizedBox(height: 2),
+                                Text(
+                                    'Versi ${NusaConfig.appVersion} (build ${NusaConfig.appBuildNumber})',
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        color: NusaConfig.textSecondary)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(),
+                      const SizedBox(height: 12),
+                      const Row(
+                        children: [
+                          Icon(Icons.person_outline,
+                              size: 18, color: NusaConfig.textSecondary),
+                          SizedBox(width: 10),
+                          Text('Dibuat oleh Halu Goods',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  color: NusaConfig.textSecondary)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          _aboutLink(
+                            context,
+                            'Syarat & Ketentuan',
+                            'https://halugoods.com/terms',
+                          ),
+                          const SizedBox(width: 16),
+                          _aboutLink(
+                            context,
+                            'Kebijakan Privasi',
+                            'https://halugoods.com/privacy',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
       );
+
+  Widget _aboutLink(BuildContext context, String label, String url) {
+    return GestureDetector(
+      onTap: () {
+        try {
+          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        } catch (_) {}
+      },
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          color: NusaConfig.primaryColor,
+          decoration: TextDecoration.underline,
+        ),
+      ),
+    );
+  }
 
   Future<void> _checkUpdate() async {
     setState(() => _checkingUpdate = true);

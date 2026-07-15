@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
@@ -260,50 +261,137 @@ class _PromoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = promo.status == 'Aktif';
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: NusaCard(
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+    final expired = promo.endDate != null &&
+        promo.endDate!.isBefore(DateTime.now());
+    final quotaUsed = promo.maxUses != null && promo.maxUses! > 0
+        ? promo.usedCount / promo.maxUses!
+        : -1.0;
+    final quotaColor = quotaUsed < 0
+        ? NusaConfig.accentGreen
+        : quotaUsed < 0.5
+            ? NusaConfig.accentGreen
+            : quotaUsed < 0.75
+                ? Colors.orange
+                : Colors.red;
+    return Opacity(
+      opacity: expired ? 0.55 : 1.0,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: NusaCard(
+          Container(
+            decoration: active && !expired
+                ? const BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: NusaConfig.accentGreen,
+                        width: 4,
+                      ),
+                    ),
+                  )
+                : null,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('🏷️ ', style: TextStyle(fontSize: 16)),
-                      Expanded(
-                        child: Text(promo.name,
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600)),
+                      Row(
+                        children: [
+                          const Icon(Icons.local_offer,
+                              size: 18, color: NusaConfig.primaryColor),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(promo.name,
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(_discountLabel(promo),
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: NusaConfig.primaryColor)),
+                      const SizedBox(height: 4),
+                      Text(
+                          'Min. belanja ${formatRupiah(promo.minBelanja)} • Aktif: ${_fmtDate(promo.startDate)}–${_fmtDate(promo.endDate)}',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: NusaConfig.textSecondary)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                    'Kuota: ${_quotaLabel(promo)}',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: NusaConfig.textSecondary)),
+                                if (quotaUsed >= 0) ...[
+                                  const SizedBox(height: 4),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(3),
+                                    child: LinearProgressIndicator(
+                                      value: quotaUsed.clamp(0.0, 1.0),
+                                      backgroundColor:
+                                          quotaColor.withValues(alpha: 0.15),
+                                      valueColor:
+                                          AlwaysStoppedAnimation(quotaColor),
+                                      minHeight: 4,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text('Kode: ${promo.code}',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: NusaConfig.textSecondary)),
+                          ),
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: promo.code));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Kode disalin'),
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(Icons.copy,
+                                  size: 16, color: NusaConfig.textSecondary),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(_discountLabel(promo),
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: NusaConfig.primaryColor)),
-                  const SizedBox(height: 4),
-                  Text(
-                      'Min. belanja ${formatRupiah(promo.minBelanja)} • Aktif: ${_fmtDate(promo.startDate)}–${_fmtDate(promo.endDate)}',
-                      style: const TextStyle(
-                          fontSize: 13, color: NusaConfig.textSecondary)),
-                  const SizedBox(height: 4),
-                  Text('Kuota: ${_quotaLabel(promo)} • Kode: ${promo.code}',
-                      style: const TextStyle(
-                          fontSize: 12, color: NusaConfig.textSecondary)),
-                ],
-              ),
+                ),
+                Switch(
+                  value: active,
+                  activeColor: NusaConfig.primaryColor,
+                  onChanged: (_) => onToggle(),
+                ),
+              ],
             ),
-            Switch(
-              value: active,
-              activeColor: NusaConfig.primaryColor,
-              onChanged: (_) => onToggle(),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -29,6 +29,12 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   List<Employee> _employees = [];
   List<Product> _products = [];
 
+  int _totalExpenseThisMonth = 0;
+  int _totalPayroll = 0;
+  int _totalWasteCost = 0;
+  int _runningBalance = 0;
+  int _periodFilter = 0; // 0: Bulan Ini, 1: Minggu Ini, 2: Semua
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +54,25 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       prodRepo.getProducts(),
     ]);
     if (mounted) {
+      final now = DateTime.now();
+      final expThisMonth = results[0] is List<Expense>
+          ? (results[0] as List<Expense>)
+              .where((e) => e.date.year == now.year && e.date.month == now.month)
+              .fold<int>(0, (sum, e) => sum + e.amount)
+          : 0;
+      final allPayroll = results[1] is List<PayrollData>
+          ? (results[1] as List<PayrollData>)
+              .fold<int>(0, (sum, p) => sum + p.salary + p.bonus - p.deduction)
+          : 0;
+      final allWasteCost = results[2] is List<WasteData>
+          ? (results[2] as List<WasteData>).length // count-based, or sum qty
+          : 0;
+      int balance = 0;
+      if (results[3] is List<LiquidityData>) {
+        for (final l in results[3] as List<LiquidityData>) {
+          balance += l.type == 'in' ? l.amount : -l.amount;
+        }
+      }
       setState(() {
         _expenses = results[0] as List<Expense>;
         _payroll = results[1] as List<PayrollData>;
@@ -55,6 +80,10 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
         _liquidity = results[3] as List<LiquidityData>;
         _employees = results[4] as List<Employee>;
         _products = results[5] as List<Product>;
+        _totalExpenseThisMonth = expThisMonth;
+        _totalPayroll = allPayroll;
+        _totalWasteCost = allWasteCost;
+        _runningBalance = balance;
       });
     }
   }
@@ -71,6 +100,27 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       if (p.id == id) return p.name;
     }
     return 'ID $id';
+  }
+
+  IconData _iconForCategory(String cat) => switch (cat.toLowerCase()) {
+    'operasional' => Icons.settings,
+    'listrik' || 'air' || 'internet' => Icons.electrical_services,
+    'belanja' || 'bahan' => Icons.shopping_cart,
+    'gaji' || 'payroll' => Icons.people,
+    _ => Icons.money_off,
+  };
+
+  List<Expense> get _filteredExpenses {
+    final now = DateTime.now();
+    if (_periodFilter == 1) {
+      // Minggu ini
+      final weekStart = now.subtract(Duration(days: now.weekday - 1));
+      return _expenses.where((e) => e.date.isAfter(weekStart.subtract(const Duration(days: 1)))).toList();
+    } else if (_periodFilter == 0) {
+      // Bulan ini
+      return _expenses.where((e) => e.date.year == now.year && e.date.month == now.month).toList();
+    }
+    return _expenses; // Semua
   }
 
   Widget _chip(int i) {
@@ -96,7 +146,34 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       'Keuangan',
       Column(
         children: [
-          const SizedBox(height: 8),
+          // ── Summary cards ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(children: [
+              _SummaryCard(
+                label: 'Pengeluaran Bulan Ini',
+                value: formatRupiah(_totalExpenseThisMonth),
+                icon: Icons.money_off,
+                color: NusaConfig.primaryColor,
+              ),
+              const SizedBox(width: 10),
+              _SummaryCard(
+                label: 'Total Payroll',
+                value: formatRupiah(_totalPayroll),
+                icon: Icons.people,
+                color: const Color(0xFF8B5CF6),
+              ),
+              const SizedBox(width: 10),
+              _SummaryCard(
+                label: 'Total Waste',
+                value: '$_totalWasteCost item',
+                icon: Icons.delete_outline,
+                color: const Color(0xFFEF4444),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          // ── Tab chips ──
           SizedBox(
             height: 44,
             child: ListView.separated(
@@ -107,7 +184,19 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
               itemBuilder: (_, i) => _chip(i),
             ),
           ),
-          const SizedBox(height: 8),
+          // ── Period filter (only for Pengeluaran) ──
+          if (_tab == 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(children: [
+                _PeriodChip('Bulan Ini', 0),
+                const SizedBox(width: 8),
+                _PeriodChip('Minggu Ini', 1),
+                const SizedBox(width: 8),
+                _PeriodChip('Semua', 2),
+              ]),
+            ),
+          const SizedBox(height: 4),
           Expanded(
             child: _body(),
           ),
@@ -123,16 +212,38 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     );
   }
 
+  Widget _PeriodChip(String label, int idx) {
+    final sel = _periodFilter == idx;
+    return FilterChip(
+      label: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: sel ? Colors.white : NusaConfig.textPrimary)),
+      selected: sel,
+      showCheckmark: false,
+      selectedColor: NusaConfig.primaryColor,
+      backgroundColor: NusaConfig.surfaceColor,
+      onSelected: (_) => setState(() => _periodFilter = idx),
+    );
+  }
+
   Widget _body() {
     final f = FinanceRepository(ref.read(databaseProvider));
     switch (_tab) {
       case 0:
+        final filtered = _filteredExpenses;
         return _listView(
-          _expenses.isEmpty,
-          _expenses
+          filtered.isEmpty,
+          filtered
               .map((e) => NusaCard(
                     Row(
                       children: [
+                        Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(
+                            color: NusaConfig.primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(_iconForCategory(e.category), size: 20, color: NusaConfig.primaryColor),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,7 +274,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                     ),
                   ))
               .toList(),
-          onDelete: (i) async { await f.deleteExpense(_expenses[i].id); await _load(); },
+          onDelete: (i) async { await f.deleteExpense(filtered[i].id); await _load(); },
         );
       case 1:
         return _listView(
@@ -261,46 +372,69 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           onDelete: (i) async { await f.deleteWaste(_waste[i].id); await _load(); },
         );
       default:
-        return _listView(
-          _liquidity.isEmpty,
-          _liquidity
-              .map((l) => NusaCard(
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+        return Column(
+          children: [
+            // Running balance header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
+                children: [
+                  Text('Saldo Berjalan: ', style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+                  Text(
+                    formatRupiah(_runningBalance),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: _runningBalance >= 0 ? Colors.green : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _listView(
+                _liquidity.isEmpty,
+                _liquidity
+                    .map((l) => NusaCard(
+                          Row(
                             children: [
-                              Text(l.category,
-                                  style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 4),
-                              Text(l.description,
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      color: NusaConfig.textSecondary)),
-                              if (l.method != null)
-                                Text('Metode: ${l.method}',
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color: NusaConfig.textSecondary)),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(l.category,
+                                        style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600)),
+                                    const SizedBox(height: 4),
+                                    Text(l.description,
+                                        style: const TextStyle(
+                                            fontSize: 13,
+                                            color: NusaConfig.textSecondary)),
+                                    if (l.method != null)
+                                      Text('Metode: ${l.method}',
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              color: NusaConfig.textSecondary)),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '${l.type == 'in' ? '+ ' : '- '}${formatRupiah(l.amount)}',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: l.type == 'in' ? Colors.green : Colors.red,
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                        Text(
-                          '${l.type == 'in' ? '+ ' : '- '}${formatRupiah(l.amount)}',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: l.type == 'in' ? Colors.green : Colors.red,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ))
-              .toList(),
-          onDelete: (i) async { await f.deleteLiquidity(_liquidity[i].id); await _load(); },
+                        ))
+                    .toList(),
+                onDelete: (i) async { await f.deleteLiquidity(_liquidity[i].id); await _load(); },
+              ),
+            ),
+          ],
         );
     }
   }
@@ -609,6 +743,40 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
             }),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  const _SummaryCard({required this.label, required this.value, required this.icon, required this.color});
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF3F4F6)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 4, offset: const Offset(0, 2))],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+        ]),
       ),
     );
   }

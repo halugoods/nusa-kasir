@@ -31,6 +31,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _trxCount = '0';
   String _avg = 'Rp 0';
   final String _topProduct = '—';
+  int _productCount = 0;
+  int _txCount = 0;
+  int _custCount = 0;
   List<Branche> _branches = [];
   Branche? _activeBranch;
 
@@ -85,6 +88,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       await _checkAttendance(session.employeeId);
     }
     await _load();
+    _loadQuickStats();
   }
 
   Future<void> _checkAttendance(int employeeId) async {
@@ -155,6 +159,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _lastCashierTime = lastCashierTime;
       });
     }
+  }
+
+  Future<void> _loadQuickStats() async {
+    final db = ref.read(databaseProvider);
+    try {
+      final prods = await db.select(db.products).get();
+      final txs = await db.select(db.transactions).get();
+      final custs = await db.select(db.customers).get();
+      if (mounted) setState(() {
+        _productCount = prods.length;
+        _txCount = txs.length;
+        _custCount = custs.length;
+      });
+    } catch (_) {}
   }
 
   // ── Menu navigation with RBAC guard ────────────────────────────────
@@ -573,136 +591,156 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            DashboardHeader(
-              userName: userName,
-              role: roleText,
-              branch: _storeName,
-              hasNotification: !_hasCheckedIn && _currentName.isNotEmpty,
-              onBellTap: () {},
-            ),
+        child: RefreshIndicator(
+          onRefresh: () async { await _load(); _loadQuickStats(); },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              children: [
+                // Header
+                DashboardHeader(
+                  userName: userName,
+                  role: roleText,
+                  branch: _storeName,
+                  hasNotification: !_hasCheckedIn && _currentName.isNotEmpty,
+                  onBellTap: () {},
+                ),
 
-            // Branch selector
-            if (_branches.length > 1)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => context.push('/cabang'),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.store,
-                              size: 16, color: NusaConfig.primaryColor),
-                          const SizedBox(width: 6),
-                          Text(
-                            _activeBranch?.name ?? 'Semua Cabang',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: NusaConfig.primaryColor,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.keyboard_arrow_down,
-                              size: 18, color: NusaConfig.primaryColor),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: _branches.map((b) {
-                            final active = _activeBranch?.id == b.id;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() => _activeBranch = b);
-                                ref
-                                    .read(activeBranchProvider.notifier)
-                                    .state = b;
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 6),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: active
-                                      ? NusaConfig.primarySoft
-                                      : Theme.of(context).colorScheme.surface,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: active
-                                        ? NusaConfig.primaryColor
-                                        : NusaConfig.dividerColor,
-                                  ),
-                                ),
-                                child: Text(
-                                  b.name,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: active
-                                        ? NusaConfig.primaryColor
-                                        : NusaConfig.textSecondary,
-                                  ),
+                // Branch selector
+                if (_branches.length > 1)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => context.push('/cabang'),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.store,
+                                  size: 16, color: NusaConfig.primaryColor),
+                              const SizedBox(width: 6),
+                              Text(
+                                _activeBranch?.name ?? 'Semua Cabang',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: NusaConfig.primaryColor,
                                 ),
                               ),
-                            );
-                          }).toList(),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.keyboard_arrow_down,
+                                  size: 18, color: NusaConfig.primaryColor),
+                            ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: _branches.map((b) {
+                                final active = _activeBranch?.id == b.id;
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() => _activeBranch = b);
+                                    ref
+                                        .read(activeBranchProvider.notifier)
+                                        .state = b;
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.only(right: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: active
+                                          ? NusaConfig.primarySoft
+                                          : Theme.of(context).colorScheme.surface,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: active
+                                            ? NusaConfig.primaryColor
+                                            : NusaConfig.dividerColor,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      b.name,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: active
+                                            ? NusaConfig.primaryColor
+                                            : NusaConfig.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
+
+                // Profile card
+                ProfileStatsCard(
+                  initials: initials,
+                  userName: userName,
+                  role: roleText,
+                  branch: _storeName,
+                  attendanceStatus: attendanceText,
+                  salesValue: _omzet,
+                  transactionCount: _trxCount,
+                  avgValue: _avg,
+                  topProduct: _topProduct,
                 ),
-              ),
 
-            // Profile card
-            ProfileStatsCard(
-              initials: initials,
-              userName: userName,
-              role: roleText,
-              branch: _storeName,
-              attendanceStatus: attendanceText,
-              salesValue: _omzet,
-              transactionCount: _trxCount,
-              avgValue: _avg,
-              topProduct: _topProduct,
+                const SizedBox(height: 8),
+
+                // ── Stat cards row ──
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(children: [
+                    _StatMiniCard(icon: Icons.inventory_2_outlined, label: 'Produk', value: '$_productCount', color: const Color(0xFF3B82F6)),
+                    const SizedBox(width: 10),
+                    _StatMiniCard(icon: Icons.receipt_long_outlined, label: 'Transaksi', value: '$_txCount', color: const Color(0xFF10B981)),
+                    const SizedBox(width: 10),
+                    _StatMiniCard(icon: Icons.people_outline, label: 'Pelanggan', value: '$_custCount', color: const Color(0xFF8B5CF6)),
+                  ]),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Menu grid with lock indicators
+                GridView.count(
+                  crossAxisCount: 3,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.85,
+                  children: menuItems.map((item) {
+                    return _MenuItem(
+                      label: item['label'] as String,
+                      icon: item['icon'] as String,
+                      access: item['access'] as String,
+                      onTap: () => _handleMenuTap(item['id'] as String),
+                    );
+                  }).toList(),
+                ),
+
+                // Buka Kasir CTA
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                  child: _BukaKasirCTA(
+                    onTap: () => _bukaKasir(),
+                  ),
+                ),
+              ],
             ),
-
-            const SizedBox(height: 20),
-
-            // Menu grid with lock indicators
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 3,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.85,
-                children: menuItems.map((item) {
-                  return _MenuItem(
-                    label: item['label'] as String,
-                    icon: item['icon'] as String,
-                    access: item['access'] as String,
-                    onTap: () => _handleMenuTap(item['id'] as String),
-                  );
-                }).toList(),
-              ),
-            ),
-
-            // Buka Kasir CTA
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-              child: _BukaKasirCTA(
-                onTap: () => _bukaKasir(),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -845,6 +883,39 @@ class MenuIcon extends StatelessWidget {
         size: 26,
         color: color,
       );
+}
+
+class _StatMiniCard extends StatelessWidget {
+  final IconData icon;
+  final String label, value;
+  final Color color;
+  const _StatMiniCard({required this.icon, required this.label, required this.value, required this.color});
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF3F4F6)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(height: 10),
+          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+        ]),
+      ),
+    );
+  }
 }
 
 /// "Buka Kasir" CTA button.

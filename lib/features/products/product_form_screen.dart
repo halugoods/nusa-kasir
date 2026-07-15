@@ -217,54 +217,115 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   GestureDetector(
                     onTap: _pickImage,
                     child: Container(
-                      height: 140,
+                      height: 160,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? NusaConfig.darkSurface2
-                            : NusaConfig.backgroundColor,
+                        color: const Color(0xFFF9FAFB),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? NusaConfig.darkBorder
-                              : NusaConfig.borderColor,
-                        ),
+                        border: Border.all(color: const Color(0xFFD1D5DB), width: 2),
                       ),
                       child: _imagePath != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.file(
-                                File(_imagePath!),
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: 140,
-                              ),
+                          ? Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Image.file(
+                                    File(_imagePath!),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 12,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: GestureDetector(
+                                      onTap: _pickImage,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black54,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: const Text(
+                                          'Ganti Foto',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             )
                           : Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.add_photo_alternate_outlined,
-                                    size: 40, color: NusaConfig.textTertiary),
-                                const SizedBox(height: 8),
-                                Text('Tambah Gambar Produk',
+                                const Icon(Icons.cloud_upload_outlined,
+                                    size: 40, color: Color(0xFF9CA3AF)),
+                                const SizedBox(height: 10),
+                                const Text('TAP UNTUK UPLOAD FOTO',
                                     style: TextStyle(
-                                        fontSize: 13,
-                                        color: NusaConfig.textTertiary)),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF6B7280),
+                                        letterSpacing: 0.5)),
+                                const SizedBox(height: 4),
+                                const Text('atau drag & drop',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFF9CA3AF))),
                               ],
                             ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  NusaInput('Nama Produk', controller: _name),
+                  TextFormField(
+                    controller: _name,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      labelText: 'Nama Produk',
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 1.5)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  NusaInput('SKU (opsional)', controller: _sku),
+                  TextFormField(
+                    controller: _sku,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      labelText: 'SKU (opsional)',
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 1.5)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: _category,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.textPrimary),
+                    decoration: InputDecoration(
                       labelText: 'Kategori',
-                      border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.all(Radius.circular(14))),
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 1.5)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
                     items: NusaConfig.categories
                         .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -272,17 +333,69 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     onChanged: (v) => setState(() => _category = v!),
                   ),
                   const SizedBox(height: 12),
-                  NusaInput('Harga Beli',
-                      controller: _buy, type: TextInputType.number),
+                  TextFormField(
+                    controller: _buy,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      labelText: 'Harga Beli',
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 1.5)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  NusaInput('Harga Jual',
-                      controller: _sell, type: TextInputType.number),
+                  TextFormField(
+                    controller: _sell,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      labelText: 'Harga Jual',
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 1.5)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  NusaInput('Stok Awal',
-                      controller: _stock, type: TextInputType.number),
+                  TextFormField(
+                    controller: _stock,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      labelText: 'Stok Awal',
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 1.5)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  NusaInput('Stok Minimum',
-                      controller: _min, type: TextInputType.number),
+                  TextFormField(
+                    controller: _min,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      labelText: 'Stok Minimum',
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 1.5)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
                   const SizedBox(height: 16),
 
                   // ── Barcode toggle ──
@@ -335,17 +448,30 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                           ],
                         ),
                         if (_barcodeOn) ...[
-                          const SizedBox(height: 8),
-                          BarcodeWidget(
-                            data: _barcode,
-                            barcode: Barcode.code128(),
-                            width: double.infinity,
-                            height: 80,
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                BarcodeWidget(
+                                  data: _barcode,
+                                  barcode: Barcode.code128(),
+                                  width: double.infinity,
+                                  height: 70,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(_barcode,
+                                    style: const TextStyle(
+                                        fontFamily: 'monospace',
+                                        fontSize: 11,
+                                        color: NusaConfig.textSecondary)),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(_barcode,
-                              style: const TextStyle(
-                                  fontFamily: 'monospace', fontSize: 12)),
                         ],
                       ],
                     ),
@@ -413,7 +539,19 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  NusaButton(_isEdit ? 'Simpan' : 'Simpan', onPressed: _save),
+                  SizedBox(
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: NusaConfig.primaryColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                      child: Text(_isEdit ? 'Simpan Perubahan' : 'Simpan Produk ke Database'),
+                    ),
+                  ),
                 ],
               ),
             ),

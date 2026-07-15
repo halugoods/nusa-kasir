@@ -8,6 +8,7 @@ import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
+import 'package:nusa_kasir/data/repositories/customer_repository.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/features/pos/cart.dart';
 import "package:nusa_kasir/shared/widgets/top_toast.dart";
@@ -26,6 +27,12 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
   String _cashierName = '';
   bool _searching = false;
   bool _cartExpanded = false;
+  final _memberPhone = TextEditingController();
+  final _promoCode = TextEditingController();
+  String? _memberName;
+  int _memberPoints = 0;
+  String _paymentMethod = 'Tunai';
+  bool _checkingMember = false;
 
   // Cached product list for instant filtering
   List<Product>? _allProducts;
@@ -61,6 +68,8 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
   void dispose() {
     _search.dispose();
     _searchFocus.dispose();
+    _memberPhone.dispose();
+    _promoCode.dispose();
     super.dispose();
   }
 
@@ -415,6 +424,7 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
 
   /// Full-height cart sheet overlay for narrow screens.
   Widget _buildCartSheet(bool isDark, List<CartItem> cart, int totalItems, int totalPrice) {
+    final hasMember = _memberName != null;
     return Positioned.fill(
       top: MediaQuery.of(context).padding.top + 80,
       child: GestureDetector(
@@ -429,7 +439,6 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
           ),
           child: Column(
             children: [
-              // Handle
               Center(
                 child: Container(
                   margin: const EdgeInsets.symmetric(vertical: 10),
@@ -446,8 +455,84 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
                   IconButton(onPressed: () => setState(() => _cartExpanded = false), icon: const Icon(Icons.keyboard_arrow_down, color: NusaConfig.textSecondary)),
                 ]),
               ),
+              // ── Member lookup ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: Row(children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 42,
+                      child: TextField(
+                        controller: _memberPhone,
+                        keyboardType: TextInputType.phone,
+                        style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+                        decoration: InputDecoration(
+                          hintText: 'No WhatsApp member...',
+                          hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                          prefixIcon: const Icon(Icons.person_outline, size: 18, color: NusaConfig.textSecondary),
+                          filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 42,
+                    child: ElevatedButton(
+                      onPressed: _checkingMember ? null : _lookupMember,
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 14), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      child: _checkingMember ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Cek Member'),
+                    ),
+                  ),
+                ]),
+              ),
+              if (hasMember)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFCD34D))),
+                  child: Row(children: [
+                    const Icon(Icons.stars_rounded, size: 18, color: Color(0xFFF59E0B)),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_memberName!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF92400E)))),
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: const Color(0xFFF59E0B), borderRadius: BorderRadius.circular(8)), child: Text('$_memberPoints pts', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
+                  ]),
+                ),
+              // ── Promo code ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+                child: Row(children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: _promoCode,
+                        style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+                        decoration: InputDecoration(
+                          hintText: 'Kode promo...',
+                          hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                          prefixIcon: const Icon(Icons.local_offer_outlined, size: 16, color: NusaConfig.textSecondary),
+                          filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 40,
+                    child: ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      child: const Text('Pakai'),
+                    ),
+                  ),
+                ]),
+              ),
               const Divider(height: 1),
-              // Cart items
               Expanded(
                 child: cart.isEmpty
                     ? Center(
@@ -469,6 +554,17 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
                         ),
                       ),
               ),
+              // ── Payment method grid ──
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(children: [
+                  _payChip('Tunai', Icons.money, _paymentMethod == 'Tunai', () => setState(() => _paymentMethod = 'Tunai')),
+                  const SizedBox(width: 8),
+                  _payChip('QRIS', Icons.qr_code, _paymentMethod == 'QRIS', () => setState(() => _paymentMethod = 'QRIS')),
+                  const SizedBox(width: 8),
+                  _payChip('Transfer', Icons.account_balance, _paymentMethod == 'Transfer', () => setState(() => _paymentMethod = 'Transfer')),
+                ]),
+              ),
               // Summary + checkout
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -476,19 +572,14 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
                 child: Column(children: [
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     Text('$totalItems item', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                    Text(formatRupiah(totalPrice), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
+                    Text(formatRupiah(totalPrice), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor, letterSpacing: -0.5)),
                   ]),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: totalItems == 0 ? null : () => context.push('/checkout?sessionId=${widget.sessionId ?? ''}'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                       child: const Text('Bayar'),
                     ),
                   ),
@@ -503,6 +594,7 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
 
   /// Persistent cart sidebar for wide screens.
   Widget _buildCartSidebar(bool isDark, List<CartItem> cart, int totalItems, int totalPrice) {
+    final hasMember = _memberName != null;
     return Container(
       decoration: BoxDecoration(
         color: isDark ? NusaConfig.darkSurface : Colors.white,
@@ -517,6 +609,84 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
               const SizedBox(width: 8),
               const Expanded(child: Text('Keranjang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary))),
               TextButton(onPressed: cart.isEmpty ? null : () => ref.read(cartProvider.notifier).clear(), child: const Text('Kosongkan', style: TextStyle(fontSize: 12, color: NusaConfig.primaryColor, fontWeight: FontWeight.w600))),
+            ]),
+          ),
+          const Divider(height: 1),
+          // ── Member lookup ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Row(children: [
+              Expanded(
+                child: SizedBox(
+                  height: 42,
+                  child: TextField(
+                    controller: _memberPhone,
+                    keyboardType: TextInputType.phone,
+                    style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'No WA member...',
+                      hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                      prefixIcon: const Icon(Icons.person_outline, size: 18, color: NusaConfig.textSecondary),
+                      filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 42,
+                child: ElevatedButton(
+                  onPressed: _checkingMember ? null : _lookupMember,
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 14), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: _checkingMember ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Cek'),
+                ),
+              ),
+            ]),
+          ),
+          if (hasMember)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFCD34D))),
+              child: Row(children: [
+                const Icon(Icons.stars_rounded, size: 18, color: Color(0xFFF59E0B)),
+                const SizedBox(width: 8),
+                Expanded(child: Text(_memberName!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF92400E)))),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: const Color(0xFFF59E0B), borderRadius: BorderRadius.circular(8)), child: Text('$_memberPoints pts', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
+              ]),
+            ),
+          // ── Promo code ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+            child: Row(children: [
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: TextField(
+                    controller: _promoCode,
+                    style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Kode promo...',
+                      hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                      prefixIcon: const Icon(Icons.local_offer_outlined, size: 16, color: NusaConfig.textSecondary),
+                      filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: const Text('Pakai'),
+                ),
+              ),
             ]),
           ),
           const Divider(height: 1),
@@ -541,31 +711,79 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
                     ),
                   ),
           ),
+          // ── Payment method grid ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(children: [
+              _payChip('Tunai', Icons.money, _paymentMethod == 'Tunai', () => setState(() => _paymentMethod = 'Tunai')),
+              const SizedBox(width: 6),
+              _payChip('QRIS', Icons.qr_code, _paymentMethod == 'QRIS', () => setState(() => _paymentMethod = 'QRIS')),
+              const SizedBox(width: 6),
+              _payChip('Transfer', Icons.account_balance, _paymentMethod == 'Transfer', () => setState(() => _paymentMethod = 'Transfer')),
+            ]),
+          ),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor, border: Border(top: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor))),
             child: Column(children: [
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('$totalItems item', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                Text(formatRupiah(totalPrice), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
+                Text(formatRupiah(totalPrice), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor, letterSpacing: -0.5)),
               ]),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: totalItems == 0 ? null : () => context.push('/checkout?sessionId=${widget.sessionId ?? ''}'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                   child: const Text('Bayar'),
                 ),
               ),
             ]),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _lookupMember() async {
+    final phone = _memberPhone.text.trim();
+    if (phone.isEmpty) return;
+    setState(() => _checkingMember = true);
+    try {
+      final repo = CustomerRepository(ref.read(databaseProvider));
+      final customer = await repo.byPhone(phone);
+      if (customer != null && mounted) {
+        setState(() {
+          _memberName = customer.name;
+          _memberPoints = customer.points;
+        });
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Member tidak ditemukan'), duration: Duration(seconds: 2)));
+        setState(() { _memberName = null; _memberPoints = 0; });
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _checkingMember = false);
+  }
+
+  Widget _payChip(String label, IconData icon, bool active, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: active ? NusaConfig.primarySoft : (Theme.of(context).brightness == Brightness.dark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: active ? NusaConfig.primaryColor : NusaConfig.dividerColor, width: active ? 2 : 1),
+          ),
+          child: Column(children: [
+            Icon(icon, size: 20, color: active ? NusaConfig.primaryColor : NusaConfig.textSecondary),
+            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: active ? NusaConfig.primaryColor : NusaConfig.textSecondary)),
+          ]),
+        ),
       ),
     );
   }

@@ -111,6 +111,31 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
             ),
           ),
           const SizedBox(height: 8),
+          // Summary chip
+          if (!_loading)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: NusaConfig.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Total: ${_products.length} produk',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: NusaConfig.primaryColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
           Expanded(
             child: _loading
                 ? const SkeletonList()
@@ -158,6 +183,7 @@ class _ProductTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final low = product.stock <= product.minStock;
+    final outOfStock = product.stock == 0;
     final hasImage = product.imagePath != null && product.imagePath!.isNotEmpty && File(product.imagePath!).existsSync();
 
     return InkWell(
@@ -183,45 +209,74 @@ class _ProductTile extends StatelessWidget {
                           ),
                         ),
                         child: Center(
-                          child: Opacity(
-                            opacity: 0.4,
-                            child: Text(_catEmoji[product.category] ?? '📦', style: const TextStyle(fontSize: 22)),
-                          ),
+                          child: Text(_catEmoji[product.category] ?? '📦', style: const TextStyle(fontSize: 24)),
                         ),
                       ),
               ),
             ),
             const SizedBox(width: 12),
+            // ── Center: name, category, price ──
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(product.name,
                       style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600)),
+                          fontSize: 15, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text(product.category,
+                      style: const TextStyle(
+                          fontSize: 12, color: NusaConfig.textSecondary)),
                   const SizedBox(height: 4),
                   Text(formatRupiah(product.sellPrice),
                       style: const TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: NusaConfig.primaryColor)),
-                  const SizedBox(height: 4),
-                  Text('Stok: ${product.stock}',
-                      style: const TextStyle(
-                          fontSize: 13, color: NusaConfig.textSecondary)),
-                  if (low)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text('Stok menipis!',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: NusaConfig.primaryDark)),
-                    ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
+            const SizedBox(width: 8),
+            // ── Right column: stock badge + chevron ──
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Stock badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: outOfStock
+                        ? const Color(0xFFFEE2E2)
+                        : low
+                            ? const Color(0xFFFEF3C7)
+                            : const Color(0xFFDCFCE7),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    outOfStock
+                        ? 'Habis'
+                        : low
+                            ? '⚠ Menipis'
+                            : 'Aktif',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: outOfStock
+                          ? const Color(0xFFDC2626)
+                          : low
+                              ? const Color(0xFFD97706)
+                              : const Color(0xFF16A34A),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text('Stok: ${product.stock}',
+                    style: const TextStyle(
+                        fontSize: 12, color: NusaConfig.textSecondary)),
+                const SizedBox(height: 4),
+                const Icon(Icons.chevron_right, color: NusaConfig.textTertiary, size: 20),
+              ],
+            ),
           ],
         ),
       ),

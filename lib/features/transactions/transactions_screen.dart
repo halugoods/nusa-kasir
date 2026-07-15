@@ -22,23 +22,38 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   String _timeFilter = 'Hari Ini';
   String _payFilter = 'Semua';
   int _refreshKey = 0;
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
 
   static const _timeChips = ['Hari Ini', 'Minggu Ini', 'Semua'];
   static const _payChips = ['Semua', 'Tunai', 'QRIS', 'Transfer'];
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   List<Transaction> _filter(List<Transaction> all) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final weekAgo = now.subtract(const Duration(days: 7));
-    final byTime = switch (_timeFilter) {
+    var filtered = switch (_timeFilter) {
       'Hari Ini' =>
         all.where((t) => !t.date.isBefore(today)).toList(),
       'Minggu Ini' =>
         all.where((t) => t.date.isAfter(weekAgo)).toList(),
       _ => all,
     };
-    if (_payFilter == 'Semua') return byTime;
-    return byTime.where((t) => t.paymentMethod == _payFilter).toList();
+    if (_payFilter != 'Semua') {
+      filtered = filtered.where((t) => t.paymentMethod == _payFilter).toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((t) =>
+        t.invoice.toLowerCase().contains(_searchQuery)
+      ).toList();
+    }
+    return filtered;
   }
 
   Future<void> _voidTransaction(Transaction tx) async {
@@ -115,6 +130,37 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       Column(
         children: [
           const SizedBox(height: 8),
+          // Search by invoice
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+              decoration: InputDecoration(
+                hintText: 'Cari invoice...',
+                prefixIcon: const Icon(Icons.search, color: NusaConfig.textSecondary),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: Theme.of(context).brightness == Brightness.dark
+                    ? NusaConfig.darkSurface
+                    : NusaConfig.surfaceColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           SizedBox(
             height: 44,
             child: ListView.separated(
@@ -164,18 +210,52 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     message: 'Belum ada transaksi',
                   );
                 }
+                // Summary
+                final totalRevenue = list.fold<int>(0, (sum, t) => sum + t.total);
                 return RefreshIndicator(
                   onRefresh: () async {
                     setState(() => _refreshKey++);
                   },
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: list.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) => _TransactionCard(
-                      tx: list[i],
-                      onVoid: () => _voidTransaction(list[i]),
-                    ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: NusaConfig.primaryColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.summarize, size: 18, color: NusaConfig.primaryColor),
+                              const SizedBox(width: 8),
+                              Text('${list.length} transaksi',
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              const Spacer(),
+                              Text(formatRupiah(totalRevenue),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: NusaConfig.primaryColor)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          itemCount: list.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (_, i) => _TransactionCard(
+                            tx: list[i],
+                            onVoid: () => _voidTransaction(list[i]),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -220,6 +300,20 @@ class _TransactionCard extends StatefulWidget {
 class _TransactionCardState extends State<_TransactionCard> {
   bool _expanded = false;
 
+  static const _payColors = {
+    'Tunai': Color(0xFF10B981),
+    'QRIS': Color(0xFF3B82F6),
+    'Transfer': Color(0xFF8B5CF6),
+  };
+  static const _payIcons = {
+    'Tunai': Icons.money,
+    'QRIS': Icons.qr_code,
+    'Transfer': Icons.account_balance,
+  };
+
+  Color _payColor() => _payColors[widget.tx.paymentMethod] ?? NusaConfig.textSecondary;
+  IconData _payIcon() => _payIcons[widget.tx.paymentMethod] ?? Icons.payment;
+
   @override
   Widget build(BuildContext context) {
     final tx = widget.tx;
@@ -234,7 +328,17 @@ class _TransactionCardState extends State<_TransactionCard> {
       child: InkWell(
         onTap: () => setState(() => _expanded = !_expanded),
         borderRadius: BorderRadius.circular(20),
-        child: NusaCard(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border(
+              left: BorderSide(
+                color: isVoided ? NusaConfig.textTertiary : _payColor(),
+                width: 4,
+              ),
+            ),
+          ),
+          child: NusaCard(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -273,10 +377,16 @@ class _TransactionCardState extends State<_TransactionCard> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text('$dateStr • ${tx.paymentMethod}',
-                          style: const TextStyle(
-                              fontSize: 13,
-                              color: NusaConfig.textSecondary)),
+                      Row(
+                        children: [
+                          Icon(_payIcon(), size: 14, color: isVoided ? NusaConfig.textTertiary : _payColor()),
+                          const SizedBox(width: 4),
+                          Text('$dateStr • ${tx.paymentMethod}',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: isVoided ? NusaConfig.textTertiary : _payColor())),
+                        ],
+                      )
                     ],
                   ),
                 ),
@@ -362,6 +472,7 @@ class _TransactionCardState extends State<_TransactionCard> {
             ],
           ],
         ),
+      ),
       ),
       ),
     );
