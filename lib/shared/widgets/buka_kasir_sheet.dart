@@ -165,7 +165,7 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        'Buka Kasir',
+                        'Kasir',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

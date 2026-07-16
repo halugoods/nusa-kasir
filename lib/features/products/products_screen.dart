@@ -78,7 +78,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: NusaInput('Cari produk...',
-                controller: _search, type: TextInputType.text),
+                controller: _search, type: TextInputType.text,
+                prefixIcon: const Icon(Icons.search, color: NusaConfig.textSecondary)),
           ),
           SizedBox(
             height: 44,

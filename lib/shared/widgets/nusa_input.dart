@@ -8,6 +8,7 @@ class NusaInput extends StatelessWidget {
   final bool monospace;
   final bool obscure;
   final String? hint;
+  final Widget? prefixIcon;
 
   const NusaInput(
     this.label, {
@@ -17,6 +18,7 @@ class NusaInput extends StatelessWidget {
     this.monospace = false,
     this.obscure = false,
     this.hint,
+    this.prefixIcon,
   });
 
   @override
@@ -50,6 +52,7 @@ class NusaInput extends StatelessWidget {
               : TextStyle(fontSize: 15, color: textColor),
           decoration: InputDecoration(
             hintText: hint,
+            prefixIcon: prefixIcon,
             hintStyle: TextStyle(
               color: isDark ? const Color(0xFF64748B) : const Color(0xFF9CA3AF),
               fontSize: 15,

@@ -93,8 +93,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   void _toggleBarcode(bool v) {
     setState(() {
       _barcodeOn = v;
-      if (v && _existing == null) {
-        _barcode = ActivationKey.generateSerial();
+      if (v) {
+        // Use existing barcode if product already has one, otherwise generate new
+        if (_existing?.barcode != null && _existing!.barcode!.isNotEmpty) {
+          _barcode = _existing!.barcode!;
+        } else {
+          _barcode = ActivationKey.generateSerial();
+        }
       }
     });
   }

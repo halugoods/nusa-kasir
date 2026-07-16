@@ -262,6 +262,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
               'Cari karyawan...',
               controller: _searchCtrl,
               type: TextInputType.text,
+              prefixIcon: const Icon(Icons.search, color: NusaConfig.textSecondary),
             ),
           ),
           Expanded(

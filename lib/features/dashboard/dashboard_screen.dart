@@ -863,7 +863,7 @@ class MenuIcon extends StatelessWidget {
       );
 }
 
-/// "Buka Kasir" CTA card — subtle gradient card, not just a flat button.
+/// "Kasir" CTA card — subtle gradient card, not just a flat button.
 class _BukaKasirCTA extends StatelessWidget {
   final VoidCallback? onTap;
   const _BukaKasirCTA({this.onTap});
@@ -907,29 +907,14 @@ class _BukaKasirCTA extends StatelessWidget {
               child: const Icon(Icons.calculate_outlined, size: 22, color: Colors.white),
             ),
             const SizedBox(width: 14),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Buka Kasir',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  'Mulai sesi transaksi',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
+            const Text(
+              'Kasir',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
-            const Spacer(),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white70),
           ],
         ),
       ),

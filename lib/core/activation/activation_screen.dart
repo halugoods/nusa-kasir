@@ -55,6 +55,23 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   // Screen state: 'welcome' | 'google_loading' | 'pin' | 'key'
   String _screen = 'welcome';
 
+  @override
+  void initState() {
+    super.initState();
+    _initAutoSignIn();
+  }
+
+  /// Auto-launch Google Sign-In silently if already activated.
+  /// Skips welcome screen — user goes directly to PIN input.
+  Future<void> _initAutoSignIn() async {
+    final activated = (await SecureStore.getActivation()) != null;
+    if (!activated) return;
+    final linked = await GoogleAuthService.isLinked();
+    if (!linked) return;
+    if (!mounted) return;
+    _startGoogleSignIn();
+  }
+
   Future<void> _startGoogleSignIn() async {
     if (_googleLoading) return;
     setState(() {
