@@ -34,8 +34,6 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(transactions, transactions.voidedAt);
       }
       if (from < 6) {
-        await m.addColumn(settings, settings.qrisString);
-        await m.addColumn(settings, settings.themeMode);
         await m.addColumn(settings, settings.posGridColumns);
         await m.addColumn(settings, settings.bankName);
         await m.addColumn(settings, settings.bankAccount);

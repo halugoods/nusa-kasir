@@ -10,7 +10,6 @@ import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
 import 'package:nusa_kasir/data/repositories/customer_repository.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
-import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/pos/cart.dart';
 import "package:nusa_kasir/shared/widgets/top_toast.dart";
 
@@ -838,20 +837,20 @@ const _catEmoji = <String, String>{
 
 String _catEmojiFor(String cat) => _catEmoji[cat] ?? '📦';
 
-	/// Premium product card matching NUSA component #05 (Etalase Online).
-	/// Two states: + button when qty=0, inline qty stepper when qty>0.
-	class _ProductCard extends StatelessWidget {
-	  final Product product;
-	  final bool isDark;
-	  final int qtyInCart;
-	  final VoidCallback onAdd;
-	  final VoidCallback onDecrement;
-	  final VoidCallback onIncrement;
-	  const _ProductCard({
-	    required this.product, required this.isDark,
-	    required this.qtyInCart,
-	    required this.onAdd, required this.onDecrement, required this.onIncrement,
-	  });
+/// Premium product card matching NUSA component #05 (Etalase Online).
+/// Two states: + button when qty=0, inline qty stepper when qty>0.
+class _ProductCard extends StatelessWidget {
+  final Product product;
+  final bool isDark;
+  final int qtyInCart;
+  final VoidCallback onAdd;
+  final VoidCallback onDecrement;
+  final VoidCallback onIncrement;
+  const _ProductCard({
+    required this.product, required this.isDark,
+    required this.qtyInCart,
+    required this.onAdd, required this.onDecrement, required this.onIncrement,
+  });
 
 	  @override
 	  Widget build(BuildContext context) {
