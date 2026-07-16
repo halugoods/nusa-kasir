@@ -13,7 +13,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.test() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -32,6 +32,14 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(transactions, transactions.status);
         await m.addColumn(transactions, transactions.voidReason);
         await m.addColumn(transactions, transactions.voidedAt);
+      }
+      if (from < 6) {
+        await m.addColumn(settings, settings.qrisString);
+        await m.addColumn(settings, settings.themeMode);
+        await m.addColumn(settings, settings.posGridColumns);
+        await m.addColumn(settings, settings.bankName);
+        await m.addColumn(settings, settings.bankAccount);
+        await m.addColumn(settings, settings.bankHolder);
       }
     },
   );
