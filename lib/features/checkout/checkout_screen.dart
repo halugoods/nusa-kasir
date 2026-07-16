@@ -31,6 +31,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   bool _loading = false;
   int? _cashGiven;
   String? _qrisString;
+  String? _bankName;
+  String? _bankAccount;
+  String? _bankHolder;
   Customer? _selectedCustomer;
   Promo? _appliedPromo;
   int _promoDiscount = 0; // computed from applied promo
@@ -52,12 +55,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
-    _loadQris();
+    _loadPaymentSettings();
   }
 
-  Future<void> _loadQris() async {
-    final qris = await ref.read(settingsRepoProvider).getQris();
-    if (mounted) setState(() => _qrisString = qris);
+  Future<void> _loadPaymentSettings() async {
+    final repo = ref.read(settingsRepoProvider);
+    final qris = await repo.getQris();
+    final bankName = await repo.getBankName();
+    final bankAccount = await repo.getBankAccount();
+    final bankHolder = await repo.getBankHolder();
+    if (mounted) setState(() {
+      _qrisString = qris;
+      _bankName = bankName;
+      _bankAccount = bankAccount;
+      _bankHolder = bankHolder;
+    });
   }
 
   @override
@@ -621,6 +633,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Widget _buildTunaiCard(bool isDark) {
+    const denoms = [100000, 50000, 20000, 10000, 5000, 2000, 1000];
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -654,6 +667,51 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 2)),
           ),
           onChanged: (v) => setState(() => _cashGiven = int.tryParse(v)),
+        ),
+        const SizedBox(height: 10),
+        // Quick-action denomination chips
+        Wrap(
+          spacing: 6, runSpacing: 6,
+          children: [
+            for (final d in denoms)
+              GestureDetector(
+                onTap: () {
+                  final prev = int.tryParse(_cashCtrl.text) ?? 0;
+                  final newVal = prev + d;
+                  _cashCtrl.text = newVal.toString();
+                  setState(() => _cashGiven = newVal);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFBBF7D0)),
+                  ),
+                  child: Text(formatRupiah(d), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF166534))),
+                ),
+              ),
+            // Reset button
+            GestureDetector(
+              onTap: () {
+                _cashCtrl.clear();
+                setState(() => _cashGiven = null);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFFECACA)),
+                ),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.refresh, size: 12, color: Color(0xFFDC2626)),
+                  SizedBox(width: 4),
+                  Text('Reset', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
+                ]),
+              ),
+            ),
+          ],
         ),
         if (_kembalian != null) ...[
           const SizedBox(height: 12),
@@ -711,6 +769,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Widget _buildTransferCard(bool isDark) {
+    final bankName = _bankName ?? '';
+    final bankAccount = _bankAccount ?? '';
+    final bankHolder = _bankHolder ?? '';
+    final hasBankInfo = bankName.isNotEmpty || bankAccount.isNotEmpty;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -726,19 +788,33 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           child: const Icon(Icons.account_balance, size: 26, color: Color(0xFF6366F1)),
         ),
         const SizedBox(height: 12),
-        const Text('Transfer ke rekening', style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(12)),
-          child: const Column(children: [
-            Text('BCA 1234567890', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
-                fontFamily: 'monospace', letterSpacing: 1)),
-            SizedBox(height: 4),
-            Text('a.n. NUSA Kasir', style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
-          ]),
-        ),
+        if (hasBankInfo) ...[
+          const Text('Transfer ke rekening', style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(12)),
+            child: Column(children: [
+              if (bankName.isNotEmpty)
+                Text(bankName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+              if (bankAccount.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(bankAccount, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+                    fontFamily: 'monospace', letterSpacing: 1, color: NusaConfig.textPrimary)),
+              ],
+              if (bankHolder.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text('a.n. $bankHolder', style: const TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+              ],
+            ]),
+          ),
+        ] else ...[
+          const Icon(Icons.account_balance_wallet_outlined, size: 48, color: Colors.grey),
+          const SizedBox(height: 8),
+          const Text('Atur rekening di Pengaturan',
+              style: TextStyle(color: Colors.grey, fontSize: 15)),
+        ],
       ]),
     );
   }

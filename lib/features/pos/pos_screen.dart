@@ -10,6 +10,7 @@ import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
 import 'package:nusa_kasir/data/repositories/customer_repository.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
+import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/pos/cart.dart';
 import "package:nusa_kasir/shared/widgets/top_toast.dart";
 
@@ -33,6 +34,7 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
   int _memberPoints = 0;
   String _paymentMethod = 'Tunai';
   bool _checkingMember = false;
+  int _gridColumns = 2;
 
   // Cached product list for instant filtering
   List<Product>? _allProducts;
@@ -53,9 +55,21 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
     super.initState();
     _loadCashier();
     _preloadProducts();
+    _loadGridColumns();
     _searchFocus.addListener(() {
       if (mounted) setState(() => _searching = _searchFocus.hasFocus);
     });
+  }
+
+  Future<void> _loadGridColumns() async {
+    final repo = ref.read(settingsRepoProvider);
+    final cols = await repo.getPosGridColumns();
+    if (mounted) setState(() => _gridColumns = cols.clamp(1, 3));
+  }
+
+  void _setGridColumns(int cols) {
+    setState(() => _gridColumns = cols);
+    ref.read(settingsRepoProvider).setPosGridColumns(cols);
   }
 
   Future<void> _preloadProducts() async {
@@ -281,6 +295,13 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
           const Icon(Icons.shopping_cart_rounded, color: NusaConfig.primaryColor, size: 22),
           const SizedBox(width: 10),
           const Text('Kasir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+          const SizedBox(width: 12),
+          // Grid toggle
+          _gridToggle(1, Icons.view_agenda_rounded, isDark),
+          const SizedBox(width: 4),
+          _gridToggle(2, Icons.grid_view_rounded, isDark),
+          const SizedBox(width: 4),
+          _gridToggle(3, Icons.apps_rounded, isDark),
           const Spacer(),
           if (_cashierName.isNotEmpty) ...[
             Container(
@@ -307,6 +328,22 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _gridToggle(int cols, IconData icon, bool isDark) {
+    final active = _gridColumns == cols;
+    return GestureDetector(
+      onTap: () => _setGridColumns(cols),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 36, height: 36,
+        decoration: BoxDecoration(
+          color: active ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkSurface2 : const Color(0xFFF1F5F9)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 18, color: active ? Colors.white : NusaConfig.textSecondary),
       ),
     );
   }
@@ -361,9 +398,11 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
       );
     }
     final cart = ref.watch(cartProvider);
+    final aspectRatios = {1: 2.0, 2: 0.9, 3: 0.78};
+    final ratio = aspectRatios[_gridColumns] ?? 0.9;
     return GridView.builder(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.78),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: _gridColumns, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: ratio),
           itemCount: products.length,
           itemBuilder: (_, i) {
             final product = products[i];
@@ -799,66 +838,84 @@ const _catEmoji = <String, String>{
 
 String _catEmojiFor(String cat) => _catEmoji[cat] ?? '📦';
 
-/// Premium product card matching NUSA component #05 (Etalase Online).
-/// Two states: + button when qty=0, inline qty stepper when qty>0.
-class _ProductCard extends StatelessWidget {
-  final Product product;
-  final bool isDark;
-  final int qtyInCart;
-  final VoidCallback onAdd;
-  final VoidCallback onDecrement;
-  final VoidCallback onIncrement;
-  const _ProductCard({
-    required this.product, required this.isDark,
-    required this.qtyInCart,
-    required this.onAdd, required this.onDecrement, required this.onIncrement,
-  });
+	/// Premium product card matching NUSA component #05 (Etalase Online).
+	/// Two states: + button when qty=0, inline qty stepper when qty>0.
+	class _ProductCard extends StatelessWidget {
+	  final Product product;
+	  final bool isDark;
+	  final int qtyInCart;
+	  final VoidCallback onAdd;
+	  final VoidCallback onDecrement;
+	  final VoidCallback onIncrement;
+	  const _ProductCard({
+	    required this.product, required this.isDark,
+	    required this.qtyInCart,
+	    required this.onAdd, required this.onDecrement, required this.onIncrement,
+	  });
 
-  @override
-  Widget build(BuildContext context) {
-    final outOfStock = product.stock <= 0;
-    final lowStock = !outOfStock && product.stock <= product.minStock;
+	  @override
+	  Widget build(BuildContext context) {
+	    final outOfStock = product.stock <= 0;
+	    final lowStock = !outOfStock && product.stock <= product.minStock;
 
-    return GestureDetector(
-      onTap: outOfStock ? null : () { if (qtyInCart == 0) onAdd(); },
-      child: _CardShell(
-        isDark: isDark,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _ProductImage(
-                imagePath: product.imagePath, category: product.category,
-                outOfStock: outOfStock, lowStock: lowStock,
-                stock: product.stock, price: formatRupiah(product.sellPrice), isDark: isDark,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.2, letterSpacing: -0.01, color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
-                const SizedBox(height: 2),
-                Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary, letterSpacing: -0.01)),
-              ]),
-            ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: outOfStock
-                    ? const SizedBox(width: 28, height: 28)
-                    : qtyInCart == 0
-                        ? _AddButton(onTap: onAdd, disabled: outOfStock)
-                        : _QtyStepper(qty: qtyInCart, onDecrement: onDecrement, onIncrement: onIncrement),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+	    return GestureDetector(
+	      onTap: outOfStock ? null : () { if (qtyInCart == 0) onAdd(); },
+	      child: _CardShell(
+	        isDark: isDark,
+	        child: LayoutBuilder(
+	          builder: (_, constraints) {
+	            final imgSize = constraints.maxWidth; // square image = card width
+	            return Column(
+	              crossAxisAlignment: CrossAxisAlignment.start,
+	              mainAxisSize: MainAxisSize.min,
+	              children: [
+	                // Square image area
+	                SizedBox(
+	                  width: imgSize,
+	                  height: imgSize,
+	                  child: _ProductImage(
+	                    imagePath: product.imagePath, category: product.category,
+	                    outOfStock: outOfStock, lowStock: lowStock,
+	                    stock: product.stock, price: formatRupiah(product.sellPrice), isDark: isDark,
+	                    fullSquare: true,
+	                  ),
+	                ),
+	                // Info area
+	                Flexible(
+	                  child: Padding(
+	                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+	                    child: Column(
+	                      crossAxisAlignment: CrossAxisAlignment.start,
+	                      mainAxisSize: MainAxisSize.min,
+	                      children: [
+	                        Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+	                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, height: 1.2,
+	                            letterSpacing: -0.01,
+	                            color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
+	                        const SizedBox(height: 2),
+	                        Text(product.category,
+	                          style: TextStyle(fontSize: 10, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+	                      ],
+	                    ),
+	                  ),
+	                ),
+	                // Action button
+	                Padding(
+	                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+	                  child: outOfStock
+	                      ? const SizedBox(width: 28, height: 28)
+	                      : qtyInCart == 0
+	                          ? _AddButton(onTap: onAdd, disabled: outOfStock)
+	                          : _QtyStepper(qty: qtyInCart, onDecrement: onDecrement, onIncrement: onIncrement),
+	                ),
+	              ],
+	            );
+	          },
+	        ),
+	      ),
+	    );
+	  }
+	}
 
 /// Inline quantity stepper: [-] [qty] [+]
 class _QtyStepper extends StatelessWidget {
@@ -1001,8 +1058,9 @@ class _ProductImage extends StatelessWidget {
   final int stock;
   final String price;
   final bool isDark;
+  final bool fullSquare;
 
-  const _ProductImage({required this.imagePath, required this.category, required this.outOfStock, required this.lowStock, required this.stock, required this.price, required this.isDark});
+  const _ProductImage({required this.imagePath, required this.category, required this.outOfStock, required this.lowStock, required this.stock, required this.price, required this.isDark, this.fullSquare = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1013,24 +1071,47 @@ class _ProductImage extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-            child: SizedBox(
-              height: 95, width: double.infinity,
-              child: Stack(fit: StackFit.expand, children: [
-                if (hasImage) Image.file(File(imagePath!), fit: BoxFit.cover) else _CategoryGradient(category: category, emoji: emoji),
-                if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.5)),
-              ]),
+            borderRadius: fullSquare
+                ? BorderRadius.circular(14)
+                : const BorderRadius.vertical(top: Radius.circular(14)),
+            child: fullSquare
+                ? Stack(fit: StackFit.expand, children: [
+                    if (hasImage) Image.file(File(imagePath!), fit: BoxFit.cover) else _CategoryGradient(category: category, emoji: emoji),
+                    if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.5)),
+                  ])
+                : SizedBox(
+                    height: 95, width: double.infinity,
+                    child: Stack(fit: StackFit.expand, children: [
+                      if (hasImage) Image.file(File(imagePath!), fit: BoxFit.cover) else _CategoryGradient(category: category, emoji: emoji),
+                      if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.5)),
+                    ]),
+                  ),
+          ),
+          // Stock badge (top-left)
+          Positioned(top: 8, left: 8, child: _StockBadge(outOfStock: outOfStock, lowStock: lowStock, stock: stock)),
+          // "Isi N" chip (bottom-left) — only in fullSquare mode
+          if (fullSquare && !outOfStock)
+            Positioned(
+              bottom: 8, left: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text('Stok $stock',
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+              ),
+            ),
+          // Price pill (bottom-right)
+          Positioned(
+            bottom: fullSquare ? 8 : 2, right: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2))]),
+              child: Text(price, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor, letterSpacing: -0.03)),
             ),
           ),
-        Positioned(top: 8, left: 8, child: _StockBadge(outOfStock: outOfStock, lowStock: lowStock, stock: stock)),
-        Positioned(
-          bottom: 2, right: 6,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2))]),
-            child: Text(price, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor, letterSpacing: -0.03)),
-          ),
-        ),
       ],
     );
   }

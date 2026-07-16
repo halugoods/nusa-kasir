@@ -6377,6 +6377,51 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _posGridColumnsMeta = const VerificationMeta(
+    'posGridColumns',
+  );
+  @override
+  late final GeneratedColumn<int> posGridColumns = GeneratedColumn<int>(
+    'pos_grid_columns',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(2),
+  );
+  static const VerificationMeta _bankNameMeta = const VerificationMeta(
+    'bankName',
+  );
+  @override
+  late final GeneratedColumn<String> bankName = GeneratedColumn<String>(
+    'bank_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bankAccountMeta = const VerificationMeta(
+    'bankAccount',
+  );
+  @override
+  late final GeneratedColumn<String> bankAccount = GeneratedColumn<String>(
+    'bank_account',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bankHolderMeta = const VerificationMeta(
+    'bankHolder',
+  );
+  @override
+  late final GeneratedColumn<String> bankHolder = GeneratedColumn<String>(
+    'bank_holder',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6388,6 +6433,10 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     minStockAlert,
     qrisString,
     themeMode,
+    posGridColumns,
+    bankName,
+    bankAccount,
+    bankHolder,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6458,6 +6507,36 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         themeMode.isAcceptableOrUnknown(data['theme_mode']!, _themeModeMeta),
       );
     }
+    if (data.containsKey('pos_grid_columns')) {
+      context.handle(
+        _posGridColumnsMeta,
+        posGridColumns.isAcceptableOrUnknown(
+          data['pos_grid_columns']!,
+          _posGridColumnsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('bank_name')) {
+      context.handle(
+        _bankNameMeta,
+        bankName.isAcceptableOrUnknown(data['bank_name']!, _bankNameMeta),
+      );
+    }
+    if (data.containsKey('bank_account')) {
+      context.handle(
+        _bankAccountMeta,
+        bankAccount.isAcceptableOrUnknown(
+          data['bank_account']!,
+          _bankAccountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('bank_holder')) {
+      context.handle(
+        _bankHolderMeta,
+        bankHolder.isAcceptableOrUnknown(data['bank_holder']!, _bankHolderMeta),
+      );
+    }
     return context;
   }
 
@@ -6503,6 +6582,22 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.string,
         data['${effectivePrefix}theme_mode'],
       ),
+      posGridColumns: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pos_grid_columns'],
+      )!,
+      bankName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bank_name'],
+      ),
+      bankAccount: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bank_account'],
+      ),
+      bankHolder: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bank_holder'],
+      ),
     );
   }
 
@@ -6522,6 +6617,10 @@ class Setting extends DataClass implements Insertable<Setting> {
   final int minStockAlert;
   final String? qrisString;
   final String? themeMode;
+  final int posGridColumns;
+  final String? bankName;
+  final String? bankAccount;
+  final String? bankHolder;
   const Setting({
     required this.id,
     required this.storeName,
@@ -6532,6 +6631,10 @@ class Setting extends DataClass implements Insertable<Setting> {
     required this.minStockAlert,
     this.qrisString,
     this.themeMode,
+    required this.posGridColumns,
+    this.bankName,
+    this.bankAccount,
+    this.bankHolder,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6554,6 +6657,16 @@ class Setting extends DataClass implements Insertable<Setting> {
     }
     if (!nullToAbsent || themeMode != null) {
       map['theme_mode'] = Variable<String>(themeMode);
+    }
+    map['pos_grid_columns'] = Variable<int>(posGridColumns);
+    if (!nullToAbsent || bankName != null) {
+      map['bank_name'] = Variable<String>(bankName);
+    }
+    if (!nullToAbsent || bankAccount != null) {
+      map['bank_account'] = Variable<String>(bankAccount);
+    }
+    if (!nullToAbsent || bankHolder != null) {
+      map['bank_holder'] = Variable<String>(bankHolder);
     }
     return map;
   }
@@ -6579,6 +6692,16 @@ class Setting extends DataClass implements Insertable<Setting> {
       themeMode: themeMode == null && nullToAbsent
           ? const Value.absent()
           : Value(themeMode),
+      posGridColumns: Value(posGridColumns),
+      bankName: bankName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bankName),
+      bankAccount: bankAccount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bankAccount),
+      bankHolder: bankHolder == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bankHolder),
     );
   }
 
@@ -6597,6 +6720,10 @@ class Setting extends DataClass implements Insertable<Setting> {
       minStockAlert: serializer.fromJson<int>(json['minStockAlert']),
       qrisString: serializer.fromJson<String?>(json['qrisString']),
       themeMode: serializer.fromJson<String?>(json['themeMode']),
+      posGridColumns: serializer.fromJson<int>(json['posGridColumns']),
+      bankName: serializer.fromJson<String?>(json['bankName']),
+      bankAccount: serializer.fromJson<String?>(json['bankAccount']),
+      bankHolder: serializer.fromJson<String?>(json['bankHolder']),
     );
   }
   @override
@@ -6612,6 +6739,10 @@ class Setting extends DataClass implements Insertable<Setting> {
       'minStockAlert': serializer.toJson<int>(minStockAlert),
       'qrisString': serializer.toJson<String?>(qrisString),
       'themeMode': serializer.toJson<String?>(themeMode),
+      'posGridColumns': serializer.toJson<int>(posGridColumns),
+      'bankName': serializer.toJson<String?>(bankName),
+      'bankAccount': serializer.toJson<String?>(bankAccount),
+      'bankHolder': serializer.toJson<String?>(bankHolder),
     };
   }
 
@@ -6625,6 +6756,10 @@ class Setting extends DataClass implements Insertable<Setting> {
     int? minStockAlert,
     Value<String?> qrisString = const Value.absent(),
     Value<String?> themeMode = const Value.absent(),
+    int? posGridColumns,
+    Value<String?> bankName = const Value.absent(),
+    Value<String?> bankAccount = const Value.absent(),
+    Value<String?> bankHolder = const Value.absent(),
   }) => Setting(
     id: id ?? this.id,
     storeName: storeName ?? this.storeName,
@@ -6635,6 +6770,10 @@ class Setting extends DataClass implements Insertable<Setting> {
     minStockAlert: minStockAlert ?? this.minStockAlert,
     qrisString: qrisString.present ? qrisString.value : this.qrisString,
     themeMode: themeMode.present ? themeMode.value : this.themeMode,
+    posGridColumns: posGridColumns ?? this.posGridColumns,
+    bankName: bankName.present ? bankName.value : this.bankName,
+    bankAccount: bankAccount.present ? bankAccount.value : this.bankAccount,
+    bankHolder: bankHolder.present ? bankHolder.value : this.bankHolder,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -6657,6 +6796,16 @@ class Setting extends DataClass implements Insertable<Setting> {
           ? data.qrisString.value
           : this.qrisString,
       themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
+      posGridColumns: data.posGridColumns.present
+          ? data.posGridColumns.value
+          : this.posGridColumns,
+      bankName: data.bankName.present ? data.bankName.value : this.bankName,
+      bankAccount: data.bankAccount.present
+          ? data.bankAccount.value
+          : this.bankAccount,
+      bankHolder: data.bankHolder.present
+          ? data.bankHolder.value
+          : this.bankHolder,
     );
   }
 
@@ -6671,7 +6820,11 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('trxCounter: $trxCounter, ')
           ..write('minStockAlert: $minStockAlert, ')
           ..write('qrisString: $qrisString, ')
-          ..write('themeMode: $themeMode')
+          ..write('themeMode: $themeMode, ')
+          ..write('posGridColumns: $posGridColumns, ')
+          ..write('bankName: $bankName, ')
+          ..write('bankAccount: $bankAccount, ')
+          ..write('bankHolder: $bankHolder')
           ..write(')'))
         .toString();
   }
@@ -6687,6 +6840,10 @@ class Setting extends DataClass implements Insertable<Setting> {
     minStockAlert,
     qrisString,
     themeMode,
+    posGridColumns,
+    bankName,
+    bankAccount,
+    bankHolder,
   );
   @override
   bool operator ==(Object other) =>
@@ -6700,7 +6857,11 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.trxCounter == this.trxCounter &&
           other.minStockAlert == this.minStockAlert &&
           other.qrisString == this.qrisString &&
-          other.themeMode == this.themeMode);
+          other.themeMode == this.themeMode &&
+          other.posGridColumns == this.posGridColumns &&
+          other.bankName == this.bankName &&
+          other.bankAccount == this.bankAccount &&
+          other.bankHolder == this.bankHolder);
 }
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
@@ -6713,6 +6874,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<int> minStockAlert;
   final Value<String?> qrisString;
   final Value<String?> themeMode;
+  final Value<int> posGridColumns;
+  final Value<String?> bankName;
+  final Value<String?> bankAccount;
+  final Value<String?> bankHolder;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.storeName = const Value.absent(),
@@ -6723,6 +6888,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.minStockAlert = const Value.absent(),
     this.qrisString = const Value.absent(),
     this.themeMode = const Value.absent(),
+    this.posGridColumns = const Value.absent(),
+    this.bankName = const Value.absent(),
+    this.bankAccount = const Value.absent(),
+    this.bankHolder = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -6734,6 +6903,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.minStockAlert = const Value.absent(),
     this.qrisString = const Value.absent(),
     this.themeMode = const Value.absent(),
+    this.posGridColumns = const Value.absent(),
+    this.bankName = const Value.absent(),
+    this.bankAccount = const Value.absent(),
+    this.bankHolder = const Value.absent(),
   });
   static Insertable<Setting> custom({
     Expression<int>? id,
@@ -6745,6 +6918,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<int>? minStockAlert,
     Expression<String>? qrisString,
     Expression<String>? themeMode,
+    Expression<int>? posGridColumns,
+    Expression<String>? bankName,
+    Expression<String>? bankAccount,
+    Expression<String>? bankHolder,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -6756,6 +6933,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (minStockAlert != null) 'min_stock_alert': minStockAlert,
       if (qrisString != null) 'qris_string': qrisString,
       if (themeMode != null) 'theme_mode': themeMode,
+      if (posGridColumns != null) 'pos_grid_columns': posGridColumns,
+      if (bankName != null) 'bank_name': bankName,
+      if (bankAccount != null) 'bank_account': bankAccount,
+      if (bankHolder != null) 'bank_holder': bankHolder,
     });
   }
 
@@ -6769,6 +6950,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<int>? minStockAlert,
     Value<String?>? qrisString,
     Value<String?>? themeMode,
+    Value<int>? posGridColumns,
+    Value<String?>? bankName,
+    Value<String?>? bankAccount,
+    Value<String?>? bankHolder,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -6780,6 +6965,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       minStockAlert: minStockAlert ?? this.minStockAlert,
       qrisString: qrisString ?? this.qrisString,
       themeMode: themeMode ?? this.themeMode,
+      posGridColumns: posGridColumns ?? this.posGridColumns,
+      bankName: bankName ?? this.bankName,
+      bankAccount: bankAccount ?? this.bankAccount,
+      bankHolder: bankHolder ?? this.bankHolder,
     );
   }
 
@@ -6813,6 +7002,18 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (themeMode.present) {
       map['theme_mode'] = Variable<String>(themeMode.value);
     }
+    if (posGridColumns.present) {
+      map['pos_grid_columns'] = Variable<int>(posGridColumns.value);
+    }
+    if (bankName.present) {
+      map['bank_name'] = Variable<String>(bankName.value);
+    }
+    if (bankAccount.present) {
+      map['bank_account'] = Variable<String>(bankAccount.value);
+    }
+    if (bankHolder.present) {
+      map['bank_holder'] = Variable<String>(bankHolder.value);
+    }
     return map;
   }
 
@@ -6827,7 +7028,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('trxCounter: $trxCounter, ')
           ..write('minStockAlert: $minStockAlert, ')
           ..write('qrisString: $qrisString, ')
-          ..write('themeMode: $themeMode')
+          ..write('themeMode: $themeMode, ')
+          ..write('posGridColumns: $posGridColumns, ')
+          ..write('bankName: $bankName, ')
+          ..write('bankAccount: $bankAccount, ')
+          ..write('bankHolder: $bankHolder')
           ..write(')'))
         .toString();
   }
@@ -12181,6 +12386,10 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> minStockAlert,
       Value<String?> qrisString,
       Value<String?> themeMode,
+      Value<int> posGridColumns,
+      Value<String?> bankName,
+      Value<String?> bankAccount,
+      Value<String?> bankHolder,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -12193,6 +12402,10 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> minStockAlert,
       Value<String?> qrisString,
       Value<String?> themeMode,
+      Value<int> posGridColumns,
+      Value<String?> bankName,
+      Value<String?> bankAccount,
+      Value<String?> bankHolder,
     });
 
 class $$SettingsTableFilterComposer
@@ -12246,6 +12459,26 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<String> get themeMode => $composableBuilder(
     column: $table.themeMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get posGridColumns => $composableBuilder(
+    column: $table.posGridColumns,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bankName => $composableBuilder(
+    column: $table.bankName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bankAccount => $composableBuilder(
+    column: $table.bankAccount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bankHolder => $composableBuilder(
+    column: $table.bankHolder,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -12303,6 +12536,26 @@ class $$SettingsTableOrderingComposer
     column: $table.themeMode,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get posGridColumns => $composableBuilder(
+    column: $table.posGridColumns,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bankName => $composableBuilder(
+    column: $table.bankName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bankAccount => $composableBuilder(
+    column: $table.bankAccount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bankHolder => $composableBuilder(
+    column: $table.bankHolder,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsTableAnnotationComposer
@@ -12350,6 +12603,24 @@ class $$SettingsTableAnnotationComposer
 
   GeneratedColumn<String> get themeMode =>
       $composableBuilder(column: $table.themeMode, builder: (column) => column);
+
+  GeneratedColumn<int> get posGridColumns => $composableBuilder(
+    column: $table.posGridColumns,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get bankName =>
+      $composableBuilder(column: $table.bankName, builder: (column) => column);
+
+  GeneratedColumn<String> get bankAccount => $composableBuilder(
+    column: $table.bankAccount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get bankHolder => $composableBuilder(
+    column: $table.bankHolder,
+    builder: (column) => column,
+  );
 }
 
 class $$SettingsTableTableManager
@@ -12389,6 +12660,10 @@ class $$SettingsTableTableManager
                 Value<int> minStockAlert = const Value.absent(),
                 Value<String?> qrisString = const Value.absent(),
                 Value<String?> themeMode = const Value.absent(),
+                Value<int> posGridColumns = const Value.absent(),
+                Value<String?> bankName = const Value.absent(),
+                Value<String?> bankAccount = const Value.absent(),
+                Value<String?> bankHolder = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 storeName: storeName,
@@ -12399,6 +12674,10 @@ class $$SettingsTableTableManager
                 minStockAlert: minStockAlert,
                 qrisString: qrisString,
                 themeMode: themeMode,
+                posGridColumns: posGridColumns,
+                bankName: bankName,
+                bankAccount: bankAccount,
+                bankHolder: bankHolder,
               ),
           createCompanionCallback:
               ({
@@ -12411,6 +12690,10 @@ class $$SettingsTableTableManager
                 Value<int> minStockAlert = const Value.absent(),
                 Value<String?> qrisString = const Value.absent(),
                 Value<String?> themeMode = const Value.absent(),
+                Value<int> posGridColumns = const Value.absent(),
+                Value<String?> bankName = const Value.absent(),
+                Value<String?> bankAccount = const Value.absent(),
+                Value<String?> bankHolder = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 storeName: storeName,
@@ -12421,6 +12704,10 @@ class $$SettingsTableTableManager
                 minStockAlert: minStockAlert,
                 qrisString: qrisString,
                 themeMode: themeMode,
+                posGridColumns: posGridColumns,
+                bankName: bankName,
+                bankAccount: bankAccount,
+                bankHolder: bankHolder,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

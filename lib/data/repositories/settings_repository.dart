@@ -48,4 +48,34 @@ class SettingsRepository {
     await (db.update(db.settings)..where((t) => t.id.equals(1)))
         .write(SettingsCompanion(posPrefix: Value(address)));
   }
+
+  // Grid columns for POS screen (1, 2, or 3)
+  Future<int> getPosGridColumns() async =>
+      (await db.select(db.settings).getSingleOrNull())?.posGridColumns ?? 2;
+
+  Future<void> setPosGridColumns(int cols) async {
+    await ensureRow();
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(posGridColumns: Value(cols)));
+  }
+
+  // Bank transfer settings
+  Future<String?> getBankName() async =>
+      (await db.select(db.settings).getSingleOrNull())?.bankName;
+
+  Future<String?> getBankAccount() async =>
+      (await db.select(db.settings).getSingleOrNull())?.bankAccount;
+
+  Future<String?> getBankHolder() async =>
+      (await db.select(db.settings).getSingleOrNull())?.bankHolder;
+
+  Future<void> setBankInfo({String? name, String? account, String? holder}) async {
+    await ensureRow();
+    final c = SettingsCompanion(
+      bankName: name != null ? Value(name) : const Value.absent(),
+      bankAccount: account != null ? Value(account) : const Value.absent(),
+      bankHolder: holder != null ? Value(holder) : const Value.absent(),
+    );
+    await (db.update(db.settings)..where((t) => t.id.equals(1))).write(c);
+  }
 }

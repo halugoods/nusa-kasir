@@ -138,6 +138,10 @@ class Settings extends Table {
   IntColumn get minStockAlert => integer().withDefault(const Constant(0))();
   TextColumn get qrisString => text().nullable()();
   TextColumn get themeMode => text().nullable()();
+  IntColumn get posGridColumns => integer().withDefault(const Constant(2))();
+  TextColumn get bankName => text().nullable()();
+  TextColumn get bankAccount => text().nullable()();
+  TextColumn get bankHolder => text().nullable()();
   @override
   Set<Column> get primaryKey => {id};
 }

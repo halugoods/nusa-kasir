@@ -28,6 +28,7 @@ import 'package:nusa_kasir/features/branches/branch_screen.dart';
 import 'package:nusa_kasir/features/setup/setup_screen.dart';
 import 'package:nusa_kasir/features/online_orders/online_orders_screen.dart';
 import 'package:nusa_kasir/features/online_orders/online_store_setup_screen.dart';
+import 'package:nusa_kasir/features/settings/payment_settings_screen.dart';
 import 'package:nusa_kasir/features/ai_assistant/ai_chat_screen.dart';
 import 'package:nusa_kasir/features/toko_online/storefront_screen.dart';
 
@@ -114,6 +115,9 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/toko',
             pageBuilder: (_, __) => _slidePage(const StorefrontScreen())),
+        GoRoute(
+            path: '/pengaturan_pembayaran',
+            pageBuilder: (_, __) => _slidePage(const PaymentSettingsScreen())),
       ],
     );
 

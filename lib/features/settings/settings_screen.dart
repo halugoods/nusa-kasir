@@ -143,6 +143,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+              // Pembayaran (QRIS & Transfer)
+              NusaCard(
+                InkWell(
+                  onTap: () => context.push('/pengaturan_pembayaran'),
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Icon(Icons.payment, color: Color(0xFF6366F1)),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Pembayaran',
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                              SizedBox(height: 4),
+                              Text('Atur QRIS & rekening bank untuk transfer',
+                                  style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
               _sectionHeader('SISTEM'),
               NusaCard(

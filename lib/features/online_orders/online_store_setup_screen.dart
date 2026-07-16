@@ -262,95 +262,94 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
 
                   // Store link (only visible when active)
                   if (_isActive && _storeUrl != null) ...[
-                    // Combined card: gradient button + link URL
+                    // ── Link URL card (bottom) ──
                     Container(
                       width: double.infinity,
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Gradient "Buka Website" button — on top
-                          GestureDetector(
-                            onTap: _openPreview,
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                              decoration: BoxDecoration(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [NusaConfig.primaryColor, NusaConfig.primaryDark],
-                                ),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.open_in_browser, size: 20, color: Colors.white),
-                                  SizedBox(width: 10),
-                                  Text('Buka Website',
-                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-                                  ),
-                                ],
-                              ),
+                          const Text('🔗 Link Toko Online',
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.3)),
                             ),
-                          ),
-                          // Divider
-                          const Divider(height: 1, color: NusaConfig.borderColor),
-                          // Link URL section
-                          Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
                               children: [
-                                const Text('🔗 Link Toko Online',
-                                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                                const SizedBox(height: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.3)),
+                                Expanded(
+                                  child: Text(
+                                    _storeUrl!,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontFamily: 'monospace',
+                                      color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                                    ),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          _storeUrl!,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontFamily: 'monospace',
-                                            color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      GestureDetector(
-                                        onTap: () {
-                                          Clipboard.setData(ClipboardData(text: _storeUrl!));
-                                          TopToast.success(context, 'Link disalin! 📋');
-                                        },
-                                        child: Container(
-                                          width: 36,
-                                          height: 36,
-                                          decoration: BoxDecoration(
-                                            color: NusaConfig.primarySoft,
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: const Icon(Icons.copy, size: 18, color: NusaConfig.primaryColor),
-                                        ),
-                                      ),
-                                    ],
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () {
+                                    Clipboard.setData(ClipboardData(text: _storeUrl!));
+                                    TopToast.success(context, 'Link disalin! 📋');
+                                  },
+                                  child: Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: NusaConfig.primarySoft,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Icons.copy, size: 18, color: NusaConfig.primaryColor),
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // ── "Buka Website" button as its own separate card (above the link) ──
+                    GestureDetector(
+                      onTap: _openPreview,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [NusaConfig.primaryColor, NusaConfig.primaryDark],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: NusaConfig.primaryColor.withValues(alpha: 0.35),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.open_in_browser, size: 20, color: Colors.white),
+                            SizedBox(width: 10),
+                            Text('Buka Website',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
