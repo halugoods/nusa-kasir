@@ -89,7 +89,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) => ScreenScaffold(
-        'NUSA',
+        'Masuk',
         Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -117,7 +117,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               if (_error != null) ...[
                 const SizedBox(height: 8),
                 Text(_error!,
-                    style: const TextStyle(color: NusaConfig.primaryColor)),
+                    style: const TextStyle(color: NusaConfig.error, fontWeight: FontWeight.w600)),
               ],
               const SizedBox(height: 16),
               // Remember checkbox

@@ -1,28 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:nusa_kasir/core/config/nusa_config.dart';
 
+/// Themed card wrapper using NusaConfig tokens.
+/// Default: 16px radius, surface bg, subtle border + shadow.
 class NusaCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
-  const NusaCard(this.child, {this.padding, super.key});
+  final BorderRadius? borderRadius;
+  final VoidCallback? onTap;
+
+  const NusaCard(this.child, {this.padding, this.borderRadius, this.onTap, super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      padding: padding ?? const EdgeInsets.all(20),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final card = Container(
+      padding: padding ?? const EdgeInsets.all(NusaConfig.spaceLG),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: borderRadius ?? BorderRadius.circular(NusaConfig.radiusLG),
         border: Border.all(
-          color: isDark ? const Color(0xFF3A3A52) : const Color(0xFFF3F4F6),
+          color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor,
         ),
         boxShadow: [
           BoxShadow(
-            color: isDark
-                ? const Color(0x1A000000)
-                : const Color(0x0A111827),
+            color: isDark ? NusaConfig.darkCardShadow : const Color(0x0A111827),
             blurRadius: 3,
             offset: const Offset(0, 1),
           ),
@@ -30,5 +32,13 @@ class NusaCard extends StatelessWidget {
       ),
       child: child,
     );
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius ?? BorderRadius.circular(NusaConfig.radiusLG),
+        child: card,
+      );
+    }
+    return card;
   }
 }

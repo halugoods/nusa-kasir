@@ -12,6 +12,8 @@ import 'package:nusa_kasir/features/dashboard/dashboard_screen.dart';
 import 'package:nusa_kasir/features/settings/settings_screen.dart';
 import 'package:nusa_kasir/features/products/products_screen.dart';
 import 'package:nusa_kasir/features/products/product_form_screen.dart';
+import 'package:nusa_kasir/features/products/kategori_list_screen.dart';
+import 'package:nusa_kasir/features/products/products_by_category_screen.dart';
 import 'package:nusa_kasir/features/stock/stock_screen.dart';
 import 'package:nusa_kasir/features/pos/pos_screen.dart';
 import 'package:nusa_kasir/features/checkout/checkout_screen.dart';
@@ -69,6 +71,13 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
             path: '/produk/edit/:id',
             pageBuilder: (_, state) => _slidePage(ProductFormScreen(
                 productId: int.parse(state.pathParameters['id']!)))),
+        GoRoute(
+            path: '/produk/kategori',
+            pageBuilder: (_, __) => _slidePage(const KategoriListScreen())),
+        GoRoute(
+            path: '/produk/kategori/:category',
+            pageBuilder: (_, state) => _slidePage(ProductsByCategoryScreen(
+                category: state.pathParameters['category']!))),
         GoRoute(
             path: '/stok', pageBuilder: (_, __) => _slidePage(const StockScreen())),
         GoRoute(

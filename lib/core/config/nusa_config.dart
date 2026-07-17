@@ -4,15 +4,20 @@ abstract class NusaConfig {
   static const String appName = "NUSA";
   static const String brandName = "NUSA";
   static const String appSubtitle = "Aplikasi Kasir untuk Toko Kelontong";
-  static const String appVersion = "1.0.7";
-  static const int appBuildNumber = 15;
+  static const String appVersion = "1.1.0";
+  static const int appBuildNumber = 16;
   static const String githubRepo = "halugoods/nusa-kasir";
   static const String landingPageUrl = "https://nusa-online.vercel.app";
   static const String whatsappOrder = "https://wa.me/6281234567890?text=Halo%2C%20saya%20mau%20beli%20NUSA%20Kasir";
   static const String applicationId = "com.nusa.kasir";
   static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://sakeuhcbcnueplzlkltm.supabase.co');
   static const String supabaseAnon = String.fromEnvironment('SUPABASE_ANON', defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNha2V1aGNiY251ZXBsemxrbHRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2ODIzMDEsImV4cCI6MjA5OTI1ODMwMX0.WvjZJ8Sd3o5T8a4vMApyvoCoS01Qv493mo1PxyWO06M');
-  // --- Brand colors (from nusa design tokens) ---
+
+  // ═══════════════════════════════════════════
+  //  DESIGN TOKENS — Single source of truth
+  // ═══════════════════════════════════════════
+
+  // ── Brand colors ──
   static const Color primaryColor = Color(0xFFE63946);
   static const Color primaryDark = Color(0xFFC1121F);
   static const Color primarySoft = Color(0xFFFDE8EA);
@@ -23,15 +28,44 @@ abstract class NusaConfig {
   static const Color textTertiary = Color(0xFF9CA3AF);
   static const Color dividerColor = Color(0xFFE5E7EB);
   static const Color borderColor = Color(0xFFF3F4F6);
+  static const Color inputFill = Color(0xFFF9FAFB);
+  static const Color inputBorder = Color(0xFFE5E7EB);
 
-  // --- Accent ---
+  // ── Semantic colors ──
+  static const Color success = Color(0xFF10B981);
+  static const Color successSoft = Color(0xFFD1FAE5);
+  static const Color successText = Color(0xFF065F46);
+  static const Color error = Color(0xFFEF4444);
+  static const Color errorSoft = Color(0xFFFEE2E2);
+  static const Color errorText = Color(0xFFDC2626);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color warningSoft = Color(0xFFFEF3C7);
+  static const Color warningText = Color(0xFFD97706);
+  static const Color info = Color(0xFF3B82F6);
+  static const Color infoSoft = Color(0xFFDBEAFE);
+  static const Color infoText = Color(0xFF1E40AF);
+
+  // ── Stock status colors ──
+  static const Color stockActive = Color(0xFFDCFCE7);
+  static const Color stockActiveText = Color(0xFF16A34A);
+  static const Color stockLow = Color(0xFFFEF3C7);
+  static const Color stockLowText = Color(0xFFD97706);
+  static const Color stockOut = Color(0xFFFEE2E2);
+  static const Color stockOutText = Color(0xFFDC2626);
+
+  // ── Accent ──
   static const Color accentGreen = Color(0xFF10B981);
   static const Color accentGreenDark = Color(0xFF059669);
   static const Color accentPurple = Color(0xFF8B5CF6);
   static const Color accentPurpleDark = Color(0xFF7C3AED);
   static const Color accentGold = Color(0xFFF59E0B);
 
-  // --- Dark mode palette ---
+  // ── Payment method colors ──
+  static const Color payCash = Color(0xFF10B981);
+  static const Color payQris = Color(0xFF3B82F6);
+  static const Color payTransfer = Color(0xFF8B5CF6);
+
+  // ── Dark mode palette ──
   static const Color darkBackground = Color(0xFF0F0F1A);
   static const Color darkSurface = Color(0xFF1A1A2E);
   static const Color darkSurface2 = Color(0xFF252540);
@@ -41,13 +75,67 @@ abstract class NusaConfig {
   static const Color darkDivider = Color(0xFF2D2D44);
   static const Color darkBorder = Color(0xFF3A3A52);
   static const Color darkCardShadow = Color(0x1A000000);
+  static const Color darkInputFill = Color(0xFF252540);
+  static const Color darkInputBorder = Color(0xFF3A3A52);
+
+  // ── Spacing scale (4pt grid) ──
+  static const double spaceXXS = 4;
+  static const double spaceXS = 8;
+  static const double spaceSM = 12;
+  static const double spaceMD = 16;
+  static const double spaceLG = 20;
+  static const double spaceXL = 24;
+  static const double spaceXXL = 32;
+
+  // ── Radius scale ──
+  static const double radiusSM = 8;
+  static const double radiusMD = 12;
+  static const double radiusLG = 16;
+  static const double radiusXL = 20;
+  static const double radiusFull = 999;
+
+  // ── Responsive breakpoints ──
+  static const double bpPhone = 600;
+  static const double bpTablet = 900;
+  static bool isWide(BuildContext context) => MediaQuery.of(context).size.width > 720;
+  static bool isTablet(BuildContext context) => MediaQuery.of(context).size.width >= 600;
+
+  // ── Category maps (single source across all screens) ──
+  static const Map<String, String> catEmoji = {
+    'Makanan': '🍜', 'Minuman': '🥤', 'Sembako': '📦', 'Lainnya': '🧴',
+  };
+  static const Map<String, List<Color>> catGradients = {
+    'Makanan': [Color(0xFFFEF3C7), Color(0xFFFDE68A), Color(0xFFFEF9C3)],
+    'Minuman': [Color(0xFFDBEAFE), Color(0xFFBFDBFE), Color(0xFFEFF6FF)],
+    'Sembako': [Color(0xFFFEE2E2), Color(0xFFFECACA), Color(0xFFFEF2F2)],
+    'Lainnya': [Color(0xFFF3E8FF), Color(0xFFE9D5FF), Color(0xFFFAF5FF)],
+  };
+  static const Map<String, IconData> catIcons = {
+    'Semua': Icons.grid_view_rounded,
+    'Makanan': Icons.restaurant_rounded,
+    'Minuman': Icons.local_drink_rounded,
+    'Sembako': Icons.shopping_basket_rounded,
+    'Lainnya': Icons.category_rounded,
+  };
+
+  static String catEmojiFor(String cat) => catEmoji[cat] ?? '📦';
+  static List<Color> catGradientFor(String cat) => catGradients[cat] ?? catGradients['Lainnya']!;
+
+  /// Helper: resolve light/dark color from context
+  static Color resolve(BuildContext context, {required Color light, required Color dark}) =>
+      Theme.of(context).brightness == Brightness.dark ? dark : light;
+
+  // ── Feature flags ──
   static const bool enableBarcode = true;
   static const bool enableQRIS = true;
   static const bool enableSpreadsheet = true;
   static const bool enableWhatsApp = true;
   static const int maxDevicesPerKey = 2;
+
+  // ── Business constants ──
   static const List<String> categories = ["Makanan", "Minuman", "Sembako", "Lainnya"];
   static const List<String> roles = ["Owner", "Manager", "Kasir", "Gudang", "Finance"];
+  static const List<String> productTypes = ["Regular", "Varian", "Grosir"];
   static const Map<String, List<String>> roleAccess = {
     "Owner": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet","pesanan_online","ai_chat"],
     "Manager": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet","pesanan_online","ai_chat"],

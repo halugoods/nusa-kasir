@@ -14,6 +14,8 @@ class Products extends Table {
   BoolColumn get isOnline => boolean().withDefault(const Constant(false))();
   DateTimeColumn get expiryDate => dateTime().nullable()();
   TextColumn get productType => text().nullable()();
+  TextColumn get variantsJson => text().nullable()();   // JSON array: [{name,priceAdjustment,stock}]
+  TextColumn get wholesaleJson => text().nullable()();  // JSON array: [{minQty,price}]
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 class StockMovements extends Table {

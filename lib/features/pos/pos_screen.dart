@@ -20,7 +20,7 @@ class PosScreen extends ConsumerStatefulWidget {
   ConsumerState<PosScreen> createState() => _PosScreenState();
 }
 
-class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProviderStateMixin {
+class _PosScreenState extends ConsumerState<PosScreen> {
   final _search = TextEditingController();
   final _searchFocus = FocusNode();
   String _category = 'Semua';
@@ -35,17 +35,8 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
   bool _checkingMember = false;
   int _gridColumns = 2;
 
-  // Cached product list for instant filtering
   List<Product>? _allProducts;
   bool _productsLoading = true;
-
-  static const _chipIcons = <String, IconData>{
-    'Semua': Icons.grid_view_rounded,
-    'Makanan': Icons.restaurant_rounded,
-    'Minuman': Icons.local_drink_rounded,
-    'Sembako': Icons.shopping_basket_rounded,
-    'Lainnya': Icons.category_rounded,
-  };
 
   List<String> get _chips => ['Semua', ...NusaConfig.categories];
 
@@ -79,10 +70,8 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
 
   @override
   void dispose() {
-    _search.dispose();
-    _searchFocus.dispose();
-    _memberPhone.dispose();
-    _promoCode.dispose();
+    _search.dispose(); _searchFocus.dispose();
+    _memberPhone.dispose(); _promoCode.dispose();
     super.dispose();
   }
 
@@ -110,64 +99,47 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
   }
 
   Future<void> _scanBarcode(BuildContext context) async {
-    final ctx = context;
     String? scannedCode;
     final controller = MobileScannerController();
     if (!mounted) return;
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dCtx) => AlertDialog(
         title: const Text('Pindai Barcode'),
         contentPadding: const EdgeInsets.all(8),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 320,
+        content: SizedBox(width: double.maxFinite, height: 320,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: MobileScanner(
-              controller: controller,
-              onDetect: (capture) {
-                if (scannedCode != null) return;
-                final code = capture.barcodes.firstWhere(
-                  (b) => b.rawValue != null,
-                  orElse: () => capture.barcodes.first,
-                ).rawValue;
-                if (code == null || code.isEmpty) return;
-                scannedCode = code;
-                Navigator.of(dialogContext).pop(code);
-              },
-            ),
+            child: MobileScanner(controller: controller, onDetect: (capture) {
+              if (scannedCode != null) return;
+              final code = capture.barcodes.firstWhere(
+                (b) => b.rawValue != null, orElse: () => capture.barcodes.first).rawValue;
+              if (code == null || code.isEmpty) return;
+              scannedCode = code;
+              Navigator.of(dCtx).pop(code);
+            }),
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Batal')),
-        ],
+        actions: [TextButton(onPressed: () => Navigator.of(dCtx).pop(), child: const Text('Batal'))],
       ),
     );
     await controller.dispose();
-    if (scannedCode == null || !ctx.mounted) return;
+    if (scannedCode == null || !context.mounted) return;
 
-    final db = ref.read(databaseProvider);
-    final product = await ProductRepository(db).byBarcode(scannedCode!);
+    final product = await ProductRepository(ref.read(databaseProvider)).byBarcode(scannedCode!);
     if (product != null) {
       ref.read(cartProvider.notifier).addProduct(product.id, product.name, product.sellPrice);
-      TopToast.success(ctx, '${product.name} ditambahkan');
-    } else if (ctx.mounted) {
-      TopToast.error(ctx, 'Produk tidak ditemukan');
+      TopToast.success(context, '${product.name} ditambahkan');
+    } else if (context.mounted) {
+      TopToast.error(context, 'Produk tidak ditemukan');
     }
   }
 
   Future<void> _closeKasir() async {
-    if (widget.sessionId == null) {
-      if (mounted) context.go('/home');
-      return;
-    }
+    if (widget.sessionId == null) { if (mounted) context.go('/home'); return; }
     final repo = CashierSessionRepository(ref.read(databaseProvider));
     await repo.close(widget.sessionId!);
-    if (mounted) {
-      context.go('/home');
-      TopToast.success(context, 'Kasir ditutup. Sampai jumpa! 👋');
-    }
+    if (mounted) { context.go('/home'); TopToast.success(context, 'Kasir ditutup. Sampai jumpa! 👋'); }
   }
 
   @override
@@ -176,158 +148,90 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final totalItems = cart.fold(0, (s, e) => s + e.qty);
     final totalPrice = cart.fold(0, (s, e) => s + e.subtotal);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isWide = screenWidth > 720;
+    final isWide = MediaQuery.of(context).size.width > 720;
 
     return Scaffold(
-      backgroundColor: isDark ? NusaConfig.darkBackground : const Color(0xFFF5F5F7),
+      backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
       body: SafeArea(
         child: isWide
-            ? _buildWideLayout(isDark, cart, totalItems, totalPrice, screenWidth)
+            ? _buildWideLayout(isDark, cart, totalItems, totalPrice)
             : _buildNarrowLayout(isDark, cart, totalItems, totalPrice),
       ),
     );
   }
 
-  /// Narrow layout (phone) — grid + bottom cart bar + expandable sheet
+  // ═══════════ NARROW LAYOUT (phone) ═══════════
+
   Widget _buildNarrowLayout(bool isDark, List<CartItem> cart, int totalItems, int totalPrice) {
-    return Stack(
-      children: [
-        Column(
-          children: [
-            _buildTopBar(isDark),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: _buildSearchBar(isDark),
-            ),
-            // Category chips
-            SizedBox(
-              height: 48,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-                itemCount: _chips.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => _chipBuild(context, isDark, i),
-              ),
-            ),
-            // Product grid
-            Expanded(child: _buildProductGrid(isDark)),
-            // Bottom cart bar
-            if (!_cartExpanded) _buildCartBar(isDark, totalItems, totalPrice),
-          ],
-        ),
-        // Expandable cart sheet
-        if (_cartExpanded)
-          _buildCartSheet(isDark, cart, totalItems, totalPrice),
-      ],
-    );
-  }
-
-  /// Wide layout (tablet) — 2-column: grid left, cart sidebar right
-  Widget _buildWideLayout(bool isDark, List<CartItem> cart, int totalItems, int totalPrice, double screenWidth) {
-    return Column(
-      children: [
+    return Stack(children: [
+      Column(children: [
         _buildTopBar(isDark),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: _buildSearchBar(isDark),
-        ),
-        SizedBox(
-          height: 48,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-            itemCount: _chips.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (_, i) => _chipBuild(context, isDark, i),
-          ),
-        ),
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Product grid (flex 3)
-              Expanded(flex: 3, child: _buildProductGrid(isDark)),
-              // Cart sidebar (fixed width)
-              SizedBox(
-                width: 380,
-                child: _buildCartSidebar(isDark, cart, totalItems, totalPrice),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: _buildSearchBar(isDark)),
+        _buildCategoryChips(isDark),
+        Expanded(child: _buildProductGrid(isDark)),
+        if (!_cartExpanded) _buildCartBar(isDark, totalItems, totalPrice),
+      ]),
+      if (_cartExpanded) _buildCartPanel(isDark, cart, totalItems, totalPrice, isSheet: true),
+    ]);
   }
 
-  Widget _chipBuild(BuildContext context, bool isDark, int i) {
-    final chip = _chips[i];
-    final selected = chip == _category;
-    return GestureDetector(
-      onTap: () => setState(() => _category = chip),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkSurface2 : Colors.white),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: selected ? [BoxShadow(color: NusaConfig.primaryColor.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))] : [],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(_chipIcons[chip] ?? Icons.circle, size: 16, color: selected ? Colors.white : NusaConfig.textSecondary),
-            const SizedBox(width: 6),
-            Text(chip, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: selected ? Colors.white : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))),
-          ],
-        ),
+  // ═══════════ WIDE LAYOUT (tablet) ═══════════
+
+  Widget _buildWideLayout(bool isDark, List<CartItem> cart, int totalItems, int totalPrice) {
+    return Column(children: [
+      _buildTopBar(isDark),
+      Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: _buildSearchBar(isDark)),
+      _buildCategoryChips(isDark),
+      Expanded(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(flex: 3, child: _buildProductGrid(isDark)),
+          SizedBox(width: 380, child: _buildCartPanel(isDark, cart, totalItems, totalPrice, isSheet: false)),
+        ]),
       ),
-    );
+    ]);
   }
+
+  // ═══════════ COMPONENTS ═══════════
 
   Widget _buildTopBar(bool isDark) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-      child: Row(
-        children: [
-          const Icon(Icons.shopping_cart_rounded, color: NusaConfig.primaryColor, size: 22),
-          const SizedBox(width: 10),
-          const Text('Kasir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
-          const SizedBox(width: 12),
-          // Grid toggle
-          _gridToggle(1, Icons.view_agenda_rounded, isDark),
-          const SizedBox(width: 4),
-          _gridToggle(2, Icons.grid_view_rounded, isDark),
-          const SizedBox(width: 4),
-          _gridToggle(3, Icons.apps_rounded, isDark),
-          const Spacer(),
-          if (_cashierName.isNotEmpty) ...[
-            Container(
+      child: Row(children: [
+        const Icon(Icons.shopping_cart_rounded, color: NusaConfig.primaryColor, size: 22),
+        const SizedBox(width: 10),
+        const Text('Kasir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+        const SizedBox(width: 12),
+        _gridToggle(1, Icons.view_agenda_rounded, isDark),
+        const SizedBox(width: 4),
+        _gridToggle(2, Icons.grid_view_rounded, isDark),
+        const SizedBox(width: 4),
+        _gridToggle(3, Icons.apps_rounded, isDark),
+        const Spacer(),
+        if (_cashierName.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(color: NusaConfig.primarySoft, borderRadius: BorderRadius.circular(NusaConfig.radiusFull)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.person, size: 14, color: NusaConfig.primaryColor),
+              const SizedBox(width: 4),
+              Text(_cashierName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
+            ]),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: _closeKasir,
+            child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: NusaConfig.primarySoft, borderRadius: BorderRadius.circular(20)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.person, size: 14, color: NusaConfig.primaryColor),
-                const SizedBox(width: 4),
-                Text(_cashierName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
+              decoration: BoxDecoration(color: NusaConfig.errorSoft, borderRadius: BorderRadius.circular(NusaConfig.radiusFull)),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.close, size: 14, color: NusaConfig.primaryColor),
+                SizedBox(width: 4),
+                Text('Tutup', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
               ]),
             ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: _closeKasir,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(20)),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.close, size: 14, color: NusaConfig.primaryColor),
-                  SizedBox(width: 4),
-                  Text('Tutup', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
-                ]),
-              ),
-            ),
-          ],
+          ),
         ],
-      ),
+      ]),
     );
   }
 
@@ -339,7 +243,7 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
         duration: const Duration(milliseconds: 200),
         width: 36, height: 36,
         decoration: BoxDecoration(
-          color: active ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkSurface2 : const Color(0xFFF1F5F9)),
+          color: active ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, size: 18, color: active ? Colors.white : NusaConfig.textSecondary),
@@ -351,13 +255,14 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       decoration: BoxDecoration(
-        color: isDark ? NusaConfig.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: _searching ? [BoxShadow(color: NusaConfig.primaryColor.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 3))] : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(NusaConfig.radiusXL),
+        boxShadow: _searching
+            ? [BoxShadow(color: NusaConfig.primaryColor.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 3))]
+            : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
       ),
       child: TextField(
-        controller: _search,
-        focusNode: _searchFocus,
+        controller: _search, focusNode: _searchFocus,
         style: TextStyle(fontSize: 15, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
         decoration: InputDecoration(
           hintText: 'Cari produk...',
@@ -382,42 +287,75 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
     );
   }
 
+  Widget _buildCategoryChips(bool isDark) {
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+        itemCount: _chips.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final chip = _chips[i];
+          final selected = chip == _category;
+          return GestureDetector(
+            onTap: () => setState(() => _category = chip),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: selected ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkSurface2 : NusaConfig.surfaceColor),
+                borderRadius: BorderRadius.circular(NusaConfig.radiusFull),
+                boxShadow: selected ? [BoxShadow(color: NusaConfig.primaryColor.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))] : [],
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(NusaConfig.catIcons[chip] ?? Icons.circle, size: 16,
+                  color: selected ? Colors.white : NusaConfig.textSecondary),
+                const SizedBox(width: 6),
+                Text(chip, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                  color: selected ? Colors.white : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildProductGrid(bool isDark) {
     if (_productsLoading) {
       return const Center(child: CircularProgressIndicator(color: NusaConfig.primaryColor));
     }
     final products = _filteredProducts();
     if (products.isEmpty) {
-      return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.inventory_2_outlined, size: 56, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-          const SizedBox(height: 8),
-          Text('Produk tidak ditemukan', style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, fontSize: 15)),
-        ]),
-      );
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.inventory_2_outlined, size: 56, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+        const SizedBox(height: 8),
+        Text('Produk tidak ditemukan', style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, fontSize: 15)),
+      ]));
     }
     final cart = ref.watch(cartProvider);
     final aspectRatios = {1: 2.0, 2: 0.9, 3: 0.78};
     final ratio = aspectRatios[_gridColumns] ?? 0.9;
     return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: _gridColumns, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: ratio),
-          itemCount: products.length,
-          itemBuilder: (_, i) {
-            final product = products[i];
-            final cartItem = cart.cast<CartItem?>().firstWhere((c) => c?.productId == product.id, orElse: () => null);
-            final qtyInCart = cartItem?.qty ?? 0;
-            return _ProductCard(
-              product: product,
-              isDark: isDark,
-              qtyInCart: qtyInCart,
-              onAdd: () => ref.read(cartProvider.notifier).addProduct(product.id, product.name, product.sellPrice),
-              onDecrement: () => ref.read(cartProvider.notifier).changeQty(product.id, -1),
-              onIncrement: () => ref.read(cartProvider.notifier).addProduct(product.id, product.name, product.sellPrice),
-            );
-          },
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: _gridColumns, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: ratio),
+      itemCount: products.length,
+      itemBuilder: (_, i) {
+        final product = products[i];
+        final cartItem = cart.cast<CartItem?>().firstWhere((c) => c?.productId == product.id, orElse: () => null);
+        return _ProductCard(
+          product: product, isDark: isDark, qtyInCart: cartItem?.qty ?? 0,
+          onAdd: () => ref.read(cartProvider.notifier).addProduct(product.id, product.name, product.sellPrice),
+          onDecrement: () => ref.read(cartProvider.notifier).changeQty(product.id, -1),
+          onIncrement: () => ref.read(cartProvider.notifier).addProduct(product.id, product.name, product.sellPrice),
         );
+      },
+    );
   }
+
+  // ── Cart Bar (collapsed, narrow only) ──
 
   Widget _buildCartBar(bool isDark, int totalItems, int totalPrice) {
     return GestureDetector(
@@ -426,361 +364,228 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
         margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(NusaConfig.radiusXL),
           gradient: const LinearGradient(colors: [NusaConfig.primaryColor, NusaConfig.primaryDark], begin: Alignment.topLeft, end: Alignment.bottomRight),
           boxShadow: [BoxShadow(color: NusaConfig.primaryColor.withValues(alpha: 0.35), blurRadius: 16, offset: const Offset(0, 6))],
         ),
-        child: Row(
-          children: [
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('$totalItems item', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
-              const SizedBox(height: 2),
-              Text(formatRupiah(totalPrice), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5)),
-            ]),
-            const Spacer(),
-            if (totalItems > 0)
-              const Icon(Icons.keyboard_arrow_up, color: Colors.white70, size: 28),
-            const SizedBox(width: 8),
-            SizedBox(
-              child: ElevatedButton(
-                onPressed: totalItems == 0 ? null : () => context.push('/checkout?sessionId=${widget.sessionId ?? ''}'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white, foregroundColor: NusaConfig.primaryColor,
-                  disabledBackgroundColor: Colors.white38, disabledForegroundColor: Colors.white54,
-                  elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-                child: const Text('Bayar'),
-              ),
+        child: Row(children: [
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('$totalItems item', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
+            const SizedBox(height: 2),
+            Text(formatRupiah(totalPrice), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5)),
+          ]),
+          const Spacer(),
+          if (totalItems > 0) const Icon(Icons.keyboard_arrow_up, color: Colors.white70, size: 28),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: totalItems == 0 ? null : () => context.push('/checkout?sessionId=${widget.sessionId ?? ''}'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white, foregroundColor: NusaConfig.primaryColor,
+              disabledBackgroundColor: Colors.white38, disabledForegroundColor: Colors.white54,
+              elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
-          ],
-        ),
+            child: const Text('Bayar'),
+          ),
+        ]),
       ),
     );
   }
 
-  /// Full-height cart sheet overlay for narrow screens.
-  Widget _buildCartSheet(bool isDark, List<CartItem> cart, int totalItems, int totalPrice) {
+  // ── Unified Cart Panel (sheet for narrow, sidebar for wide) ──
+
+  Widget _buildCartPanel(bool isDark, List<CartItem> cart, int totalItems, int totalPrice, {required bool isSheet}) {
     final hasMember = _memberName != null;
-    return Positioned.fill(
-      top: MediaQuery.of(context).padding.top + 80,
-      child: GestureDetector(
-        onVerticalDragEnd: (details) {
-          if (details.primaryVelocity! > 500) setState(() => _cartExpanded = false);
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: isDark ? NusaConfig.darkBackground : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, -5))],
+    final separator = Container(height: 1, color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor);
+
+    Widget body = Column(children: [
+      if (isSheet) ...[
+        Center(child: Container(margin: const EdgeInsets.symmetric(vertical: 10), width: 40, height: 4,
+          decoration: BoxDecoration(color: NusaConfig.dividerColor, borderRadius: BorderRadius.circular(2)))),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(children: [
+            const Text('Keranjang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+            const Spacer(),
+            TextButton(onPressed: () => ref.read(cartProvider.notifier).clear(), child: const Text('Kosongkan', style: TextStyle(color: NusaConfig.primaryColor, fontWeight: FontWeight.w600))),
+            IconButton(onPressed: () => setState(() => _cartExpanded = false), icon: const Icon(Icons.keyboard_arrow_down, color: NusaConfig.textSecondary)),
+          ]),
+        ),
+      ] else ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          child: Row(children: [
+            const Icon(Icons.shopping_basket_outlined, color: NusaConfig.primaryColor, size: 20),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('Keranjang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary))),
+            TextButton(onPressed: cart.isEmpty ? null : () => ref.read(cartProvider.notifier).clear(), child: const Text('Kosongkan', style: TextStyle(fontSize: 12, color: NusaConfig.primaryColor, fontWeight: FontWeight.w600))),
+          ]),
+        ),
+        separator,
+      ],
+      // Member lookup
+      _buildLookupRow(isDark, isSheet ? 16 : 12),
+      if (hasMember) _buildMemberBadge(isDark, isSheet ? 16 : 12),
+      // Promo
+      _buildPromoRow(isDark, isSheet ? 16 : 12),
+      separator,
+      // Cart items
+      Expanded(
+        child: cart.isEmpty
+            ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.receipt_long_outlined, size: 48, color: NusaConfig.textTertiary.withValues(alpha: 0.5)),
+                const SizedBox(height: 8),
+                const Text('Keranjang masih kosong', style: TextStyle(color: NusaConfig.textTertiary)),
+              ]))
+            : Consumer(
+                builder: (_, ref, __) => ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  itemCount: cart.length,
+                  itemBuilder: (_, i) => _CartItemTile(
+                    item: cart[i], isDark: isDark,
+                    onDecrement: () => ref.read(cartProvider.notifier).changeQty(cart[i].productId, -1),
+                    onIncrement: () => ref.read(cartProvider.notifier).addProduct(cart[i].productId, cart[i].name, cart[i].price),
+                  ),
+                ),
+              ),
+      ),
+      // Payment method chips
+      Padding(
+        padding: EdgeInsets.symmetric(horizontal: isSheet ? 16.0 : 12.0, vertical: 4),
+        child: Row(children: [
+          _payChip('Tunai', Icons.money, _paymentMethod == 'Tunai', () => setState(() => _paymentMethod = 'Tunai')),
+          const SizedBox(width: 8),
+          _payChip('QRIS', Icons.qr_code, _paymentMethod == 'QRIS', () => setState(() => _paymentMethod = 'QRIS')),
+          const SizedBox(width: 8),
+          _payChip('Transfer', Icons.account_balance, _paymentMethod == 'Transfer', () => setState(() => _paymentMethod = 'Transfer')),
+        ]),
+      ),
+      // Summary + checkout
+      Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+          border: Border(top: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor))),
+        child: Column(children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('$totalItems item', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+            Text(formatRupiah(totalPrice), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor, letterSpacing: -0.5)),
+          ]),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: totalItems == 0 ? null : () => context.push('/checkout?sessionId=${widget.sessionId ?? ''}'),
+              style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              child: const Text('Bayar'),
+            ),
           ),
-          child: Column(
-            children: [
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10),
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(color: NusaConfig.dividerColor, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(children: [
-                  const Text('Keranjang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
-                  const Spacer(),
-                  TextButton(onPressed: () => ref.read(cartProvider.notifier).clear(), child: const Text('Kosongkan', style: TextStyle(color: NusaConfig.primaryColor, fontWeight: FontWeight.w600))),
-                  IconButton(onPressed: () => setState(() => _cartExpanded = false), icon: const Icon(Icons.keyboard_arrow_down, color: NusaConfig.textSecondary)),
-                ]),
-              ),
-              // ── Member lookup ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-                child: Row(children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 42,
-                      child: TextField(
-                        controller: _memberPhone,
-                        keyboardType: TextInputType.phone,
-                        style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-                        decoration: InputDecoration(
-                          hintText: 'No WhatsApp member...',
-                          hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                          prefixIcon: const Icon(Icons.person_outline, size: 18, color: NusaConfig.textSecondary),
-                          filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    height: 42,
-                    child: ElevatedButton(
-                      onPressed: _checkingMember ? null : _lookupMember,
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 14), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                      child: _checkingMember ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Cek Member'),
-                    ),
-                  ),
-                ]),
-              ),
-              if (hasMember)
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFCD34D))),
-                  child: Row(children: [
-                    const Icon(Icons.stars_rounded, size: 18, color: Color(0xFFF59E0B)),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(_memberName!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF92400E)))),
-                    Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: const Color(0xFFF59E0B), borderRadius: BorderRadius.circular(8)), child: Text('$_memberPoints pts', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
-                  ]),
-                ),
-              // ── Promo code ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-                child: Row(children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
-                      child: TextField(
-                        controller: _promoCode,
-                        style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-                        decoration: InputDecoration(
-                          hintText: 'Kode promo...',
-                          hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                          prefixIcon: const Icon(Icons.local_offer_outlined, size: 16, color: NusaConfig.textSecondary),
-                          filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    height: 40,
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                      child: const Text('Pakai'),
-                    ),
-                  ),
-                ]),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: cart.isEmpty
-                    ? Center(
-                        child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.receipt_long_outlined, size: 48, color: NusaConfig.textTertiary.withValues(alpha: 0.5)),
-                          const SizedBox(height: 8),
-                          const Text('Keranjang masih kosong', style: TextStyle(color: NusaConfig.textTertiary)),
-                        ]),
-                      )
-                    : Consumer(
-                        builder: (_, ref, __) => ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          itemCount: cart.length,
-                          itemBuilder: (_, i) => _CartItemTile(
-                            item: cart[i], isDark: isDark,
-                            onDecrement: () => ref.read(cartProvider.notifier).changeQty(cart[i].productId, -1),
-                            onIncrement: () => ref.read(cartProvider.notifier).addProduct(cart[i].productId, cart[i].name, cart[i].price),
-                          ),
-                        ),
-                      ),
-              ),
-              // ── Payment method grid ──
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Row(children: [
-                  _payChip('Tunai', Icons.money, _paymentMethod == 'Tunai', () => setState(() => _paymentMethod = 'Tunai')),
-                  const SizedBox(width: 8),
-                  _payChip('QRIS', Icons.qr_code, _paymentMethod == 'QRIS', () => setState(() => _paymentMethod = 'QRIS')),
-                  const SizedBox(width: 8),
-                  _payChip('Transfer', Icons.account_balance, _paymentMethod == 'Transfer', () => setState(() => _paymentMethod = 'Transfer')),
-                ]),
-              ),
-              // Summary + checkout
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                decoration: BoxDecoration(color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor, border: Border(top: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor))),
-                child: Column(children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Text('$totalItems item', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                    Text(formatRupiah(totalPrice), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor, letterSpacing: -0.5)),
-                  ]),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: totalItems == 0 ? null : () => context.push('/checkout?sessionId=${widget.sessionId ?? ''}'),
-                      style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                      child: const Text('Bayar'),
-                    ),
-                  ),
-                ]),
-              ),
-            ],
+        ]),
+      ),
+    ]);
+
+    if (isSheet) {
+      return Positioned.fill(
+        top: MediaQuery.of(context).padding.top + 80,
+        child: GestureDetector(
+          onVerticalDragEnd: (d) { if (d.primaryVelocity! > 500) setState(() => _cartExpanded = false); },
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? NusaConfig.darkBackground : NusaConfig.surfaceColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(NusaConfig.radiusXL)),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, -5))],
+            ),
+            child: body,
           ),
         ),
-      ),
-    );
-  }
+      );
+    }
 
-  /// Persistent cart sidebar for wide screens.
-  Widget _buildCartSidebar(bool isDark, List<CartItem> cart, int totalItems, int totalPrice) {
-    final hasMember = _memberName != null;
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? NusaConfig.darkSurface : Colors.white,
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
         border: Border(left: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor)),
       ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-            child: Row(children: [
-              const Icon(Icons.shopping_basket_outlined, color: NusaConfig.primaryColor, size: 20),
-              const SizedBox(width: 8),
-              const Expanded(child: Text('Keranjang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary))),
-              TextButton(onPressed: cart.isEmpty ? null : () => ref.read(cartProvider.notifier).clear(), child: const Text('Kosongkan', style: TextStyle(fontSize: 12, color: NusaConfig.primaryColor, fontWeight: FontWeight.w600))),
-            ]),
-          ),
-          const Divider(height: 1),
-          // ── Member lookup ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: Row(children: [
-              Expanded(
-                child: SizedBox(
-                  height: 42,
-                  child: TextField(
-                    controller: _memberPhone,
-                    keyboardType: TextInputType.phone,
-                    style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'No WA member...',
-                      hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                      prefixIcon: const Icon(Icons.person_outline, size: 18, color: NusaConfig.textSecondary),
-                      filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    ),
-                  ),
-                ),
+      child: body,
+    );
+  }
+
+  Widget _buildLookupRow(bool isDark, double padH) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(padH, 8, padH, 4),
+      child: Row(children: [
+        Expanded(
+          child: SizedBox(height: 42,
+            child: TextField(
+              controller: _memberPhone, keyboardType: TextInputType.phone,
+              style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'No WhatsApp member...',
+                hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                prefixIcon: const Icon(Icons.person_outline, size: 18, color: NusaConfig.textSecondary),
+                filled: true, fillColor: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(NusaConfig.radiusMD), borderSide: BorderSide.none),
               ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 42,
-                child: ElevatedButton(
-                  onPressed: _checkingMember ? null : _lookupMember,
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 14), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  child: _checkingMember ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Cek'),
-                ),
-              ),
-            ]),
-          ),
-          if (hasMember)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 12),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFCD34D))),
-              child: Row(children: [
-                const Icon(Icons.stars_rounded, size: 18, color: Color(0xFFF59E0B)),
-                const SizedBox(width: 8),
-                Expanded(child: Text(_memberName!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF92400E)))),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: const Color(0xFFF59E0B), borderRadius: BorderRadius.circular(8)), child: Text('$_memberPoints pts', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
-              ]),
             ),
-          // ── Promo code ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-            child: Row(children: [
-              Expanded(
-                child: SizedBox(
-                  height: 40,
-                  child: TextField(
-                    controller: _promoCode,
-                    style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'Kode promo...',
-                      hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                      prefixIcon: const Icon(Icons.local_offer_outlined, size: 16, color: NusaConfig.textSecondary),
-                      filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    ),
-                  ),
-                ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(height: 42,
+          child: ElevatedButton(
+            onPressed: _checkingMember ? null : _lookupMember,
+            style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.info, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(NusaConfig.radiusMD)), padding: const EdgeInsets.symmetric(horizontal: 14), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            child: _checkingMember ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Cek'),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildMemberBadge(bool isDark, double padH) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: padH),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: NusaConfig.warningSoft, borderRadius: BorderRadius.circular(NusaConfig.radiusMD), border: Border.all(color: const Color(0xFFFCD34D))),
+      child: Row(children: [
+        const Icon(Icons.stars_rounded, size: 18, color: NusaConfig.warning),
+        const SizedBox(width: 8),
+        Expanded(child: Text(_memberName!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.warningText))),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: NusaConfig.warning, borderRadius: BorderRadius.circular(8)), child: Text('$_memberPoints pts', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
+      ]),
+    );
+  }
+
+  Widget _buildPromoRow(bool isDark, double padH) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(padH, 6, padH, 4),
+      child: Row(children: [
+        Expanded(
+          child: SizedBox(height: 40,
+            child: TextField(
+              controller: _promoCode,
+              style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Kode promo...',
+                hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                prefixIcon: const Icon(Icons.local_offer_outlined, size: 16, color: NusaConfig.textSecondary),
+                filled: true, fillColor: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+                contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(NusaConfig.radiusMD), borderSide: BorderSide.none),
               ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  child: const Text('Pakai'),
-                ),
-              ),
-            ]),
+            ),
           ),
-          const Divider(height: 1),
-          Expanded(
-            child: cart.isEmpty
-                ? Center(
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.receipt_long_outlined, size: 48, color: NusaConfig.textTertiary.withValues(alpha: 0.4)),
-                      const SizedBox(height: 8),
-                      const Text('Keranjang masih kosong', style: TextStyle(color: NusaConfig.textTertiary)),
-                    ]),
-                  )
-                : Consumer(
-                    builder: (_, ref, __) => ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      itemCount: cart.length,
-                      itemBuilder: (_, i) => _CartItemTile(
-                        item: cart[i], isDark: isDark,
-                        onDecrement: () => ref.read(cartProvider.notifier).changeQty(cart[i].productId, -1),
-                        onIncrement: () => ref.read(cartProvider.notifier).addProduct(cart[i].productId, cart[i].name, cart[i].price),
-                      ),
-                    ),
-                  ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(height: 40,
+          child: ElevatedButton(
+            onPressed: () {},
+            style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.success, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(NusaConfig.radiusMD)), padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            child: const Text('Pakai'),
           ),
-          // ── Payment method grid ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Row(children: [
-              _payChip('Tunai', Icons.money, _paymentMethod == 'Tunai', () => setState(() => _paymentMethod = 'Tunai')),
-              const SizedBox(width: 6),
-              _payChip('QRIS', Icons.qr_code, _paymentMethod == 'QRIS', () => setState(() => _paymentMethod = 'QRIS')),
-              const SizedBox(width: 6),
-              _payChip('Transfer', Icons.account_balance, _paymentMethod == 'Transfer', () => setState(() => _paymentMethod = 'Transfer')),
-            ]),
-          ),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor, border: Border(top: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor))),
-            child: Column(children: [
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('$totalItems item', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                Text(formatRupiah(totalPrice), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor, letterSpacing: -0.5)),
-              ]),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: totalItems == 0 ? null : () => context.push('/checkout?sessionId=${widget.sessionId ?? ''}'),
-                  style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                  child: const Text('Bayar'),
-                ),
-              ),
-            ]),
-          ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 
@@ -792,10 +597,7 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
       final repo = CustomerRepository(ref.read(databaseProvider));
       final customer = await repo.byPhone(phone);
       if (customer != null && mounted) {
-        setState(() {
-          _memberName = customer.name;
-          _memberPoints = customer.points;
-        });
+        setState(() { _memberName = customer.name; _memberPoints = customer.points; });
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Member tidak ditemukan'), duration: Duration(seconds: 2)));
         setState(() { _memberName = null; _memberPoints = 0; });
@@ -805,6 +607,7 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
   }
 
   Widget _payChip(String label, IconData icon, bool active, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -812,8 +615,8 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: active ? NusaConfig.primarySoft : (Theme.of(context).brightness == Brightness.dark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB)),
-            borderRadius: BorderRadius.circular(12),
+            color: active ? NusaConfig.primarySoft : (isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill),
+            borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
             border: Border.all(color: active ? NusaConfig.primaryColor : NusaConfig.dividerColor, width: active ? 2 : 1),
           ),
           child: Column(children: [
@@ -827,18 +630,8 @@ class _PosScreenState extends ConsumerState<PosScreen> with SingleTickerProvider
   }
 }
 
-/// Mapping category → emoji for placeholder.
-const _catEmoji = <String, String>{
-  'Makanan': '🍜',
-  'Minuman': '🥤',
-  'Sembako': '📦',
-  'Lainnya': '🧴',
-};
+// ── Product Card ──
 
-String _catEmojiFor(String cat) => _catEmoji[cat] ?? '📦';
-
-/// Premium product card matching NUSA component #05 (Etalase Online).
-/// Two states: + button when qty=0, inline qty stepper when qty>0.
 class _ProductCard extends StatelessWidget {
   final Product product;
   final bool isDark;
@@ -847,175 +640,153 @@ class _ProductCard extends StatelessWidget {
   final VoidCallback onDecrement;
   final VoidCallback onIncrement;
   const _ProductCard({
-    required this.product, required this.isDark,
-    required this.qtyInCart,
+    required this.product, required this.isDark, required this.qtyInCart,
     required this.onAdd, required this.onDecrement, required this.onIncrement,
   });
 
-	  @override
-	  Widget build(BuildContext context) {
-	    final outOfStock = product.stock <= 0;
-	    final lowStock = !outOfStock && product.stock <= product.minStock;
+  @override
+  Widget build(BuildContext context) {
+    final outOfStock = product.stock <= 0;
+    final lowStock = !outOfStock && product.stock <= product.minStock;
 
-	    return GestureDetector(
-	      onTap: outOfStock ? null : () { if (qtyInCart == 0) onAdd(); },
-	      child: _CardShell(
-	        isDark: isDark,
-	        child: LayoutBuilder(
-	          builder: (_, constraints) {
-	            final imgSize = constraints.maxWidth; // square image = card width
-	            return Column(
-	              crossAxisAlignment: CrossAxisAlignment.start,
-	              mainAxisSize: MainAxisSize.min,
-	              children: [
-	                // Square image area
-	                SizedBox(
-	                  width: imgSize,
-	                  height: imgSize,
-	                  child: _ProductImage(
-	                    imagePath: product.imagePath, category: product.category,
-	                    outOfStock: outOfStock, lowStock: lowStock,
-	                    stock: product.stock, price: formatRupiah(product.sellPrice), isDark: isDark,
-	                    fullSquare: true,
-	                  ),
-	                ),
-	                // Info area
-	                Flexible(
-	                  child: Padding(
-	                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
-	                    child: Column(
-	                      crossAxisAlignment: CrossAxisAlignment.start,
-	                      mainAxisSize: MainAxisSize.min,
-	                      children: [
-	                        Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-	                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, height: 1.2,
-	                            letterSpacing: -0.01,
-	                            color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
-	                        const SizedBox(height: 2),
-	                        Text(product.category,
-	                          style: TextStyle(fontSize: 10, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
-	                      ],
-	                    ),
-	                  ),
-	                ),
-	                // Action button
-	                Padding(
-	                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-	                  child: outOfStock
-	                      ? const SizedBox(width: 28, height: 28)
-	                      : qtyInCart == 0
-	                          ? _AddButton(onTap: onAdd, disabled: outOfStock)
-	                          : _QtyStepper(qty: qtyInCart, onDecrement: onDecrement, onIncrement: onIncrement),
-	                ),
-	              ],
-	            );
-	          },
-	        ),
-	      ),
-	    );
-	  }
-	}
+    return GestureDetector(
+      onTap: outOfStock ? null : () { if (qtyInCart == 0) onAdd(); },
+      child: _CardShell(
+        isDark: isDark,
+        child: LayoutBuilder(builder: (_, constraints) {
+          final imgSize = constraints.maxWidth;
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            // Image area
+            SizedBox(width: imgSize, height: imgSize,
+              child: Stack(clipBehavior: Clip.none, children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Stack(fit: StackFit.expand, children: [
+                    if (product.imagePath != null && product.imagePath!.isNotEmpty && File(product.imagePath!).existsSync())
+                      Image.file(File(product.imagePath!), fit: BoxFit.cover)
+                    else
+                      Container(
+                        decoration: BoxDecoration(gradient: LinearGradient(
+                          begin: Alignment.topLeft, end: Alignment.bottomRight,
+                          colors: NusaConfig.catGradientFor(product.category))),
+                        child: Center(child: Opacity(opacity: 0.3, child: Text(NusaConfig.catEmojiFor(product.category), style: const TextStyle(fontSize: 40)))),
+                      ),
+                    if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.5)),
+                  ]),
+                ),
+                // Stock badge top-left
+                Positioned(top: 8, left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: outOfStock ? NusaConfig.stockOut : (lowStock ? NusaConfig.stockLow : NusaConfig.surfaceColor.withValues(alpha: 0.9)),
+                      borderRadius: BorderRadius.circular(NusaConfig.radiusFull),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 1))]),
+                    child: Text(outOfStock ? 'Habis' : '${product.stock}x',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                        color: outOfStock ? NusaConfig.stockOutText : (lowStock ? NusaConfig.stockLowText : NusaConfig.primaryColor),
+                        letterSpacing: -0.01)),
+                  ),
+                ),
+                // Price pill bottom-right
+                Positioned(bottom: 8, right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(color: NusaConfig.surfaceColor, borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2))]),
+                    child: Text(formatRupiah(product.sellPrice), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor, letterSpacing: -0.03)),
+                  ),
+                ),
+              ]),
+            ),
+            // Info
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, height: 1.2, letterSpacing: -0.01,
+                      color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
+                  const SizedBox(height: 2),
+                  Text(product.category,
+                    style: TextStyle(fontSize: 10, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                ]),
+              ),
+            ),
+            // Action
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+              child: outOfStock
+                  ? const SizedBox(width: 28, height: 28)
+                  : qtyInCart == 0
+                      ? _AddButton(onTap: onAdd, disabled: outOfStock)
+                      : _QtyStepper(qty: qtyInCart, onDecrement: onDecrement, onIncrement: onIncrement),
+            ),
+          ]);
+        }),
+      ),
+    );
+  }
+}
 
-/// Inline quantity stepper: [-] [qty] [+]
 class _QtyStepper extends StatelessWidget {
   final int qty;
-  final VoidCallback onDecrement;
-  final VoidCallback onIncrement;
+  final VoidCallback onDecrement, onIncrement;
   const _QtyStepper({required this.qty, required this.onDecrement, required this.onIncrement});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 28,
-      decoration: BoxDecoration(
-        border: Border.all(color: NusaConfig.primaryColor, width: 1.5),
-        borderRadius: BorderRadius.circular(14),
-        color: NusaConfig.primarySoft,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GestureDetector(
-            onTap: onDecrement,
-            behavior: HitTestBehavior.opaque,
-            child: const SizedBox(width: 24, height: 28, child: Center(child: Icon(Icons.remove, size: 16, color: NusaConfig.primaryColor))),
-          ),
-          Container(
-            constraints: const BoxConstraints(minWidth: 20),
-            child: Text('$qty', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor), textAlign: TextAlign.center),
-          ),
-          GestureDetector(
-            onTap: onIncrement,
-            behavior: HitTestBehavior.opaque,
-            child: const SizedBox(width: 24, height: 28, child: Center(child: Icon(Icons.add, size: 16, color: NusaConfig.primaryColor))),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(border: Border.all(color: NusaConfig.primaryColor, width: 1.5), borderRadius: BorderRadius.circular(14), color: NusaConfig.primarySoft),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        GestureDetector(onTap: onDecrement, behavior: HitTestBehavior.opaque, child: const SizedBox(width: 24, height: 28, child: Center(child: Icon(Icons.remove, size: 16, color: NusaConfig.primaryColor)))),
+        Container(constraints: const BoxConstraints(minWidth: 20), child: Text('$qty', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor), textAlign: TextAlign.center)),
+        GestureDetector(onTap: onIncrement, behavior: HitTestBehavior.opaque, child: const SizedBox(width: 24, height: 28, child: Center(child: Icon(Icons.add, size: 16, color: NusaConfig.primaryColor)))),
+      ]),
     );
   }
 }
 
-/// Cart item tile used in the expanded cart sheet and sidebar.
 class _CartItemTile extends StatelessWidget {
-  final CartItem item;
-  final bool isDark;
-  final VoidCallback? onDecrement;
-  final VoidCallback? onIncrement;
+  final CartItem item; final bool isDark;
+  final VoidCallback? onDecrement, onIncrement;
   const _CartItemTile({required this.item, required this.isDark, this.onDecrement, this.onIncrement});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? NusaConfig.darkSurface : Colors.white,
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(item.name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 2),
-              Text(formatRupiah(item.price), style: const TextStyle(fontSize: 12, color: NusaConfig.textSecondary)),
-            ]),
-          ),
-          // Qty stepper
-          Container(
-            height: 32,
-            decoration: BoxDecoration(
-              border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
-              borderRadius: BorderRadius.circular(10),
-              color: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              GestureDetector(
-                onTap: onDecrement,
-                behavior: HitTestBehavior.opaque,
-                child: const SizedBox(width: 30, height: 32, child: Center(child: Icon(Icons.remove, size: 16, color: NusaConfig.textSecondary))),
-              ),
-              Text('${item.qty}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
-              GestureDetector(
-                onTap: onIncrement,
-                behavior: HitTestBehavior.opaque,
-                child: const SizedBox(width: 30, height: 32, child: Center(child: Icon(Icons.add, size: 16, color: NusaConfig.textSecondary))),
-              ),
-            ]),
-          ),
-          const SizedBox(width: 8),
-          Text(formatRupiah(item.subtotal), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
-        ],
-      ),
+      child: Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(item.name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 2),
+            Text(formatRupiah(item.price), style: const TextStyle(fontSize: 12, color: NusaConfig.textSecondary)),
+          ]),
+        ),
+        Container(
+          height: 32,
+          decoration: BoxDecoration(border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor), borderRadius: BorderRadius.circular(10), color: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            GestureDetector(onTap: onDecrement, behavior: HitTestBehavior.opaque, child: const SizedBox(width: 30, height: 32, child: Center(child: Icon(Icons.remove, size: 16, color: NusaConfig.textSecondary)))),
+            Text('${item.qty}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+            GestureDetector(onTap: onIncrement, behavior: HitTestBehavior.opaque, child: const SizedBox(width: 30, height: 32, child: Center(child: Icon(Icons.add, size: 16, color: NusaConfig.textSecondary)))),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        Text(formatRupiah(item.subtotal), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
+      ]),
     );
   }
 }
 
-/// Outer card shell with touch feedback (scale + shadow).
 class _CardShell extends StatefulWidget {
-  final Widget child;
-  final bool isDark;
+  final Widget child; final bool isDark;
   const _CardShell({required this.child, required this.isDark});
   @override
   State<_CardShell> createState() => _CardShellState();
@@ -1023,7 +794,6 @@ class _CardShell extends StatefulWidget {
 
 class _CardShellState extends State<_CardShell> {
   bool _pressed = false;
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -1031,14 +801,12 @@ class _CardShellState extends State<_CardShell> {
       onTapUp: (_) => setState(() => _pressed = false),
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
-        scale: _pressed ? 0.96 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOutCubic,
+        scale: _pressed ? 0.96 : 1.0, duration: const Duration(milliseconds: 150), curve: Curves.easeOutCubic,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            color: widget.isDark ? NusaConfig.darkSurface : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: widget.isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: BorderRadius.circular(NusaConfig.radiusLG),
             boxShadow: _pressed ? [] : [BoxShadow(color: Colors.black.withValues(alpha: widget.isDark ? 0.10 : 0.05), blurRadius: 8, offset: const Offset(0, 3))],
           ),
           child: widget.child,
@@ -1048,118 +816,8 @@ class _CardShellState extends State<_CardShell> {
   }
 }
 
-/// Image area with gradient placeholder, rounded corners, and overlay badges.
-class _ProductImage extends StatelessWidget {
-  final String? imagePath;
-  final String category;
-  final bool outOfStock;
-  final bool lowStock;
-  final int stock;
-  final String price;
-  final bool isDark;
-  final bool fullSquare;
-
-  const _ProductImage({required this.imagePath, required this.category, required this.outOfStock, required this.lowStock, required this.stock, required this.price, required this.isDark, this.fullSquare = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final hasImage = imagePath != null && imagePath!.isNotEmpty && File(imagePath!).existsSync();
-    final emoji = _catEmojiFor(category);
-
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          ClipRRect(
-            borderRadius: fullSquare
-                ? BorderRadius.circular(14)
-                : const BorderRadius.vertical(top: Radius.circular(14)),
-            child: fullSquare
-                ? Stack(fit: StackFit.expand, children: [
-                    if (hasImage) Image.file(File(imagePath!), fit: BoxFit.cover) else _CategoryGradient(category: category, emoji: emoji),
-                    if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.5)),
-                  ])
-                : SizedBox(
-                    height: 95, width: double.infinity,
-                    child: Stack(fit: StackFit.expand, children: [
-                      if (hasImage) Image.file(File(imagePath!), fit: BoxFit.cover) else _CategoryGradient(category: category, emoji: emoji),
-                      if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.5)),
-                    ]),
-                  ),
-          ),
-          // Stock badge (top-left)
-          Positioned(top: 8, left: 8, child: _StockBadge(outOfStock: outOfStock, lowStock: lowStock, stock: stock)),
-          // "Isi N" chip (bottom-left) — only in fullSquare mode
-          if (fullSquare && !outOfStock)
-            Positioned(
-              bottom: 8, left: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text('Stok $stock',
-                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
-              ),
-            ),
-          // Price pill (bottom-right)
-          Positioned(
-            bottom: fullSquare ? 8 : 2, right: 6,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2))]),
-              child: Text(price, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor, letterSpacing: -0.03)),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _CategoryGradient extends StatelessWidget {
-  final String category;
-  final String emoji;
-  const _CategoryGradient({required this.category, required this.emoji});
-
-  static const _gradients = <String, List<Color>>{
-    'Makanan': [Color(0xFFFEF3C7), Color(0xFFFDE68A), Color(0xFFFEF9C3)],
-    'Minuman': [Color(0xFFDBEAFE), Color(0xFFBFDBFE), Color(0xFFEFF6FF)],
-    'Sembako': [Color(0xFFFEE2E2), Color(0xFFFECACA), Color(0xFFFEF2F2)],
-    'Lainnya': [Color(0xFFF3E8FF), Color(0xFFE9D5FF), Color(0xFFFAF5FF)],
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = _gradients[category] ?? _gradients['Lainnya']!;
-    return Container(
-      decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors)),
-      child: Center(child: Opacity(opacity: 0.3, child: Text(emoji, style: const TextStyle(fontSize: 40)))),
-    );
-  }
-}
-
-class _StockBadge extends StatelessWidget {
-  final bool outOfStock;
-  final bool lowStock;
-  final int stock;
-  const _StockBadge({required this.outOfStock, required this.lowStock, required this.stock});
-
-  @override
-  Widget build(BuildContext context) {
-    final label = outOfStock ? 'Habis' : '${stock}x';
-    final bg = outOfStock ? const Color(0xFFFEE2E2) : (lowStock ? const Color(0xFFFFF3E0) : Colors.white.withValues(alpha: 0.9));
-    final fg = outOfStock ? NusaConfig.primaryColor : (lowStock ? const Color(0xFFE65100) : NusaConfig.primaryColor);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 1))]),
-      child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg, letterSpacing: -0.01)),
-    );
-  }
-}
-
 class _AddButton extends StatefulWidget {
-  final VoidCallback onTap;
-  final bool disabled;
+  final VoidCallback onTap; final bool disabled;
   const _AddButton({required this.onTap, required this.disabled});
   @override
   State<_AddButton> createState() => _AddButtonState();
@@ -1167,7 +825,6 @@ class _AddButton extends StatefulWidget {
 
 class _AddButtonState extends State<_AddButton> {
   bool _pressed = false;
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -1175,8 +832,7 @@ class _AddButtonState extends State<_AddButton> {
       onTapUp: widget.disabled ? null : (_) { setState(() => _pressed = false); widget.onTap(); },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
-        scale: _pressed ? 0.85 : 1.0,
-        duration: const Duration(milliseconds: 100),
+        scale: _pressed ? 0.85 : 1.0, duration: const Duration(milliseconds: 100),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: 28, height: 28,

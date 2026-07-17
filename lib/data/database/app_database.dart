@@ -13,7 +13,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.test() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -42,6 +42,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 7) {
         await m.addColumn(products, products.expiryDate);
         await m.addColumn(products, products.productType);
+      }
+      if (from < 8) {
+        await m.addColumn(products, products.variantsJson);
+        await m.addColumn(products, products.wholesaleJson);
       }
     },
   );

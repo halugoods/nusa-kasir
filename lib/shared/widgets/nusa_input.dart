@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:nusa_kasir/core/config/nusa_config.dart';
 
-/// Theme-aware text input — adapts to light/dark.
+/// Theme-aware text input — adapts to light/dark using NusaConfig tokens.
 class NusaInput extends StatelessWidget {
   final String label;
   final TextEditingController? controller;
@@ -9,6 +10,7 @@ class NusaInput extends StatelessWidget {
   final bool obscure;
   final String? hint;
   final Widget? prefixIcon;
+  final int? maxLines;
 
   const NusaInput(
     this.label, {
@@ -19,16 +21,15 @@ class NusaInput extends StatelessWidget {
     this.obscure = false,
     this.hint,
     this.prefixIcon,
+    this.maxLines,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final labelColor = theme.textTheme.titleMedium?.color ?? theme.colorScheme.onSurface;
-    final inputFill = isDark ? const Color(0xFF252540) : Colors.white;
-    final inputBorder = isDark ? const Color(0xFF3A3A52) : const Color(0xFFE5E7EB);
-    final textColor = theme.colorScheme.onSurface;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fill = isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill;
+    final border = isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder;
+    final textColor = isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,10 +37,10 @@ class NusaInput extends StatelessWidget {
       children: [
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: labelColor,
+            color: NusaConfig.textSecondary,
           ),
         ),
         const SizedBox(height: 6),
@@ -47,6 +48,7 @@ class NusaInput extends StatelessWidget {
           controller: controller,
           keyboardType: type,
           obscureText: obscure,
+          maxLines: maxLines ?? 1,
           style: monospace
               ? TextStyle(fontFamily: 'monospace', fontSize: 15, color: textColor)
               : TextStyle(fontSize: 15, color: textColor),
@@ -54,24 +56,26 @@ class NusaInput extends StatelessWidget {
             hintText: hint,
             prefixIcon: prefixIcon,
             hintStyle: TextStyle(
-              color: isDark ? const Color(0xFF64748B) : const Color(0xFF9CA3AF),
+              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
               fontSize: 15,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: inputBorder),
+              borderSide: BorderSide(color: border),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: inputBorder),
+              borderSide: BorderSide(color: border),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Color(0xFFE63946), width: 1.5),
+              borderSide:
+                  const BorderSide(color: NusaConfig.primaryColor, width: 1.5),
             ),
             filled: true,
-            fillColor: inputFill,
+            fillColor: fill,
           ),
         ),
       ],

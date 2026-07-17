@@ -155,6 +155,28 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _variantsJsonMeta = const VerificationMeta(
+    'variantsJson',
+  );
+  @override
+  late final GeneratedColumn<String> variantsJson = GeneratedColumn<String>(
+    'variants_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _wholesaleJsonMeta = const VerificationMeta(
+    'wholesaleJson',
+  );
+  @override
+  late final GeneratedColumn<String> wholesaleJson = GeneratedColumn<String>(
+    'wholesale_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -182,6 +204,8 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     isOnline,
     expiryDate,
     productType,
+    variantsJson,
+    wholesaleJson,
     createdAt,
   ];
   @override
@@ -275,6 +299,18 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         productType.isAcceptableOrUnknown(data['product_type']!, _productTypeMeta),
       );
     }
+    if (data.containsKey('variants_json')) {
+      context.handle(
+        _variantsJsonMeta,
+        variantsJson.isAcceptableOrUnknown(data['variants_json']!, _variantsJsonMeta),
+      );
+    }
+    if (data.containsKey('wholesale_json')) {
+      context.handle(
+        _wholesaleJsonMeta,
+        wholesaleJson.isAcceptableOrUnknown(data['wholesale_json']!, _wholesaleJsonMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -342,6 +378,14 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         DriftSqlType.string,
         data['${effectivePrefix}product_type'],
       ),
+      variantsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}variants_json'],
+      ),
+      wholesaleJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wholesale_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -369,6 +413,8 @@ class Product extends DataClass implements Insertable<Product> {
   final bool isOnline;
   final DateTime? expiryDate;
   final String? productType;
+  final String? variantsJson;
+  final String? wholesaleJson;
   final DateTime createdAt;
   const Product({
     required this.id,
@@ -384,6 +430,8 @@ class Product extends DataClass implements Insertable<Product> {
     required this.isOnline,
     this.expiryDate,
     this.productType,
+    this.variantsJson,
+    this.wholesaleJson,
     required this.createdAt,
   });
   @override
@@ -412,6 +460,12 @@ class Product extends DataClass implements Insertable<Product> {
     if (!nullToAbsent || productType != null) {
       map['product_type'] = Variable<String>(productType);
     }
+    if (!nullToAbsent || variantsJson != null) {
+      map['variants_json'] = Variable<String>(variantsJson);
+    }
+    if (!nullToAbsent || wholesaleJson != null) {
+      map['wholesale_json'] = Variable<String>(wholesaleJson);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -439,6 +493,12 @@ class Product extends DataClass implements Insertable<Product> {
       productType: productType == null && nullToAbsent
           ? const Value.absent()
           : Value(productType),
+      variantsJson: variantsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(variantsJson),
+      wholesaleJson: wholesaleJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(wholesaleJson),
       createdAt: Value(createdAt),
     );
   }
@@ -462,6 +522,8 @@ class Product extends DataClass implements Insertable<Product> {
       isOnline: serializer.fromJson<bool>(json['isOnline']),
       expiryDate: serializer.fromJson<DateTime?>(json['expiryDate']),
       productType: serializer.fromJson<String?>(json['productType']),
+      variantsJson: serializer.fromJson<String?>(json['variantsJson']),
+      wholesaleJson: serializer.fromJson<String?>(json['wholesaleJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -482,6 +544,8 @@ class Product extends DataClass implements Insertable<Product> {
       'isOnline': serializer.toJson<bool>(isOnline),
       'expiryDate': serializer.toJson<DateTime?>(expiryDate),
       'productType': serializer.toJson<String?>(productType),
+      'variantsJson': serializer.toJson<String?>(variantsJson),
+      'wholesaleJson': serializer.toJson<String?>(wholesaleJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -500,6 +564,8 @@ class Product extends DataClass implements Insertable<Product> {
     bool? isOnline,
     Value<DateTime?> expiryDate = const Value.absent(),
     Value<String?> productType = const Value.absent(),
+    Value<String?> variantsJson = const Value.absent(),
+    Value<String?> wholesaleJson = const Value.absent(),
     DateTime? createdAt,
   }) => Product(
     id: id ?? this.id,
@@ -515,6 +581,8 @@ class Product extends DataClass implements Insertable<Product> {
     isOnline: isOnline ?? this.isOnline,
     expiryDate: expiryDate.present ? expiryDate.value : this.expiryDate,
     productType: productType.present ? productType.value : this.productType,
+    variantsJson: variantsJson.present ? variantsJson.value : this.variantsJson,
+    wholesaleJson: wholesaleJson.present ? wholesaleJson.value : this.wholesaleJson,
     createdAt: createdAt ?? this.createdAt,
   );
   Product copyWithCompanion(ProductsCompanion data) {
@@ -532,6 +600,8 @@ class Product extends DataClass implements Insertable<Product> {
       isOnline: data.isOnline.present ? data.isOnline.value : this.isOnline,
       expiryDate: data.expiryDate.present ? data.expiryDate.value : this.expiryDate,
       productType: data.productType.present ? data.productType.value : this.productType,
+      variantsJson: data.variantsJson.present ? data.variantsJson.value : this.variantsJson,
+      wholesaleJson: data.wholesaleJson.present ? data.wholesaleJson.value : this.wholesaleJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -552,6 +622,8 @@ class Product extends DataClass implements Insertable<Product> {
           ..write('isOnline: $isOnline, ')
           ..write('expiryDate: $expiryDate, ')
           ..write('productType: $productType, ')
+          ..write('variantsJson: $variantsJson, ')
+          ..write('wholesaleJson: $wholesaleJson, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -572,6 +644,8 @@ class Product extends DataClass implements Insertable<Product> {
     isOnline,
     expiryDate,
     productType,
+    variantsJson,
+    wholesaleJson,
     createdAt,
   );
   @override
@@ -591,6 +665,8 @@ class Product extends DataClass implements Insertable<Product> {
           other.isOnline == this.isOnline &&
           other.expiryDate == this.expiryDate &&
           other.productType == this.productType &&
+          other.variantsJson == this.variantsJson &&
+          other.wholesaleJson == this.wholesaleJson &&
           other.createdAt == this.createdAt);
 }
 
@@ -608,6 +684,8 @@ class ProductsCompanion extends UpdateCompanion<Product> {
   final Value<bool> isOnline;
   final Value<DateTime?> expiryDate;
   final Value<String?> productType;
+  final Value<String?> variantsJson;
+  final Value<String?> wholesaleJson;
   final Value<DateTime> createdAt;
   const ProductsCompanion({
     this.id = const Value.absent(),
@@ -623,6 +701,8 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.isOnline = const Value.absent(),
     this.expiryDate = const Value.absent(),
     this.productType = const Value.absent(),
+    this.variantsJson = const Value.absent(),
+    this.wholesaleJson = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   ProductsCompanion.insert({
@@ -639,6 +719,8 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.isOnline = const Value.absent(),
     this.expiryDate = const Value.absent(),
     this.productType = const Value.absent(),
+    this.variantsJson = const Value.absent(),
+    this.wholesaleJson = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        sellPrice = Value(sellPrice);
@@ -656,6 +738,8 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Expression<bool>? isOnline,
     Expression<DateTime>? expiryDate,
     Expression<String>? productType,
+    Expression<String>? variantsJson,
+    Expression<String>? wholesaleJson,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -672,6 +756,8 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       if (isOnline != null) 'is_online': isOnline,
       if (expiryDate != null) 'expiry_date': expiryDate,
       if (productType != null) 'product_type': productType,
+      if (variantsJson != null) 'variants_json': variantsJson,
+      if (wholesaleJson != null) 'wholesale_json': wholesaleJson,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -688,6 +774,10 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Value<int>? minStock,
     Value<String?>? imagePath,
     Value<bool>? isOnline,
+    Value<DateTime?>? expiryDate,
+    Value<String?>? productType,
+    Value<String?>? variantsJson,
+    Value<String?>? wholesaleJson,
     Value<DateTime>? createdAt,
   }) {
     return ProductsCompanion(
@@ -702,6 +792,10 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       minStock: minStock ?? this.minStock,
       imagePath: imagePath ?? this.imagePath,
       isOnline: isOnline ?? this.isOnline,
+      expiryDate: expiryDate ?? this.expiryDate,
+      productType: productType ?? this.productType,
+      variantsJson: variantsJson ?? this.variantsJson,
+      wholesaleJson: wholesaleJson ?? this.wholesaleJson,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -742,6 +836,18 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     if (isOnline.present) {
       map['is_online'] = Variable<bool>(isOnline.value);
     }
+    if (expiryDate.present) {
+      map['expiry_date'] = Variable<DateTime>(expiryDate.value);
+    }
+    if (productType.present) {
+      map['product_type'] = Variable<String>(productType.value);
+    }
+    if (variantsJson.present) {
+      map['variants_json'] = Variable<String>(variantsJson.value);
+    }
+    if (wholesaleJson.present) {
+      map['wholesale_json'] = Variable<String>(wholesaleJson.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -762,6 +868,10 @@ class ProductsCompanion extends UpdateCompanion<Product> {
           ..write('minStock: $minStock, ')
           ..write('imagePath: $imagePath, ')
           ..write('isOnline: $isOnline, ')
+          ..write('expiryDate: $expiryDate, ')
+          ..write('productType: $productType, ')
+          ..write('variantsJson: $variantsJson, ')
+          ..write('wholesaleJson: $wholesaleJson, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();

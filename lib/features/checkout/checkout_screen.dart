@@ -16,6 +16,14 @@ import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/features/checkout/receipt_sheet.dart';
 
+/// Shared section card style used across all checkout cards.
+BoxDecoration _sectionCard(bool isDark) => BoxDecoration(
+  color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+  borderRadius: BorderRadius.circular(18),
+  border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+);
+
 class CheckoutScreen extends ConsumerStatefulWidget {
   final int? sessionId;
   const CheckoutScreen({super.key, this.sessionId});
@@ -393,12 +401,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Widget _buildCustomerCard(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? NusaConfig.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF1F5F9)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
+      decoration: _sectionCard(isDark),
       child: InkWell(
         onTap: _pickCustomer,
         borderRadius: BorderRadius.circular(12),
@@ -441,19 +444,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Widget _buildSummaryCard(bool isDark, int subtotal) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? NusaConfig.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF1F5F9)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
+      decoration: _sectionCard(isDark),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Header
         Row(children: [
           Container(
             width: 32, height: 32,
-            decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.receipt_long_outlined, color: Color(0xFF10B981), size: 18),
+            decoration: BoxDecoration(color: NusaConfig.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.receipt_long_outlined, color: NusaConfig.success, size: 18),
           ),
           const SizedBox(width: 10),
           const Text('Ringkasan Belanja', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
@@ -580,18 +578,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Widget _buildPaymentMethodCard(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? NusaConfig.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF1F5F9)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
+      decoration: _sectionCard(isDark),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
             width: 32, height: 32,
-            decoration: BoxDecoration(color: const Color(0xFF6366F1).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.payment_outlined, color: Color(0xFF6366F1), size: 18),
+            decoration: BoxDecoration(color: NusaConfig.accentPurple.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.payment_outlined, color: NusaConfig.accentPurple, size: 18),
           ),
           const SizedBox(width: 10),
           const Text('Metode Pembayaran', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
