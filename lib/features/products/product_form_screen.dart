@@ -36,6 +36,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   bool _barcodeOn = false; // toggle — default off
   bool _isOnline = false; // toko online toggle
   String? _imagePath; // local image path
+  DateTime? _expiryDate;
+  String _productType = 'Regular'; // Regular, Varian, Grosir
   bool get _isEdit => widget.productId != null;
 
   @override
@@ -76,6 +78,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           : NusaConfig.categories.first;
       _imagePath = p.imagePath;
       _isOnline = p.isOnline;
+      _expiryDate = p.expiryDate;
+      _productType = p.productType ?? 'Regular';
       // If the product already has a barcode, turn toggle on
       if (p.barcode != null && p.barcode!.isNotEmpty) {
         _barcodeOn = true;
@@ -157,6 +161,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             barcode: Value(_barcodeOn ? _barcode : null),
             imagePath: Value(_imagePath),
             isOnline: Value(_isOnline),
+            expiryDate: Value(_expiryDate),
+            productType: Value(_productType == 'Regular' ? null : _productType),
           ));
     } else {
       await _addProductWithAll(
@@ -170,6 +176,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         imagePath: _imagePath,
         barcode: _barcodeOn ? _barcode : null,
         isOnline: _isOnline,
+        expiryDate: _expiryDate,
+        productType: _productType == 'Regular' ? null : _productType,
       );
     }
     if (mounted) context.pop();
@@ -187,6 +195,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     String? imagePath,
     String? barcode,
     bool isOnline = false,
+    DateTime? expiryDate,
+    String? productType,
   }) async {
     final db = ref.read(databaseProvider);
     final id = await db.into(db.products).insert(ProductsCompanion.insert(
@@ -200,6 +210,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       imagePath: Value(imagePath),
       barcode: Value(barcode),
       isOnline: Value(isOnline),
+      expiryDate: Value(expiryDate),
+      productType: Value(productType),
     ));
     return id;
   }
@@ -396,6 +408,84 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
                       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 1.5)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Tipe Produk ──
+                  DropdownButtonFormField<String>(
+                    value: _productType,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Tipe Produk',
+                      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 1.5)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Regular', child: Text('Regular')),
+                      DropdownMenuItem(value: 'Varian', child: Text('Varian')),
+                      DropdownMenuItem(value: 'Grosir', child: Text('Grosir')),
+                    ],
+                    onChanged: (v) => setState(() => _productType = v!),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Expiry Date (opsional) ──
+                  GestureDetector(
+                    onTap: () async {
+                      final now = DateTime.now();
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _expiryDate ?? now,
+                        firstDate: now,
+                        lastDate: DateTime(now.year + 10),
+                        helpText: 'Pilih Tanggal Kadaluarsa',
+                      );
+                      if (picked != null) setState(() => _expiryDate = picked);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Kadaluarsa (opsional)',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5)),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _expiryDate != null
+                                      ? '${_expiryDate!.day}/${_expiryDate!.month}/${_expiryDate!.year}'
+                                      : 'Pilih tanggal',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: _expiryDate != null ? NusaConfig.textPrimary : NusaConfig.textTertiary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_expiryDate != null)
+                            GestureDetector(
+                              onTap: () => setState(() => _expiryDate = null),
+                              child: const Icon(Icons.close, size: 18, color: NusaConfig.textTertiary),
+                            ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.calendar_today, size: 18, color: NusaConfig.textSecondary),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

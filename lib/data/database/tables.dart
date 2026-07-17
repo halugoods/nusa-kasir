@@ -12,6 +12,8 @@ class Products extends Table {
   IntColumn get minStock => integer().withDefault(const Constant(0))();
   TextColumn get imagePath => text().nullable()();
   BoolColumn get isOnline => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get expiryDate => dateTime().nullable()();
+  TextColumn get productType => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 class StockMovements extends Table {

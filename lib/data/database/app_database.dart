@@ -13,7 +13,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.test() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -38,6 +38,10 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(settings, settings.bankName);
         await m.addColumn(settings, settings.bankAccount);
         await m.addColumn(settings, settings.bankHolder);
+      }
+      if (from < 7) {
+        await m.addColumn(products, products.expiryDate);
+        await m.addColumn(products, products.productType);
       }
     },
   );

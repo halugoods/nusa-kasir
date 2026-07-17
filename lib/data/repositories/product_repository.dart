@@ -15,8 +15,12 @@ class ProductRepository {
     required int minStock,
     String? sku,
     String? imagePath,
+    String? barcode,
+    bool isOnline = false,
+    DateTime? expiryDate,
+    String? productType,
   }) async {
-    final barcode = ActivationKey.generateSerial();
+    final code = barcode ?? ActivationKey.generateSerial();
     return db.into(db.products).insert(ProductsCompanion.insert(
       name: name,
       sellPrice: sellPrice,
@@ -26,7 +30,10 @@ class ProductRepository {
       minStock: Value(minStock),
       sku: Value(sku),
       imagePath: Value(imagePath),
-      barcode: Value<String?>(barcode),
+      barcode: Value(code),
+      isOnline: Value(isOnline),
+      expiryDate: Value(expiryDate),
+      productType: Value(productType),
     ));
   }
 
@@ -36,10 +43,24 @@ class ProductRepository {
   Future<Product?> byBarcode(String barcode) =>
     (db.select(db.products)..where((t) => t.barcode.equals(barcode))).getSingleOrNull();
 
-  Future<List<Product>> getProducts({String? category}) async {
+  /// Search by name OR barcode (case-insensitive substring).
+  Future<List<Product>> searchProducts(String query) {
+    final q = db.select(db.products);
+    final pattern = '%$query%';
+    q.where((t) => t.name.like(pattern) | t.barcode.like(pattern));
+    return q.get();
+  }
+
+  Future<List<Product>> getProducts({String? category, String? status}) async {
     final q = db.select(db.products);
     if (category != null && category != 'Semua') {
       q.where((t) => t.category.equals(category));
+    }
+    // server-side status filter
+    if (status == 'Aktif') {
+      q.where((t) => t.stock.isBiggerThanValue(0));
+    } else if (status == 'Non Aktif') {
+      q.where((t) => t.stock.equals(0));
     }
     return q.get();
   }
@@ -65,5 +86,15 @@ class ProductRepository {
 
   Future<void> deleteProduct(int id) async {
     await (db.delete(db.products)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Get product counts grouped by category.
+  Future<Map<String, int>> categoryProductCounts() async {
+    final all = await db.select(db.products).get();
+    final map = <String, int>{};
+    for (final p in all) {
+      map[p.category] = (map[p.category] ?? 0) + 1;
+    }
+    return map;
   }
 }

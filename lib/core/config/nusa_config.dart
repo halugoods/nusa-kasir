@@ -4,8 +4,8 @@ abstract class NusaConfig {
   static const String appName = "NUSA";
   static const String brandName = "NUSA";
   static const String appSubtitle = "Aplikasi Kasir untuk Toko Kelontong";
-  static const String appVersion = "1.0.6";
-  static const int appBuildNumber = 14;
+  static const String appVersion = "1.0.7";
+  static const int appBuildNumber = 15;
   static const String githubRepo = "halugoods/nusa-kasir";
   static const String landingPageUrl = "https://nusa-online.vercel.app";
   static const String whatsappOrder = "https://wa.me/6281234567890?text=Halo%2C%20saya%20mau%20beli%20NUSA%20Kasir";

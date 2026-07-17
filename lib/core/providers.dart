@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/customer_repository.dart';
+import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/data/repositories/transaction_repository.dart';
 import 'package:nusa_kasir/core/activation/activation_repository.dart';
@@ -26,6 +27,9 @@ final transactionRepoProvider =
 
 final customerRepoProvider =
     Provider((ref) => CustomerRepository(ref.watch(databaseProvider)));
+
+final productRepoProvider =
+    Provider((ref) => ProductRepository(ref.watch(databaseProvider)));
 
 final activationRepoProvider = Provider<ActivationRepository>((ref) {
   try {
