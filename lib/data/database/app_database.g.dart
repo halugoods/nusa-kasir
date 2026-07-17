@@ -637,6 +637,8 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.minStock = const Value.absent(),
     this.imagePath = const Value.absent(),
     this.isOnline = const Value.absent(),
+    this.expiryDate = const Value.absent(),
+    this.productType = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        sellPrice = Value(sellPrice);
