@@ -204,8 +204,6 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
       child: Row(children: [
-        const Icon(Icons.shopping_cart_rounded, color: NusaConfig.primaryColor, size: 22),
-        const SizedBox(width: 10),
         const Text('Kasir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
         const SizedBox(width: 12),
         _gridToggle(1, Icons.view_agenda_rounded, isDark),
@@ -278,7 +276,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
             GestureDetector(
               onTap: () => _scanBarcode(context),
-              child: Container(padding: const EdgeInsets.symmetric(horizontal: 8), child: const Icon(Icons.qr_code_scanner, color: NusaConfig.textSecondary, size: 22)),
+              child: Container(padding: const EdgeInsets.symmetric(horizontal: 8), child: const Icon(Icons.qr_code_scanner, color: NusaConfig.primaryColor, size: 22)),
             ),
             if (_search.text.isNotEmpty)
               GestureDetector(
