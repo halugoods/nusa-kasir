@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_form_field.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
@@ -27,7 +27,8 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   List<Product> _products = [];
   List<StockMovement> _movements = [];
   bool _loading = true;
-  String _filter = 'all'; // all | in | out
+  String _typeFilter = 'all'; // all | in | out
+  String _timeFilter = 'all'; // all | today | 7d | 30d
 
   @override
   void initState() {
@@ -56,9 +57,22 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   List<Product> get _lowStock =>
       _products.where((p) => p.stock <= p.minStock).toList();
 
-  List<StockMovement> get _filteredMovements => _filter == 'all'
-      ? _movements
-      : _movements.where((m) => m.type == _filter).toList();
+  List<StockMovement> get _filteredMovements {
+    var list = _movements;
+    if (_typeFilter != 'all') {
+      list = list.where((m) => m.type == _typeFilter).toList();
+    }
+    if (_timeFilter != 'all') {
+      final now = DateTime.now();
+      final start = _timeFilter == 'today'
+          ? DateTime(now.year, now.month, now.day)
+          : _timeFilter == '7d'
+              ? now.subtract(const Duration(days: 7))
+              : now.subtract(const Duration(days: 30));
+      list = list.where((m) => m.date.isAfter(start)).toList();
+    }
+    return list;
+  }
 
   // ── Stock adjustment (Masuk / Keluar) ──
   Future<void> _submitAdjust(String mode, int productId, int qty) async {
@@ -92,7 +106,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
     await _load();
   }
 
-  void _openAdjustSheet(String mode) {
+  void _openAdjustSheet(String mode, [int? presetId]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -100,6 +114,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
       builder: (ctx) => _AdjustSheet(
         mode: mode,
         products: _products,
+        presetId: presetId,
         onSubmit: _submitAdjust,
       ),
     );
@@ -217,8 +232,10 @@ class _StockScreenState extends ConsumerState<StockScreen> {
           _SectionHeader(
             title: 'Aktivitas Stok',
             icon: Icons.history_rounded,
-            trailing: _buildFilterChips(isDark),
+            subtitle: '${filtered.length} pergerakan',
           ),
+          const SizedBox(height: 12),
+          _buildFilterBar(isDark),
           const SizedBox(height: 12),
           if (filtered.isEmpty)
             const EmptyState(
@@ -244,28 +261,52 @@ class _StockScreenState extends ConsumerState<StockScreen> {
     return p?.name ?? '#$id';
   }
 
-  Widget _buildFilterChips(bool isDark) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+  Widget _buildFilterBar(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FilterChip(
-          label: 'Semua',
-          active: _filter == 'all',
-          onTap: () => setState(() => _filter = 'all'),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _FilterChip(
+                label: 'Semua',
+                active: _typeFilter == 'all',
+                onTap: () => setState(() => _typeFilter = 'all')),
+            _FilterChip(
+                label: 'Masuk',
+                active: _typeFilter == 'in',
+                activeColor: NusaConfig.accentGreen,
+                onTap: () => setState(() => _typeFilter = 'in')),
+            _FilterChip(
+                label: 'Keluar',
+                active: _typeFilter == 'out',
+                activeColor: NusaConfig.primaryColor,
+                onTap: () => setState(() => _typeFilter = 'out')),
+          ],
         ),
-        const SizedBox(width: 6),
-        _FilterChip(
-          label: 'Masuk',
-          active: _filter == 'in',
-          activeColor: NusaConfig.accentGreen,
-          onTap: () => setState(() => _filter = 'in'),
-        ),
-        const SizedBox(width: 6),
-        _FilterChip(
-          label: 'Keluar',
-          active: _filter == 'out',
-          activeColor: NusaConfig.primaryColor,
-          onTap: () => setState(() => _filter = 'out'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _FilterChip(
+                label: 'Semua',
+                active: _timeFilter == 'all',
+                onTap: () => setState(() => _timeFilter = 'all')),
+            _FilterChip(
+                label: 'Hari ini',
+                active: _timeFilter == 'today',
+                onTap: () => setState(() => _timeFilter = 'today')),
+            _FilterChip(
+                label: '7 Hari',
+                active: _timeFilter == '7d',
+                onTap: () => setState(() => _timeFilter = '7d')),
+            _FilterChip(
+                label: '30 Hari',
+                active: _timeFilter == '30d',
+                onTap: () => setState(() => _timeFilter = '30d')),
+          ],
         ),
       ],
     );
@@ -802,17 +843,127 @@ class _HistoryCard extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════
-//  Adjust sheet (Stok Masuk / Keluar)
+//  Product thumbnail (reused in sheet)
+// ═══════════════════════════════════════════
+
+class _ProductThumb extends StatelessWidget {
+  final Product product;
+  final double size;
+  const _ProductThumb({required this.product, this.size = 44});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = product.imagePath != null &&
+        product.imagePath!.isNotEmpty &&
+        File(product.imagePath!).existsSync();
+    final gradient = NusaConfig.catGradientFor(product.category);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: hasImage
+            ? Image.file(File(product.imagePath!), fit: BoxFit.cover, width: size, height: size)
+            : Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: gradient,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _StockScreenState._initials(product.name),
+                  style: TextStyle(
+                    fontSize: size * 0.34,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════
+//  Product result row
+// ═══════════════════════════════════════════
+
+class _ProductResultRow extends StatelessWidget {
+  final Product product;
+  final VoidCallback onTap;
+  const _ProductResultRow({required this.product, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill,
+            borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+            border: Border.all(
+                color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+          ),
+          child: Row(children: [
+            _ProductThumb(product: product, size: 40),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? NusaConfig.darkTextPrimary
+                            : NusaConfig.textPrimary,
+                      )),
+                  const SizedBox(height: 2),
+                  Text('${product.category}  •  Stok ${product.stock}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark
+                            ? NusaConfig.darkTextTertiary
+                            : NusaConfig.textTertiary,
+                      )),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 18, color: NusaConfig.textTertiary),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════
+//  Adjust sheet (Stok Masuk / Keluar) — search + scan barcode
 // ═══════════════════════════════════════════
 
 class _AdjustSheet extends StatefulWidget {
   final String mode; // in | out
   final List<Product> products;
+  final int? presetId;
   final Future<void> Function(String mode, int productId, int qty) onSubmit;
 
   const _AdjustSheet({
     required this.mode,
     required this.products,
+    this.presetId,
     required this.onSubmit,
   });
 
@@ -821,21 +972,105 @@ class _AdjustSheet extends StatefulWidget {
 }
 
 class _AdjustSheetState extends State<_AdjustSheet> {
-  int? _selectedId;
+  final _search = TextEditingController();
   final _qty = TextEditingController();
+  int? _selectedId;
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _selectedId = widget.presetId;
+    if (widget.presetId != null) {
+      final p =
+          widget.products.where((e) => e.id == widget.presetId).firstOrNull;
+      if (p != null) _search.text = p.name;
+    }
+  }
+
+  @override
   void dispose() {
+    _search.dispose();
     _qty.dispose();
     super.dispose();
+  }
+
+  List<Product> get _results {
+    final q = _search.text.trim().toLowerCase();
+    if (q.isEmpty) return widget.products;
+    return widget.products
+        .where((p) =>
+            p.name.toLowerCase().contains(q) ||
+            (p.barcode?.toLowerCase().contains(q) ?? false))
+        .toList();
+  }
+
+  Map<String, Product> get _byBarcode {
+    final m = <String, Product>{};
+    for (final p in widget.products) {
+      if (p.barcode != null && p.barcode!.isNotEmpty) m[p.barcode!] = p;
+    }
+    return m;
+  }
+
+  Product? get _selected =>
+      widget.products.where((p) => p.id == _selectedId).firstOrNull;
+
+  Future<void> _scan() async {
+    final controller = MobileScannerController();
+    String? code;
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dCtx) => AlertDialog(
+        title: const Text('Pindai Barcode'),
+        contentPadding: const EdgeInsets.all(8),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 320,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: MobileScanner(
+              controller: controller,
+              onDetect: (capture) {
+                if (code != null || capture.barcodes.isEmpty) return;
+                final barcode = capture.barcodes.firstWhere(
+                  (b) => b.rawValue != null,
+                  orElse: () => capture.barcodes.first,
+                );
+                if (barcode.rawValue == null || barcode.rawValue!.isEmpty) return;
+                code = barcode.rawValue;
+                Navigator.of(dCtx).pop();
+              },
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dCtx).pop(),
+            child: const Text('Batal'),
+          ),
+        ],
+      ),
+    );
+    await controller.dispose();
+    if (code == null || !mounted) return;
+    final product = _byBarcode[code];
+    if (product != null) {
+      setState(() {
+        _selectedId = product.id;
+        _search.text = product.name;
+      });
+    } else if (mounted) {
+      TopToast.info(context, 'Barcode tidak terdaftar. Cari manual.');
+    }
   }
 
   Future<void> _save() async {
     final id = _selectedId;
     final n = int.tryParse(_qty.text.trim());
     if (id == null) {
-      TopToast.error(context, 'Pilih produk terlebih dahulu');
+      TopToast.error(context, 'Pilih produk dulu');
       return;
     }
     if (n == null || n <= 0) {
@@ -852,6 +1087,7 @@ class _AdjustSheetState extends State<_AdjustSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isIn = widget.mode == 'in';
     final color = isIn ? NusaConfig.accentGreen : NusaConfig.primaryColor;
+    final selected = _selected;
 
     return Container(
       decoration: BoxDecoration(
@@ -864,66 +1100,178 @@ class _AdjustSheetState extends State<_AdjustSheet> {
         20,
         MediaQuery.of(context).viewInsets.bottom + 20,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: NusaConfig.dividerColor,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Row(children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             Container(
-              width: 38,
-              height: 38,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                isIn ? Icons.add_rounded : Icons.remove_rounded,
-                color: color,
-                size: 20,
+                color: NusaConfig.dividerColor,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              isIn ? 'Stok Masuk' : 'Stok Keluar',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: isDark
-                    ? NusaConfig.darkTextPrimary
-                    : NusaConfig.textPrimary,
+            Row(children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  isIn ? Icons.add_rounded : Icons.remove_rounded,
+                  color: color,
+                  size: 20,
+                ),
               ),
+              const SizedBox(width: 12),
+              Text(
+                isIn ? 'Stok Masuk' : 'Stok Keluar',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: isDark
+                      ? NusaConfig.darkTextPrimary
+                      : NusaConfig.textPrimary,
+                ),
+              ),
+            ]),
+            const SizedBox(height: 18),
+            if (selected == null) ...[
+              // ── Search + scan ──
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? NusaConfig.darkInputFill
+                      : NusaConfig.inputFill,
+                  borderRadius: BorderRadius.circular(NusaConfig.radiusXL),
+                  border: Border.all(
+                    color: isDark
+                        ? NusaConfig.darkInputBorder
+                        : NusaConfig.inputBorder,
+                  ),
+                ),
+                child: TextField(
+                  controller: _search,
+                  onChanged: (_) => setState(() {}),
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: isDark
+                        ? NusaConfig.darkTextPrimary
+                        : NusaConfig.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Cari nama atau barcode…',
+                    hintStyle: TextStyle(
+                      color: isDark
+                          ? NusaConfig.darkTextTertiary
+                          : NusaConfig.textTertiary,
+                    ),
+                    prefixIcon: const Icon(Icons.search_rounded,
+                        color: NusaConfig.textSecondary, size: 22),
+                    suffixIcon: GestureDetector(
+                      onTap: _scan,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: const Icon(Icons.qr_code_scanner,
+                            color: NusaConfig.primaryColor, size: 22),
+                      ),
+                    ),
+                    border: InputBorder.none,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 240,
+                child: _results.isEmpty
+                    ? const EmptyState(
+                        icon: Icons.search_off,
+                        message: 'Produk tidak ditemukan',
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.zero,
+                        itemCount: _results.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 8),
+                        itemBuilder: (_, i) {
+                          final p = _results[i];
+                          return _ProductResultRow(
+                            product: p,
+                            onTap: () => setState(() {
+                              _selectedId = p.id;
+                              _search.text = p.name;
+                            }),
+                          );
+                        },
+                      ),
+              ),
+            ] else ...[
+              // ── Selected product ──
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: isDark ? 0.14 : 0.08),
+                  borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+                  border: Border.all(color: color.withValues(alpha: 0.25)),
+                ),
+                child: Row(children: [
+                  _ProductThumb(product: selected, size: 44),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(selected.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? NusaConfig.darkTextPrimary
+                                  : NusaConfig.textPrimary,
+                            )),
+                        const SizedBox(height: 2),
+                        Text('Stok saat ini: ${selected.stock}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? NusaConfig.darkTextTertiary
+                                  : NusaConfig.textTertiary,
+                            )),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() {
+                      _selectedId = null;
+                      _search.clear();
+                    }),
+                    child: const Text('Ganti'),
+                  ),
+                ]),
+              ),
+            ],
+            const SizedBox(height: 16),
+            NusaInput(
+              isIn ? 'Jumlah stok masuk' : 'Jumlah stok keluar',
+              controller: _qty,
+              type: TextInputType.number,
             ),
-          ]),
-          const SizedBox(height: 18),
-          NusaDropdownField<int>(
-            label: 'Produk',
-            value: _selectedId,
-            items: widget.products
-                .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name)))
-                .toList(),
-            onChanged: (v) => setState(() => _selectedId = v),
-          ),
-          const SizedBox(height: 12),
-          NusaInput(
-            isIn ? 'Jumlah stok masuk' : 'Jumlah stok keluar',
-            controller: _qty,
-            type: TextInputType.number,
-          ),
-          const SizedBox(height: 20),
-          NusaButton(
-            isIn ? 'Tambah Stok' : 'Kurangi Stok',
-            onPressed: _saving ? null : _save,
-          ),
-          const SizedBox(height: 4),
-        ],
+            const SizedBox(height: 20),
+            NusaButton(
+              isIn ? 'Tambah Stok' : 'Kurangi Stok',
+              onPressed: _saving ? null : _save,
+            ),
+            const SizedBox(height: 4),
+          ],
+        ),
       ),
     );
   }
