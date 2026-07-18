@@ -145,20 +145,6 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: NusaConfig.primarySoft,
-                  ),
-                  child: const Icon(
-                    Icons.calculate_outlined,
-                    size: 22,
-                    color: NusaConfig.primaryColor,
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

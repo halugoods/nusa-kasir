@@ -26,23 +26,13 @@ class StockScreen extends ConsumerStatefulWidget {
 class _StockScreenState extends ConsumerState<StockScreen> {
   List<Product> _products = [];
   List<StockMovement> _movements = [];
-  int? _inProductId;
-  int? _outProductId;
-  final _inQty = TextEditingController();
-  final _outQty = TextEditingController();
   bool _loading = true;
+  String _filter = 'all'; // all | in | out
 
   @override
   void initState() {
     super.initState();
     _load();
-  }
-
-  @override
-  void dispose() {
-    _inQty.dispose();
-    _outQty.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -66,60 +56,53 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   List<Product> get _lowStock =>
       _products.where((p) => p.stock <= p.minStock).toList();
 
-  Future<void> _addStock() async {
-    if (_inProductId == null) {
-      TopToast.error(context, 'Pilih produk terlebih dahulu');
-      return;
-    }
-    final qty = int.tryParse(_inQty.text.trim());
-    if (qty == null || qty <= 0) {
-      TopToast.error(context, 'Jumlah stok harus lebih dari 0');
-      return;
-    }
+  List<StockMovement> get _filteredMovements => _filter == 'all'
+      ? _movements
+      : _movements.where((m) => m.type == _filter).toList();
+
+  // ── Stock adjustment (Masuk / Keluar) ──
+  Future<void> _submitAdjust(String mode, int productId, int qty) async {
     final db = ref.read(databaseProvider);
     final repo = ProductRepository(db);
-    await repo.adjustStock(_inProductId!, qty);
-    await db.into(db.stockMovements).insert(StockMovementsCompanion.insert(
-          productId: _inProductId!,
-          type: 'in',
-          qty: qty,
-        ));
-    _inQty.clear();
-    if (mounted) {
-      TopToast.success(context, 'Stok berhasil ditambah');
-      await _load();
+    if (mode == 'out') {
+      final product = await repo.byId(productId);
+      if (product == null || product.stock < qty) {
+        if (mounted) {
+          TopToast.error(context,
+              'Stok tidak cukup (tersedia: ${product?.stock ?? 0})');
+        }
+        return;
+      }
+      await repo.adjustStock(productId, -qty);
+      await db.into(db.stockMovements).insert(StockMovementsCompanion.insert(
+            productId: productId,
+            type: 'out',
+            qty: qty,
+          ));
+      if (mounted) TopToast.success(context, 'Stok berhasil dikurangi');
+    } else {
+      await repo.adjustStock(productId, qty);
+      await db.into(db.stockMovements).insert(StockMovementsCompanion.insert(
+            productId: productId,
+            type: 'in',
+            qty: qty,
+          ));
+      if (mounted) TopToast.success(context, 'Stok berhasil ditambah');
     }
+    await _load();
   }
 
-  Future<void> _removeStock() async {
-    if (_outProductId == null) {
-      TopToast.error(context, 'Pilih produk terlebih dahulu');
-      return;
-    }
-    final qty = int.tryParse(_outQty.text.trim());
-    if (qty == null || qty <= 0) {
-      TopToast.error(context, 'Jumlah stok harus lebih dari 0');
-      return;
-    }
-    final db = ref.read(databaseProvider);
-    final repo = ProductRepository(db);
-    final product = await repo.byId(_outProductId!);
-    if (product == null || product.stock < qty) {
-      TopToast.error(context,
-          'Stok tidak cukup (tersedia: ${product?.stock ?? 0})');
-      return;
-    }
-    await repo.adjustStock(_outProductId!, -qty);
-    await db.into(db.stockMovements).insert(StockMovementsCompanion.insert(
-          productId: _outProductId!,
-          type: 'out',
-          qty: qty,
-        ));
-    _outQty.clear();
-    if (mounted) {
-      TopToast.success(context, 'Stok berhasil dikurangi');
-      await _load();
-    }
+  void _openAdjustSheet(String mode) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _AdjustSheet(
+        mode: mode,
+        products: _products,
+        onSubmit: _submitAdjust,
+      ),
+    );
   }
 
   // ── helpers ──
@@ -138,97 +121,400 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   Widget build(BuildContext context) {
     return ScreenScaffold(
       'Stok',
-      _loading
-          ? const SkeletonList()
-          : DefaultTabController(
-              length: 4,
-              child: Column(
-                children: [
-                  const TabBar(
-                    labelColor: NusaConfig.primaryColor,
-                    unselectedLabelColor: NusaConfig.textSecondary,
-                    indicatorColor: NusaConfig.primaryColor,
-                    tabs: const [
-                      Tab(icon: Icon(Icons.warning_amber_rounded),
-                          text: 'Stok Menipis'),
-                      Tab(icon: Icon(Icons.add_circle_outline), text: 'Masuk'),
-                      Tab(icon: Icon(Icons.remove_circle_outline),
-                          text: 'Keluar'),
-                      Tab(icon: Icon(Icons.history), text: 'Riwayat'),
-                    ],
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        _LowStockTab(
-                            products: _lowStock,
-                            onRefresh: _load,
-                            onTap: (p) {
-                              context.push('/produk/edit/${p.id}');
-                            }),
-                        _InTab(
-                          products: _products,
-                          qtyController: _inQty,
-                          selectedId: _inProductId,
-                          onChanged: (id) =>
-                              setState(() => _inProductId = id),
-                          onSave: _addStock,
-                        ),
-                        _InTab(
-                          products: _products,
-                          qtyController: _outQty,
-                          selectedId: _outProductId,
-                          onChanged: (id) =>
-                              setState(() => _outProductId = id),
-                          onSave: _removeStock,
-                          hint: 'Jumlah stok keluar',
-                          buttonLabel: 'Kurangi Stok',
-                        ),
-                        _HistoryTab(
-                            movements: _movements,
-                            products: _products,
-                            onRefresh: _load),
-                      ],
-                    ),
-                  ),
-                ],
+      _loading ? const SkeletonList() : _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final filtered = _filteredMovements;
+    final total = _products.length;
+    final menipis =
+        _products.where((p) => p.stock > 0 && p.stock <= p.minStock).length;
+    final habis = _products.where((p) => p.stock <= 0).length;
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // ── Summary tiles ──
+          Row(children: [
+            Expanded(
+              child: _StatTile(
+                label: 'Total Produk',
+                value: total.toString(),
+                color: NusaConfig.primaryColor,
               ),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatTile(
+                label: 'Stok Menipis',
+                value: menipis.toString(),
+                color: NusaConfig.warning,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatTile(
+                label: 'Stok Habis',
+                value: habis.toString(),
+                color: NusaConfig.error,
+              ),
+            ),
+          ]),
+          const SizedBox(height: 16),
+
+          // ── Quick actions ──
+          Row(children: [
+            Expanded(
+              child: _QuickAction(
+                icon: Icons.add_rounded,
+                label: 'Stok Masuk',
+                color: NusaConfig.accentGreen,
+                onTap: () => _openAdjustSheet('in'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _QuickAction(
+                icon: Icons.remove_rounded,
+                label: 'Stok Keluar',
+                color: NusaConfig.primaryColor,
+                onTap: () => _openAdjustSheet('out'),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 24),
+
+          // ── Stok Menipis section ──
+          _SectionHeader(
+            title: 'Stok Menipis',
+            subtitle: _lowStock.isEmpty
+                ? 'Semua stok aman'
+                : '${_lowStock.length} produk perlu restok',
+            icon: Icons.warning_amber_rounded,
+          ),
+          const SizedBox(height: 12),
+          if (_lowStock.isEmpty)
+            const EmptyState(
+              icon: Icons.inventory_2_outlined,
+              message: 'Tidak ada stok menipis',
+            )
+          else
+            ..._lowStock
+                .map((p) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _LowStockCard(
+                        product: p,
+                        onTap: () => context.push('/produk/edit/${p.id}'),
+                      ),
+                    )),
+          const SizedBox(height: 24),
+
+          // ── Aktivitas section ──
+          _SectionHeader(
+            title: 'Aktivitas Stok',
+            icon: Icons.history_rounded,
+            trailing: _buildFilterChips(isDark),
+          ),
+          const SizedBox(height: 12),
+          if (filtered.isEmpty)
+            const EmptyState(
+              icon: Icons.history_rounded,
+              message: 'Belum ada riwayat',
+            )
+          else
+            ...filtered.map((m) {
+              final name = _nameOf(m.productId);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _HistoryCard(movement: m, productName: name),
+              );
+            }),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  String _nameOf(int id) {
+    final p = _products.where((e) => e.id == id).firstOrNull;
+    return p?.name ?? '#$id';
+  }
+
+  Widget _buildFilterChips(bool isDark) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _FilterChip(
+          label: 'Semua',
+          active: _filter == 'all',
+          onTap: () => setState(() => _filter = 'all'),
+        ),
+        const SizedBox(width: 6),
+        _FilterChip(
+          label: 'Masuk',
+          active: _filter == 'in',
+          activeColor: NusaConfig.accentGreen,
+          onTap: () => setState(() => _filter = 'in'),
+        ),
+        const SizedBox(width: 6),
+        _FilterChip(
+          label: 'Keluar',
+          active: _filter == 'out',
+          activeColor: NusaConfig.primaryColor,
+          onTap: () => setState(() => _filter = 'out'),
+        ),
+      ],
     );
   }
 }
 
 // ═══════════════════════════════════════════
-//  Tab: Stok Menipis
+//  Summary tile
 // ═══════════════════════════════════════════
 
-class _LowStockTab extends StatelessWidget {
-  final List<Product> products;
-  final void Function(Product) onTap;
-  final Future<void> Function()? onRefresh;
+class _StatTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
 
-  const _LowStockTab(
-      {required this.products, required this.onTap, this.onRefresh});
+  const _StatTile(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    if (products.isEmpty) {
-      return const EmptyState(
-        icon: Icons.inventory_outlined,
-        message: 'Tidak ada stok menipis',
-      );
-    }
-    return RefreshIndicator(
-      onRefresh: onRefresh ?? () async {},
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: products.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, i) => _LowStockCard(product: products[i], onTap: () => onTap(products[i])),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+        border: Border.all(
+            color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(_iconFor(label), size: 16, color: color),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: isDark
+                  ? NusaConfig.darkTextTertiary
+                  : NusaConfig.textTertiary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _iconFor(String label) {
+    if (label.contains('Total')) return Icons.inventory_2_outlined;
+    if (label.contains('Menipis')) return Icons.warning_amber_rounded;
+    return Icons.error_outline_rounded;
+  }
+}
+
+// ═══════════════════════════════════════════
+//  Quick action
+// ═══════════════════════════════════════════
+
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: isDark ? 0.14 : 0.08),
+            borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, size: 20, color: Colors.white),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
+
+// ═══════════════════════════════════════════
+//  Section header
+// ═══════════════════════════════════════════
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final Widget? trailing;
+
+  const _SectionHeader({
+    required this.title,
+    this.subtitle,
+    required this.icon,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: NusaConfig.primaryColor),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: isDark
+                      ? NusaConfig.darkTextPrimary
+                      : NusaConfig.textPrimary,
+                ),
+              ),
+              if (subtitle != null)
+                Text(
+                  subtitle!,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark
+                        ? NusaConfig.darkTextTertiary
+                        : NusaConfig.textTertiary,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (trailing != null) trailing!,
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════
+//  Filter chip
+// ═══════════════════════════════════════════
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool active;
+  final Color activeColor;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.active,
+    this.activeColor = NusaConfig.primaryColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: active
+              ? activeColor
+              : (isDark
+                  ? NusaConfig.darkSurface2
+                  : NusaConfig.inputFill),
+          borderRadius: BorderRadius.circular(NusaConfig.radiusFull),
+          border: active
+              ? null
+              : Border.all(
+                  color: isDark
+                      ? NusaConfig.darkBorder
+                      : NusaConfig.dividerColor),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: active
+                ? Colors.white
+                : (isDark
+                    ? NusaConfig.darkTextSecondary
+                    : NusaConfig.textSecondary),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════
+//  Low stock card
+// ═══════════════════════════════════════════
 
 class _LowStockCard extends StatelessWidget {
   final Product product;
@@ -398,192 +684,246 @@ class _LowStockCard extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════
-//  Tab: Masuk / Keluar
+//  History card
 // ═══════════════════════════════════════════
 
-class _InTab extends StatelessWidget {
-  final List<Product> products;
-  final TextEditingController qtyController;
-  final int? selectedId;
-  final ValueChanged<int?> onChanged;
-  final VoidCallback onSave;
-  final String hint;
-  final String buttonLabel;
+class _HistoryCard extends StatelessWidget {
+  final StockMovement movement;
+  final String productName;
 
-  const _InTab({
-    required this.products,
-    required this.qtyController,
-    required this.selectedId,
-    required this.onChanged,
-    required this.onSave,
-    this.hint = 'Jumlah stok masuk',
-    this.buttonLabel = 'Tambah Stok',
-  });
-
-  @override
-  Widget build(BuildContext context) => RefreshIndicator(
-        onRefresh: () async {},
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              NusaDropdownField<int>(
-                label: 'Produk',
-                value: selectedId,
-                items: products
-                    .map((p) => DropdownMenuItem(
-                        value: p.id, child: Text(p.name)))
-                    .toList(),
-                onChanged: onChanged,
-              ),
-              const SizedBox(height: 12),
-              NusaInput(hint,
-                  controller: qtyController, type: TextInputType.number),
-              const SizedBox(height: 20),
-              NusaButton(buttonLabel, onPressed: onSave),
-            ],
-          ),
-        ),
-      );
-}
-
-// ═══════════════════════════════════════════
-//  Tab: Riwayat
-// ═══════════════════════════════════════════
-
-class _HistoryTab extends StatelessWidget {
-  final List<StockMovement> movements;
-  final List<Product> products;
-  final Future<void> Function()? onRefresh;
-
-  const _HistoryTab(
-      {required this.movements, required this.products, this.onRefresh});
+  const _HistoryCard(
+      {required this.movement, required this.productName});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final nameOf = {for (final p in products) p.id: p.name};
+    final m = movement;
+    final isIn = m.type == 'in';
+    final accent = isIn ? NusaConfig.accentGreen : NusaConfig.primaryColor;
 
-    if (movements.isEmpty) {
-      return const EmptyState(icon: Icons.history, message: 'Belum ada riwayat');
+    final date = m.date;
+    final now = DateTime.now();
+    String dateStr;
+    if (date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day) {
+      dateStr =
+          'Hari ini, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    } else if (date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day - 1) {
+      dateStr = 'Kemarin';
+    } else {
+      dateStr = '${date.day}/${date.month}/${date.year}';
     }
 
-    return RefreshIndicator(
-      onRefresh: onRefresh ?? () async {},
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: movements.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, i) {
-          final m = movements[i];
-          final name = nameOf[m.productId] ?? '#${m.productId}';
-          final isIn = m.type == 'in';
-          final accent = isIn ? NusaConfig.accentGreen : NusaConfig.primaryColor;
-
-          final date = m.date;
-          final now = DateTime.now();
-          String dateStr;
-          if (date.year == now.year &&
-              date.month == now.month &&
-              date.day == now.day) {
-            dateStr =
-                'Hari ini, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-          } else if (date.year == now.year &&
-              date.month == now.month &&
-              date.day == now.day - 1) {
-            dateStr = 'Kemarin';
-          } else {
-            dateStr =
-                '${date.day}/${date.month}/${date.year}';
-          }
-
-          return Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
-            child: Container(
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+          borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+          border: Border.all(
+              color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2))
+          ],
+        ),
+        child: IntrinsicHeight(
+          child: Row(children: [
+            // ── Left accent bar ──
+            Container(
+              width: 4,
               decoration: BoxDecoration(
-                color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-                borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
-                border: Border.all(
-                    color: isDark
-                        ? NusaConfig.darkBorder
-                        : NusaConfig.dividerColor),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withValues(
-                          alpha: isDark ? 0.15 : 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2))
-                ],
+                color: accent,
+                borderRadius: BorderRadius.horizontal(
+                    left: Radius.circular(NusaConfig.radiusMD)),
               ),
-              child: IntrinsicHeight(
+            ),
+            // ── Content ──
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
                 child: Row(children: [
-                  // ── Left accent bar ──
-                  Container(
-                    width: 4,
-                    decoration: BoxDecoration(
-                      color: accent,
-                      borderRadius: BorderRadius.horizontal(
-                          left: Radius.circular(NusaConfig.radiusMD)),
-                    ),
-                  ),
-                  // ── Content ──
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
-                      child: Row(children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      height: 1.2,
-                                      color: isDark
-                                          ? NusaConfig.darkTextPrimary
-                                          : NusaConfig.textPrimary)),
-                              const SizedBox(height: 3),
-                              Text(
-                                '${isIn ? 'Masuk' : 'Keluar'}  •  $dateStr',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDark
-                                        ? NusaConfig.darkTextTertiary
-                                        : NusaConfig.textTertiary),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: accent.withValues(alpha: 0.1),
-                            borderRadius:
-                                BorderRadius.circular(NusaConfig.radiusSM),
-                          ),
-                          child: Text(
-                            '${isIn ? '+' : '-'}${m.qty}',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(productName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.plusJakartaSans(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: accent),
-                          ),
+                                height: 1.2,
+                                color: isDark
+                                    ? NusaConfig.darkTextPrimary
+                                    : NusaConfig.textPrimary)),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${isIn ? 'Masuk' : 'Keluar'}  •  $dateStr',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? NusaConfig.darkTextTertiary
+                                  : NusaConfig.textTertiary),
                         ),
-                      ]),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.1),
+                      borderRadius:
+                          BorderRadius.circular(NusaConfig.radiusSM),
+                    ),
+                    child: Text(
+                      '${isIn ? '+' : '-'}${m.qty}',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: accent),
                     ),
                   ),
                 ]),
               ),
             ),
-          );
-        },
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════
+//  Adjust sheet (Stok Masuk / Keluar)
+// ═══════════════════════════════════════════
+
+class _AdjustSheet extends StatefulWidget {
+  final String mode; // in | out
+  final List<Product> products;
+  final Future<void> Function(String mode, int productId, int qty) onSubmit;
+
+  const _AdjustSheet({
+    required this.mode,
+    required this.products,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_AdjustSheet> createState() => _AdjustSheetState();
+}
+
+class _AdjustSheetState extends State<_AdjustSheet> {
+  int? _selectedId;
+  final _qty = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _qty.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final id = _selectedId;
+    final n = int.tryParse(_qty.text.trim());
+    if (id == null) {
+      TopToast.error(context, 'Pilih produk terlebih dahulu');
+      return;
+    }
+    if (n == null || n <= 0) {
+      TopToast.error(context, 'Jumlah stok harus lebih dari 0');
+      return;
+    }
+    setState(() => _saving = true);
+    await widget.onSubmit(widget.mode, id, n);
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isIn = widget.mode == 'in';
+    final color = isIn ? NusaConfig.accentGreen : NusaConfig.primaryColor;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        10,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: NusaConfig.dividerColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Row(children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isIn ? Icons.add_rounded : Icons.remove_rounded,
+                color: color,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              isIn ? 'Stok Masuk' : 'Stok Keluar',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: isDark
+                    ? NusaConfig.darkTextPrimary
+                    : NusaConfig.textPrimary,
+              ),
+            ),
+          ]),
+          const SizedBox(height: 18),
+          NusaDropdownField<int>(
+            label: 'Produk',
+            value: _selectedId,
+            items: widget.products
+                .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name)))
+                .toList(),
+            onChanged: (v) => setState(() => _selectedId = v),
+          ),
+          const SizedBox(height: 12),
+          NusaInput(
+            isIn ? 'Jumlah stok masuk' : 'Jumlah stok keluar',
+            controller: _qty,
+            type: TextInputType.number,
+          ),
+          const SizedBox(height: 20),
+          NusaButton(
+            isIn ? 'Tambah Stok' : 'Kurangi Stok',
+            onPressed: _saving ? null : _save,
+          ),
+          const SizedBox(height: 4),
+        ],
       ),
     );
   }
