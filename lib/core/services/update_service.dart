@@ -41,10 +41,21 @@ class UpdateService {
   static const _apiBase = 'https://api.github.com';
   static const _userAgent = 'nusa-kasir-updater';
   static const Duration _timeout = Duration(seconds: 15);
+  static const Duration _cacheTtl = Duration(minutes: 30);
+
+  static UpdateInfo? _cached;
+  static DateTime? _cacheTime;
 
   /// Fetches the latest release from GitHub and compares against the
   /// current build number defined in [NusaConfig].
-  static Future<UpdateInfo> checkForUpdate() async {
+  ///
+  /// Results are cached for 30 minutes to avoid hitting GitHub rate limits.
+  static Future<UpdateInfo> checkForUpdate({bool force = false}) async {
+    if (!force && _cacheTime != null && _cached != null) {
+      if (DateTime.now().difference(_cacheTime!) < _cacheTtl) {
+        return _cached!;
+      }
+    }
     try {
       final client = HttpClient();
       client.connectionTimeout = _timeout;
@@ -78,7 +89,10 @@ class UpdateService {
       final (version, buildNumber) = parsed;
 
       if (buildNumber <= NusaConfig.appBuildNumber) {
-        return UpdateInfo.noUpdate();
+        final result = UpdateInfo.noUpdate();
+        _cached = result;
+        _cacheTime = DateTime.now();
+        return result;
       }
 
       // Find the APK asset
@@ -94,7 +108,7 @@ class UpdateService {
         }
       }
 
-      return UpdateInfo(
+      final result = UpdateInfo(
         hasUpdate: true,
         latestVersion: version,
         latestBuildNumber: buildNumber,
@@ -102,6 +116,9 @@ class UpdateService {
         changelog: (json['body'] as String?) ?? '',
         fileSizeBytes: fileSizeBytes,
       );
+      _cached = result;
+      _cacheTime = DateTime.now();
+      return result;
     } on TimeoutException {
       return UpdateInfo.error('Waktu koneksi habis. Periksa koneksi internet.');
     } catch (e) {
