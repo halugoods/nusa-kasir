@@ -59,6 +59,22 @@ class SettingsRepository {
         .write(SettingsCompanion(posGridColumns: Value(cols)));
   }
 
+  // Grid columns for Products screen (1 or 2)
+  Future<int> getProductsGridColumns() async {
+    // Reuse the posGridColumns field for simplicity, default to 2
+    final row = await db.select(db.settings).getSingleOrNull();
+    return row?.posGridColumns != null ? (row!.posGridColumns > 2 ? 2 : row.posGridColumns) : 2;
+  }
+
+  Future<void> setProductsGridColumns(int cols) async {
+    await ensureRow();
+    // Store products grid in the same field — they share the same preference
+    // but we limit to 1-2 for products screen
+    final clamped = cols.clamp(1, 2);
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(posGridColumns: Value(clamped)));
+  }
+
   // Bank transfer settings
   Future<String?> getBankName() async =>
       (await db.select(db.settings).getSingleOrNull())?.bankName;

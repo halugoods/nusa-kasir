@@ -11,6 +11,7 @@ import 'package:nusa_kasir/core/activation/activation_key.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
+import 'package:nusa_kasir/data/repositories/category_repository.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_form_field.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_toggle_card.dart';
@@ -57,7 +58,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _sell = TextEditingController();
   final _stock = TextEditingController();
   final _min = TextEditingController();
-  String _category = NusaConfig.categories.first;
+  String _category = '';
+  List<String> _availableCategories = [];
   late String _barcode;
   Product? _existing;
   bool _loading = true;
@@ -90,7 +92,20 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     super.dispose();
   }
 
+  Future<void> _loadCategories() async {
+    final repo = CategoryRepository(ref.read(databaseProvider));
+    final cats = await repo.getAll();
+    if (mounted) {
+      setState(() {
+        _availableCategories = cats;
+        if (_category.isEmpty && cats.isNotEmpty) _category = cats.first;
+        else if (!cats.contains(_category) && cats.isNotEmpty) _category = cats.first;
+      });
+    }
+  }
+
   Future<void> _init() async {
+    await _loadCategories();
     if (!_isEdit) {
       if (mounted) setState(() => _loading = false);
       return;
@@ -101,11 +116,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       _existing = p;
       _name.text = p.name;
       _sku.text = p.sku ?? '';
-      _buy.text = p.buyPrice.toString();
+      _buy.text = p.buyPrice > 0 ? p.buyPrice.toString() : '';
       _sell.text = p.sellPrice.toString();
       _stock.text = p.stock.toString();
-      _min.text = p.minStock.toString();
-      _category = NusaConfig.categories.contains(p.category) ? p.category : NusaConfig.categories.first;
+      _min.text = p.minStock > 0 ? p.minStock.toString() : '';
+      _category = _availableCategories.contains(p.category) ? p.category : (_availableCategories.isNotEmpty ? _availableCategories.first : '');
       _imagePath = p.imagePath;
       _isOnline = p.isOnline;
       _expiryDate = p.expiryDate;
@@ -204,7 +219,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             variantsJson: Value(variants), wholesaleJson: Value(wholesale),
           ));
     } else {
-      final id = await db.into(db.products).insert(ProductsCompanion.insert(
+      await db.into(db.products).insert(ProductsCompanion.insert(
         name: name, sellPrice: sell, category: Value(_category),
         buyPrice: Value(buy), stock: Value(stock), minStock: Value(min),
         sku: Value(sku), imagePath: Value(_imagePath),
@@ -215,6 +230,40 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       ));
     }
     if (mounted) context.pop();
+  }
+
+  Future<void> _showAddCategoryDialog() async {
+    final ctrl = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tambah Kategori Baru'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Nama kategori',
+            border: OutlineInputBorder(),
+          ),
+          textCapitalization: TextCapitalization.words,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    if (result != null && result.isNotEmpty) {
+      final catRepo = CategoryRepository(ref.read(databaseProvider));
+      await catRepo.add(result);
+      await _loadCategories();
+      setState(() => _category = result);
+      TopToast.success(context, 'Kategori "$result" disimpan');
+    }
   }
 
   // ── UI ──
@@ -229,107 +278,81 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           : SingleChildScrollView(
               padding: const EdgeInsets.all(NusaConfig.spaceMD),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                // ── Product image ──
+                // ── 1. Product image ──
                 _buildImagePicker(isDark),
                 const SizedBox(height: NusaConfig.spaceMD),
-                // ── Form fields using shared NusaFormField ──
+
+                // ── 2. Nama Produk ──
                 NusaFormField(label: 'Nama Produk', controller: _name),
                 const SizedBox(height: NusaConfig.spaceSM),
+
+                // ── 3. SKU (opsional) ──
                 NusaFormField(label: 'SKU (opsional)', controller: _sku),
                 const SizedBox(height: NusaConfig.spaceSM),
-                NusaDropdownField<String>(
-                  label: 'Kategori',
-                  value: _category,
-                  items: NusaConfig.categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                  onChanged: (v) => setState(() => _category = v!),
-                ),
+
+                // ── 4. Harga Beli (opsional) ──
+                NusaFormField(label: 'Harga Beli (opsional)', controller: _buy, keyboardType: TextInputType.number),
                 const SizedBox(height: NusaConfig.spaceSM),
-                NusaFormField(label: 'Harga Beli', controller: _buy, keyboardType: TextInputType.number),
-                const SizedBox(height: NusaConfig.spaceSM),
+
+                // ── 5. Harga Jual ──
                 NusaFormField(label: 'Harga Jual', controller: _sell, keyboardType: TextInputType.number),
                 const SizedBox(height: NusaConfig.spaceSM),
-                NusaFormField(label: 'Stok Awal', controller: _stock, keyboardType: TextInputType.number),
-                const SizedBox(height: NusaConfig.spaceSM),
-                NusaFormField(label: 'Stok Minimum', controller: _min, keyboardType: TextInputType.number),
-                const SizedBox(height: NusaConfig.spaceMD),
 
-                // ── Tipe Produk: Toggle Varian ──
-                NusaToggleCard(
-                  title: 'Varian (Rasa/Ukuran)',
-                  value: _hasVarian,
-                  icon: Icons.layers_outlined,
-                  onChanged: (v) => setState(() { _hasVarian = v; if (!v) _variants.clear(); }),
-                  expandedChild: _buildVariantList(isDark),
-                ),
+                // ── 6. Stok ──
+                NusaFormField(label: 'Stok', controller: _stock, keyboardType: TextInputType.number),
                 const SizedBox(height: NusaConfig.spaceSM),
 
-                // ── Tipe Produk: Toggle Grosir ──
-                NusaToggleCard(
-                  title: 'Harga Grosir',
-                  value: _hasGrosir,
-                  icon: Icons.inventory_2_outlined,
-                  onChanged: (v) => setState(() { _hasGrosir = v; if (!v) _wholesaleTiers.clear(); }),
-                  expandedChild: _buildWholesaleList(isDark),
-                ),
+                // ── 7. Kadaluarsa (opsional) ──
+                _buildExpiryPicker(isDark),
+                const SizedBox(height: NusaConfig.spaceSM),
+
+                // ── 8. Stok Minimum (opsional) ──
+                NusaFormField(label: 'Stok Minimum (opsional)', controller: _min, keyboardType: TextInputType.number),
                 const SizedBox(height: NusaConfig.spaceMD),
 
-                // ── Expiry Date ──
-                GestureDetector(
-                  onTap: () async {
-                    final now = DateTime.now();
-                    final picked = await showDatePicker(
-                      context: context, initialDate: _expiryDate ?? now,
-                      firstDate: now, lastDate: DateTime(now.year + 10),
-                      helpText: 'Pilih Tanggal Kadaluarsa',
-                    );
-                    if (picked != null) setState(() => _expiryDate = picked);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder),
-                    ),
-                    child: Row(children: [
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const Text('Kadaluarsa (opsional)',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5)),
-                          const SizedBox(height: 6),
-                          Text(
-                            _expiryDate != null
-                                ? '${_expiryDate!.day}/${_expiryDate!.month}/${_expiryDate!.year}'
-                                : 'Pilih tanggal',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
-                              color: _expiryDate != null ? NusaConfig.textPrimary : NusaConfig.textTertiary),
-                          ),
-                        ]),
-                      ),
-                      if (_expiryDate != null)
-                        GestureDetector(
-                          onTap: () => setState(() => _expiryDate = null),
-                          child: const Icon(Icons.close, size: 18, color: NusaConfig.textTertiary),
-                        ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.calendar_today, size: 18, color: NusaConfig.textSecondary),
-                    ]),
+                // ── Divider ──
+                Row(children: [
+                  Expanded(child: Container(height: 1, color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('Opsi Lanjutan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary, letterSpacing: 0.5)),
                   ),
-                ),
+                  Expanded(child: Container(height: 1, color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor)),
+                ]),
                 const SizedBox(height: NusaConfig.spaceMD),
 
-                // ── Barcode toggle ──
-                NusaToggleCard(
+                // ── Toggle: Varian ──
+                _buildToggleCard(
+                  title: 'Varian (Rasa/Ukuran)',
+                  icon: Icons.layers_outlined,
+                  value: _hasVarian,
+                  onChanged: (v) => setState(() { _hasVarian = v; if (!v) _variants.clear(); }),
+                  expandedChild: _hasVarian ? _buildVariantList(isDark) : null,
+                ),
+                const SizedBox(height: NusaConfig.spaceSM),
+
+                // ── Toggle: Grosir ──
+                _buildToggleCard(
+                  title: 'Harga Grosir',
+                  icon: Icons.inventory_2_outlined,
+                  value: _hasGrosir,
+                  onChanged: (v) => setState(() { _hasGrosir = v; if (!v) _wholesaleTiers.clear(); }),
+                  expandedChild: _hasGrosir ? _buildWholesaleList(isDark) : null,
+                ),
+                const SizedBox(height: NusaConfig.spaceSM),
+
+                // ── Toggle: Barcode ──
+                _buildToggleCard(
                   title: 'Barcode',
-                  value: _barcodeOn,
                   icon: Icons.qr_code_2,
+                  value: _barcodeOn,
                   onChanged: _toggleBarcode,
                   expandedChild: _barcodeOn
                       ? Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isDark ? NusaConfig.darkSurface2 : NusaConfig.dividerColor,
-                            borderRadius: BorderRadius.circular(12),
+                            color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+                            borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
                           ),
                           child: Column(children: [
                             BarcodeWidget(data: _barcode, barcode: Barcode.code128(), width: double.infinity, height: 70),
@@ -341,15 +364,34 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
                 const SizedBox(height: NusaConfig.spaceSM),
 
-                // ── Toko Online toggle ──
-                NusaToggleCard(
+                // ── Toggle: Toko Online ──
+                _buildToggleCard(
                   title: 'Tampil di Toko Online',
-                  value: _isOnline,
                   icon: Icons.storefront_outlined,
+                  value: _isOnline,
                   onChanged: (v) => setState(() => _isOnline = v),
-                  expandedChild: const Text('Produk akan muncul di website toko online Anda.',
-                    style: TextStyle(fontSize: 11, color: NusaConfig.textTertiary)),
+                  expandedChild: _isOnline
+                      ? Container(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                          decoration: BoxDecoration(
+                            color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+                            borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
+                          ),
+                          child: const Text('Produk akan muncul di website toko online Anda.',
+                            style: TextStyle(fontSize: 12, color: NusaConfig.textSecondary)),
+                        )
+                      : null,
                 ),
+                const SizedBox(height: NusaConfig.spaceMD),
+
+                // ── Divider ──
+                Row(children: [
+                  Expanded(child: Container(height: 1, color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor)),
+                ]),
+                const SizedBox(height: NusaConfig.spaceMD),
+
+                // ── Kategori (bottom, with CRUD) ──
+                _buildCategorySection(isDark),
                 const SizedBox(height: NusaConfig.spaceLG),
 
                 // ── Save button ──
@@ -371,6 +413,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     );
   }
 
+  // ── Image picker ──
   Widget _buildImagePicker(bool isDark) {
     return GestureDetector(
       onTap: _pickImage,
@@ -411,118 +454,284 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     );
   }
 
-  Widget _buildVariantList(bool isDark) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      ..._variants.asMap().entries.map((e) {
-        final i = e.key;
-        final v = e.value;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
-          ),
-          child: Column(children: [
-            Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: TextEditingController(text: v.name),
-                  onChanged: (val) => _variants[i].name = val,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                  decoration: const InputDecoration(
-                    labelText: 'Nama Varian', labelStyle: TextStyle(fontSize: 10, color: NusaConfig.textSecondary),
-                    isDense: true, border: InputBorder.none),
-                ),
-              ),
-              GestureDetector(
-                onTap: () => setState(() => _variants.removeAt(i)),
-                child: const Icon(Icons.close, size: 18, color: NusaConfig.error),
+  // ── Expiry date picker ──
+  Widget _buildExpiryPicker(bool isDark) {
+    return GestureDetector(
+      onTap: () async {
+        final now = DateTime.now();
+        final picked = await showDatePicker(
+          context: context, initialDate: _expiryDate ?? now,
+          firstDate: now, lastDate: DateTime(now.year + 10),
+          helpText: 'Pilih Tanggal Kadaluarsa',
+        );
+        if (picked != null) setState(() => _expiryDate = picked);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder),
+        ),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Kadaluarsa (opsional)',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5)),
+              const SizedBox(height: 6),
+              Text(
+                _expiryDate != null
+                    ? '${_expiryDate!.day}/${_expiryDate!.month}/${_expiryDate!.year}'
+                    : 'Pilih tanggal',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                  color: _expiryDate != null ? NusaConfig.textPrimary : NusaConfig.textTertiary),
               ),
             ]),
-            const SizedBox(height: 8),
-            Row(children: [
+          ),
+          if (_expiryDate != null)
+            GestureDetector(
+              onTap: () => setState(() => _expiryDate = null),
+              child: const Icon(Icons.close, size: 18, color: NusaConfig.textTertiary),
+            ),
+          const SizedBox(width: 4),
+          const Icon(Icons.calendar_today, size: 18, color: NusaConfig.textSecondary),
+        ]),
+      ),
+    );
+  }
+
+  // ── Category section at bottom with CRUD ──
+  Widget _buildCategorySection(bool isDark) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Label
+      const Text('Kategori', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5)),
+      const SizedBox(height: 8),
+      // Dropdown chip row
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          ..._availableCategories.map((cat) => GestureDetector(
+            onTap: () => setState(() => _category = cat),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: _category == cat
+                    ? NusaConfig.primaryColor
+                    : (isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _category == cat ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkBorder : NusaConfig.inputBorder),
+                ),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(NusaConfig.catIcons[cat] ?? Icons.category_rounded,
+                  size: 16,
+                  color: _category == cat ? Colors.white : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                const SizedBox(width: 6),
+                Text(cat, style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w600,
+                  color: _category == cat ? Colors.white : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+                )),
+              ]),
+            ),
+          )),
+          // Add category button
+          GestureDetector(
+            onTap: _showAddCategoryDialog,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.5), style: BorderStyle.solid),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.add, size: 16, color: NusaConfig.primaryColor),
+                const SizedBox(width: 4),
+                const Text('Tambah Kategori', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    ]);
+  }
+
+  // ── Toggle card with visual depth ──
+  Widget _buildToggleCard({
+    required String title,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    Widget? expandedChild,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+        border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(children: [
+            Icon(icon, size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+            const SizedBox(width: 10),
+            Expanded(child: Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))),
+            Text(value ? 'ON' : 'OFF',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                color: value ? NusaConfig.accentGreen : NusaConfig.textTertiary)),
+            const SizedBox(width: 8),
+            SizedBox(
+              height: 24, width: 44,
+              child: Switch(
+                value: value, onChanged: onChanged,
+                activeColor: NusaConfig.primaryColor,
+              ),
+            ),
+          ]),
+        ),
+        // Expanded child with depth
+        if (value && expandedChild != null) ...[
+          Container(height: 1, color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+          expandedChild,
+        ],
+      ]),
+    );
+  }
+
+  // ── Variant list ──
+  Widget _buildVariantList(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        ..._variants.asMap().entries.map((e) {
+          final i = e.key;
+          final v = e.value;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+            ),
+            child: Column(children: [
+              Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: TextEditingController(text: v.name),
+                    onChanged: (val) => _variants[i].name = val,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    decoration: const InputDecoration(
+                      labelText: 'Nama Varian', labelStyle: TextStyle(fontSize: 12, color: NusaConfig.textSecondary),
+                      isDense: true, border: InputBorder.none),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => setState(() => _variants.removeAt(i)),
+                  child: const Icon(Icons.close, size: 18, color: NusaConfig.error),
+                ),
+              ]),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: TextEditingController(text: v.priceAdjustment == 0 ? '' : v.priceAdjustment.toString()),
+                    keyboardType: TextInputType.number,
+                    onChanged: (val) => _variants[i].priceAdjustment = int.tryParse(val) ?? 0,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: const InputDecoration(labelText: '± Harga', labelStyle: TextStyle(fontSize: 12, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none,
+                      prefixText: '+/- '),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: TextEditingController(text: v.stock == 0 ? '' : v.stock.toString()),
+                    keyboardType: TextInputType.number,
+                    onChanged: (val) => _variants[i].stock = int.tryParse(val) ?? 0,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: const InputDecoration(labelText: 'Stok', labelStyle: TextStyle(fontSize: 12, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none),
+                  ),
+                ),
+              ]),
+            ]),
+          );
+        }),
+        TextButton.icon(
+          onPressed: () => setState(() => _variants.add(_ProductVariant())),
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Tambah Varian'),
+          style: TextButton.styleFrom(foregroundColor: NusaConfig.primaryColor),
+        ),
+      ]),
+    );
+  }
+
+  // ── Wholesale list ──
+  Widget _buildWholesaleList(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        ..._wholesaleTiers.asMap().entries.map((e) {
+          final i = e.key;
+          final w = e.value;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+            ),
+            child: Row(children: [
               Expanded(
                 child: TextField(
-                  controller: TextEditingController(text: v.priceAdjustment == 0 ? '' : v.priceAdjustment.toString()),
+                  controller: TextEditingController(text: w.minQty == 1 ? '' : w.minQty.toString()),
                   keyboardType: TextInputType.number,
-                  onChanged: (val) => _variants[i].priceAdjustment = int.tryParse(val) ?? 0,
+                  onChanged: (val) => _wholesaleTiers[i].minQty = int.tryParse(val) ?? 1,
                   style: const TextStyle(fontSize: 13),
-                  decoration: const InputDecoration(labelText: '± Harga', labelStyle: TextStyle(fontSize: 10, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none,
-                    prefixText: '+/- '),
+                  decoration: const InputDecoration(labelText: 'Min Qty', labelStyle: TextStyle(fontSize: 12, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
-                  controller: TextEditingController(text: v.stock == 0 ? '' : v.stock.toString()),
+                  controller: TextEditingController(text: w.price == 0 ? '' : w.price.toString()),
                   keyboardType: TextInputType.number,
-                  onChanged: (val) => _variants[i].stock = int.tryParse(val) ?? 0,
+                  onChanged: (val) => _wholesaleTiers[i].price = int.tryParse(val) ?? 0,
                   style: const TextStyle(fontSize: 13),
-                  decoration: const InputDecoration(labelText: 'Stok', labelStyle: TextStyle(fontSize: 10, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none),
+                  decoration: const InputDecoration(labelText: 'Harga Grosir', labelStyle: TextStyle(fontSize: 12, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none,
+                    prefixText: 'Rp '),
                 ),
               ),
+              GestureDetector(
+                onTap: () => setState(() => _wholesaleTiers.removeAt(i)),
+                child: const Icon(Icons.close, size: 18, color: NusaConfig.error),
+              ),
             ]),
-          ]),
-        );
-      }),
-      TextButton.icon(
-        onPressed: () => setState(() => _variants.add(_ProductVariant())),
-        icon: const Icon(Icons.add, size: 18),
-        label: const Text('Tambah Varian'),
-        style: TextButton.styleFrom(foregroundColor: NusaConfig.primaryColor),
-      ),
-    ]);
-  }
-
-  Widget _buildWholesaleList(bool isDark) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      ..._wholesaleTiers.asMap().entries.map((e) {
-        final i = e.key;
-        final w = e.value;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
-          ),
-          child: Row(children: [
-            Expanded(
-              child: TextField(
-                controller: TextEditingController(text: w.minQty == 1 ? '' : w.minQty.toString()),
-                keyboardType: TextInputType.number,
-                onChanged: (val) => _wholesaleTiers[i].minQty = int.tryParse(val) ?? 1,
-                style: const TextStyle(fontSize: 13),
-                decoration: const InputDecoration(labelText: 'Min Qty', labelStyle: TextStyle(fontSize: 10, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: TextEditingController(text: w.price == 0 ? '' : w.price.toString()),
-                keyboardType: TextInputType.number,
-                onChanged: (val) => _wholesaleTiers[i].price = int.tryParse(val) ?? 0,
-                style: const TextStyle(fontSize: 13),
-                decoration: const InputDecoration(labelText: 'Harga Grosir', labelStyle: TextStyle(fontSize: 10, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none,
-                  prefixText: 'Rp '),
-              ),
-            ),
-            GestureDetector(
-              onTap: () => setState(() => _wholesaleTiers.removeAt(i)),
-              child: const Icon(Icons.close, size: 18, color: NusaConfig.error),
-            ),
-          ]),
-        );
-      }),
-      TextButton.icon(
-        onPressed: () => setState(() => _wholesaleTiers.add(_WholesaleTier())),
-        icon: const Icon(Icons.add, size: 18),
-        label: const Text('Tambah Harga Grosir'),
-        style: TextButton.styleFrom(foregroundColor: NusaConfig.primaryColor),
-      ),
-    ]);
+          );
+        }),
+        TextButton.icon(
+          onPressed: () => setState(() => _wholesaleTiers.add(_WholesaleTier())),
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Tambah Harga Grosir'),
+          style: TextButton.styleFrom(foregroundColor: NusaConfig.primaryColor),
+        ),
+      ]),
+    );
   }
 }

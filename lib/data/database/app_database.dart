@@ -6,14 +6,14 @@ import 'package:path/path.dart' as p;
 import 'tables.dart';
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [Products, StockMovements, Transactions, Customers, Promos,
+@DriftDatabase(tables: [Categories, Products, StockMovements, Transactions, Customers, Promos,
   Employees, Attendance, Expenses, Payroll, Waste, Liquidity, Suppliers, Branches,
   Settings, ActivationsLocal, SyncQueue, CashierSessions, OnlineOrders])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.test() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -46,6 +46,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 8) {
         await m.addColumn(products, products.variantsJson);
         await m.addColumn(products, products.wholesaleJson);
+      }
+      if (from < 9) {
+        await m.createTable(categories);
       }
     },
   );

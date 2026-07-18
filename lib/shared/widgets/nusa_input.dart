@@ -10,6 +10,7 @@ class NusaInput extends StatelessWidget {
   final bool obscure;
   final String? hint;
   final Widget? prefixIcon;
+  final Widget? suffixIcon;
   final int? maxLines;
 
   const NusaInput(
@@ -21,6 +22,7 @@ class NusaInput extends StatelessWidget {
     this.obscure = false,
     this.hint,
     this.prefixIcon,
+    this.suffixIcon,
     this.maxLines,
   });
 
@@ -55,6 +57,7 @@ class NusaInput extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon,
+            suffixIcon: suffixIcon,
             hintStyle: TextStyle(
               color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
               fontSize: 15,
