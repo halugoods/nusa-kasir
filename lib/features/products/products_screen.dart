@@ -355,14 +355,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
             prefixIcon: const Icon(Icons.search, color: NusaConfig.textSecondary),
             suffixIcon: GestureDetector(
               onTap: _scanBarcode,
-              child: Container(
-                margin: const EdgeInsets.only(right: 4),
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: NusaConfig.primarySoft,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.qr_code_scanner, size: 18, color: NusaConfig.primaryColor),
+              child: const Padding(
+                padding: EdgeInsets.only(right: 4),
+                child: Icon(Icons.qr_code_scanner, size: 20, color: NusaConfig.primaryColor),
               ),
             ),
           ),
@@ -473,7 +468,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.72),
+        crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.65),
       itemCount: _products.length,
       itemBuilder: (_, i) => _ProductGridCard(
         product: _products[i],
@@ -561,6 +556,7 @@ class _KategoriViewState extends ConsumerState<_KategoriView> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (_loading) return const Center(child: CircularProgressIndicator());
     final cats = _counts.entries.toList();
     if (cats.isEmpty) {
@@ -572,41 +568,31 @@ class _KategoriViewState extends ConsumerState<_KategoriView> {
     }
     return RefreshIndicator(
       onRefresh: _load,
-      child: GridView.builder(
+      child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.3),
         itemCount: cats.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (_, i) {
           final cat = cats[i].key;
           final count = cats[i].value;
-          final gradient = NusaConfig.catGradientFor(cat);
-          final icon = NusaConfig.catIcons[cat] ?? Icons.category_rounded;
           return GestureDetector(
             onTap: () => context.push('/produk/kategori/$cat'),
             child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient),
-                borderRadius: BorderRadius.circular(NusaConfig.radiusLG),
-                boxShadow: [BoxShadow(color: gradient.last.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 3))],
+                color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+                borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+                border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
               ),
-              child: Stack(children: [
-                Positioned(right: -10, bottom: -20,
-                  child: Opacity(opacity: 0.15, child: Icon(Icons.category_rounded, size: 100, color: Colors.white))),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Icon(icon, size: 36, color: Colors.white),
-                    const Spacer(),
-                    Text(cat, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3)),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
-                      child: Text('$count produk', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
-                    ),
+              child: Row(children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(cat, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+                    const SizedBox(height: 2),
+                    Text('$count produk', style: const TextStyle(fontSize: 12, color: NusaConfig.textSecondary)),
                   ]),
                 ),
+                const Icon(Icons.chevron_right, size: 20, color: NusaConfig.textTertiary),
               ]),
             ),
           );
@@ -649,9 +635,9 @@ class _ProductGridCard extends StatelessWidget {
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          // Image area
+          // Image area (square)
           AspectRatio(
-            aspectRatio: 4 / 3,
+            aspectRatio: 1,
             child: ClipRRect(
               borderRadius: BorderRadius.vertical(top: Radius.circular(NusaConfig.radiusLG)),
               child: Stack(children: [
@@ -677,14 +663,6 @@ class _ProductGridCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Price badge bottom-right
-                Positioned(bottom: 8, right: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: NusaConfig.surfaceColor.withValues(alpha: 0.95), borderRadius: BorderRadius.circular(NusaConfig.radiusFull), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4)]),
-                    child: Text(formatRupiah(product.sellPrice), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor)),
-                  ),
-                ),
                 if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.35)),
               ]),
             ),
@@ -692,9 +670,11 @@ class _ProductGridCard extends StatelessWidget {
           // Info
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 2),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+              const SizedBox(height: 2),
+              Text(formatRupiah(product.sellPrice), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
               const SizedBox(height: 2),
               Text(product.category, style: TextStyle(fontSize: 10, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
             ]),

@@ -288,7 +288,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
                             controller: _scrollCtrl,
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.72),
+                              crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.62),
                             itemCount: products.length,
                             itemBuilder: (_, i) => _ProductCard(
                               product: products[i], isDark: isDark,
@@ -568,9 +568,9 @@ class _ProductCard extends StatelessWidget {
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.10), blurRadius: 10, offset: const Offset(0, 3))],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          // ── Image area (4:3) ──
+          // ── Image area (square) ──
           AspectRatio(
-            aspectRatio: 4 / 3,
+            aspectRatio: 1,
             child: ClipRRect(
               borderRadius: BorderRadius.vertical(top: Radius.circular(NusaConfig.radiusLG)),
               child: Stack(children: [
@@ -606,14 +606,6 @@ class _ProductCard extends StatelessWidget {
                       child: const Text('HABIS', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
                     ),
                   ),
-                // Price tag
-                Positioned(bottom: 10, right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(color: NusaConfig.surfaceColor.withValues(alpha: 0.95), borderRadius: BorderRadius.circular(NusaConfig.radiusFull), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4)]),
-                    child: Text(formatRupiah(product.sellPrice), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
-                  ),
-                ),
                 if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.35)),
               ]),
             ),
@@ -621,11 +613,14 @@ class _ProductCard extends StatelessWidget {
           // ── Info ──
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.3,
                   color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
               const SizedBox(height: 3),
+              Text(formatRupiah(product.sellPrice),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
+              const SizedBox(height: 2),
               Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
             ]),
           ),

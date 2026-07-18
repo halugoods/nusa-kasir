@@ -288,9 +288,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
                 // ── 3. SKU (opsional) ──
                 NusaFormField(label: 'SKU (opsional)', controller: _sku),
-                const SizedBox(height: NusaConfig.spaceSM),
+                const SizedBox(height: NusaConfig.spaceMD),
 
-                // ── 4. Harga Beli (opsional) ──
+                // ── 4. Kategori ──
+                _buildCategorySection(isDark),
+                const SizedBox(height: NusaConfig.spaceMD),
+
+                // ── 5. Harga Beli (opsional) ──
                 NusaFormField(label: 'Harga Beli (opsional)', controller: _buy, keyboardType: TextInputType.number),
                 const SizedBox(height: NusaConfig.spaceSM),
 
@@ -388,10 +392,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 Row(children: [
                   Expanded(child: Container(height: 1, color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor)),
                 ]),
-                const SizedBox(height: NusaConfig.spaceMD),
-
-                // ── Kategori (bottom, with CRUD) ──
-                _buildCategorySection(isDark),
                 const SizedBox(height: NusaConfig.spaceLG),
 
                 // ── Save button ──
@@ -405,7 +405,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                     ),
-                    child: Text(_isEdit ? 'Simpan Perubahan' : 'Simpan Produk ke Database'),
+                    child: const Text('Simpan Produk'),
                   ),
                 ),
               ]),
@@ -617,53 +617,48 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           final i = e.key;
           final v = e.value;
           return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
-            ),
-            child: Column(children: [
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              // Header
               Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller: TextEditingController(text: v.name),
-                    onChanged: (val) => _variants[i].name = val,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                    decoration: const InputDecoration(
-                      labelText: 'Nama Varian', labelStyle: TextStyle(fontSize: 12, color: NusaConfig.textSecondary),
-                      isDense: true, border: InputBorder.none),
-                  ),
-                ),
+                Text('Varian ${i + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                const Spacer(),
                 GestureDetector(
                   onTap: () => setState(() => _variants.removeAt(i)),
-                  child: const Icon(Icons.close, size: 18, color: NusaConfig.error),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: NusaConfig.errorSoft,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text('Hapus', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: NusaConfig.error)),
+                  ),
                 ),
               ]),
               const SizedBox(height: 8),
-              Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller: TextEditingController(text: v.priceAdjustment == 0 ? '' : v.priceAdjustment.toString()),
-                    keyboardType: TextInputType.number,
-                    onChanged: (val) => _variants[i].priceAdjustment = int.tryParse(val) ?? 0,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: const InputDecoration(labelText: '± Harga', labelStyle: TextStyle(fontSize: 12, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none,
-                      prefixText: '+/- '),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: TextEditingController(text: v.stock == 0 ? '' : v.stock.toString()),
-                    keyboardType: TextInputType.number,
-                    onChanged: (val) => _variants[i].stock = int.tryParse(val) ?? 0,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: const InputDecoration(labelText: 'Stok', labelStyle: TextStyle(fontSize: 12, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none),
-                  ),
-                ),
-              ]),
+              // Nama Varian — card sendiri
+              _variantFieldCard(isDark,
+                label: 'Nama Varian',
+                controller: TextEditingController(text: v.name),
+                onChanged: (val) => _variants[i].name = val,
+              ),
+              const SizedBox(height: 8),
+              // ± Harga — card sendiri
+              _variantFieldCard(isDark,
+                label: '± Harga',
+                controller: TextEditingController(text: v.priceAdjustment == 0 ? '' : v.priceAdjustment.toString()),
+                onChanged: (val) => _variants[i].priceAdjustment = int.tryParse(val) ?? 0,
+                keyboardType: TextInputType.number,
+                prefixText: '+/- ',
+              ),
+              const SizedBox(height: 8),
+              // Stok — card sendiri
+              _variantFieldCard(isDark,
+                label: 'Stok',
+                controller: TextEditingController(text: v.stock == 0 ? '' : v.stock.toString()),
+                onChanged: (val) => _variants[i].stock = int.tryParse(val) ?? 0,
+                keyboardType: TextInputType.number,
+              ),
             ]),
           );
         }),
@@ -674,6 +669,37 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           style: TextButton.styleFrom(foregroundColor: NusaConfig.primaryColor),
         ),
       ]),
+    );
+  }
+
+  // ── Per-field card for variant / wholesale ──
+  Widget _variantFieldCard(bool isDark, {
+    required String label,
+    required TextEditingController controller,
+    required ValueChanged<String> onChanged,
+    TextInputType? keyboardType,
+    String? prefixText,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        keyboardType: keyboardType,
+        style: const TextStyle(fontSize: 13),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(fontSize: 12, color: NusaConfig.textSecondary),
+          isDense: true,
+          border: InputBorder.none,
+          prefixText: prefixText,
+        ),
+      ),
     );
   }
 
@@ -690,37 +716,40 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           final i = e.key;
           final w = e.value;
           return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
-            ),
-            child: Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: TextEditingController(text: w.minQty == 1 ? '' : w.minQty.toString()),
-                  keyboardType: TextInputType.number,
-                  onChanged: (val) => _wholesaleTiers[i].minQty = int.tryParse(val) ?? 1,
-                  style: const TextStyle(fontSize: 13),
-                  decoration: const InputDecoration(labelText: 'Min Qty', labelStyle: TextStyle(fontSize: 12, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none),
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              // Header
+              Row(children: [
+                Text('Tingkat ${i + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => setState(() => _wholesaleTiers.removeAt(i)),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: NusaConfig.errorSoft,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text('Hapus', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: NusaConfig.error)),
+                  ),
                 ),
+              ]),
+              const SizedBox(height: 8),
+              // Min Qty — card sendiri
+              _variantFieldCard(isDark,
+                label: 'Min Qty',
+                controller: TextEditingController(text: w.minQty == 1 ? '' : w.minQty.toString()),
+                onChanged: (val) => _wholesaleTiers[i].minQty = int.tryParse(val) ?? 1,
+                keyboardType: TextInputType.number,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: TextEditingController(text: w.price == 0 ? '' : w.price.toString()),
-                  keyboardType: TextInputType.number,
-                  onChanged: (val) => _wholesaleTiers[i].price = int.tryParse(val) ?? 0,
-                  style: const TextStyle(fontSize: 13),
-                  decoration: const InputDecoration(labelText: 'Harga Grosir', labelStyle: TextStyle(fontSize: 12, color: NusaConfig.textSecondary), isDense: true, border: InputBorder.none,
-                    prefixText: 'Rp '),
-                ),
-              ),
-              GestureDetector(
-                onTap: () => setState(() => _wholesaleTiers.removeAt(i)),
-                child: const Icon(Icons.close, size: 18, color: NusaConfig.error),
+              const SizedBox(height: 8),
+              // Harga Grosir — card sendiri
+              _variantFieldCard(isDark,
+                label: 'Harga Grosir',
+                controller: TextEditingController(text: w.price == 0 ? '' : w.price.toString()),
+                onChanged: (val) => _wholesaleTiers[i].price = int.tryParse(val) ?? 0,
+                keyboardType: TextInputType.number,
+                prefixText: 'Rp ',
               ),
             ]),
           );

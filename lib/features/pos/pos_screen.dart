@@ -354,7 +354,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       );
     }
 
-    final aspectRatios = {2: 0.9, 3: 0.78};
+    final aspectRatios = {2: 0.75, 3: 0.68};
     final ratio = aspectRatios[_gridColumns] ?? 0.9;
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -689,9 +689,9 @@ class _ProductCard extends StatelessWidget {
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.08), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            // ── Image area (4:3) ──
+            // ── Image area (square) ──
             AspectRatio(
-              aspectRatio: 4 / 3,
+              aspectRatio: 1,
               child: ClipRRect(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(NusaConfig.radiusLG)),
                 child: Stack(children: [
@@ -719,18 +719,6 @@ class _ProductCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Price tag top-right
-                  Positioned(top: 8, right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: NusaConfig.surfaceColor.withValues(alpha: 0.92),
-                        borderRadius: BorderRadius.circular(NusaConfig.radiusFull),
-                      ),
-                      child: Text(formatRupiah(product.sellPrice),
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor)),
-                    ),
-                  ),
                   // Out-of-stock dim overlay
                   if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.4)),
                 ]),
@@ -739,11 +727,14 @@ class _ProductCard extends StatelessWidget {
             // ── Info ──
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.3,
                     color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
                 const SizedBox(height: 3),
+                Text(formatRupiah(product.sellPrice),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
+                const SizedBox(height: 2),
                 Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
               ]),
             ),
@@ -753,8 +744,8 @@ class _ProductCard extends StatelessWidget {
               child: outOfStock
                   ? const SizedBox(height: 28)
                   : qtyInCart == 0
-                      ? Align(alignment: Alignment.centerLeft, child: _AddButton(onTap: onAdd, disabled: outOfStock))
-                      : Align(alignment: Alignment.centerLeft, child: _QtyStepper(qty: qtyInCart, onDecrement: onDecrement, onIncrement: onIncrement)),
+                      ? Align(alignment: Alignment.center, child: _AddButton(onTap: onAdd, disabled: outOfStock))
+                      : Align(alignment: Alignment.center, child: _QtyStepper(qty: qtyInCart, onDecrement: onDecrement, onIncrement: onIncrement)),
             ),
           ]),
         ),
