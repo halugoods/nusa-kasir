@@ -467,7 +467,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   // 2-column grid view
   Widget _buildGridView() {
     final colW = (MediaQuery.of(context).size.width - 32 - 10) / 2;
-    final ratio = (colW / (colW + 144)).clamp(0.4, 0.72);
+    final ratio = (colW / (colW + 110)).clamp(0.4, 0.85);
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -641,12 +641,13 @@ class _ProductGridCard extends StatelessWidget {
             border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06), blurRadius: 10, offset: const Offset(0, 3))],
           ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            // Image area (square)
-            AspectRatio(
-              aspectRatio: 1,
-              child: ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(NusaConfig.radiusLG)),
+          padding: const EdgeInsets.all(10),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // ── Image (inset) ──
+            ClipRRect(
+              borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
+              child: AspectRatio(
+                aspectRatio: 1,
                 child: Stack(children: [
                   if (hasImage)
                     Image.file(File(product.imagePath!), fit: BoxFit.cover, width: double.infinity)
@@ -654,12 +655,12 @@ class _ProductGridCard extends StatelessWidget {
                     Container(
                       decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient)),
                       alignment: Alignment.center,
-                      child: Text(_initials(product.name), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5)),
+                      child: Text(_initials(product.name), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5)),
                     ),
                   // Stock badge top-left
-                  Positioned(top: 8, left: 8,
+                  Positioned(top: 6, left: 6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
                         color: outOfStock ? NusaConfig.stockOut : (product.stock <= product.minStock ? NusaConfig.stockLow : NusaConfig.surfaceColor.withValues(alpha: 0.92)),
                         borderRadius: BorderRadius.circular(NusaConfig.radiusFull)),
@@ -674,26 +675,25 @@ class _ProductGridCard extends StatelessWidget {
                 ]),
               ),
             ),
-            // Info foot
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.25,
-                    color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
-                const SizedBox(height: 3),
-                Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
-                const SizedBox(height: 8),
-                Text(formatRupiah(product.sellPrice),
-                  style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
-                const SizedBox(height: 10),
-                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  _ActionButton(icon: Icons.edit_outlined, color: NusaConfig.textSecondary, onTap: onEdit),
-                  const SizedBox(width: 6),
-                  _ActionButton(icon: Icons.delete_outline, color: NusaConfig.error, onTap: onDelete),
-                ]),
-              ]),
-            ),
+            const SizedBox(height: 8),
+            // ── Name ──
+            Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, height: 1.25,
+                color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+            const SizedBox(height: 2),
+            // ── Category ──
+            Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+            const SizedBox(height: 6),
+            // ── Price ──
+            Text(formatRupiah(product.sellPrice),
+              style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
+            const Spacer(),
+            // ── Actions ──
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              _ActionButton(icon: Icons.edit_outlined, color: NusaConfig.textSecondary, onTap: onEdit),
+              const SizedBox(width: 6),
+              _ActionButton(icon: Icons.delete_outline, color: NusaConfig.error, onTap: onDelete),
+            ]),
           ]),
         ),
       ),

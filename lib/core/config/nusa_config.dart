@@ -133,7 +133,6 @@ abstract class NusaConfig {
   static const int maxDevicesPerKey = 2;
 
   // ── Business constants ──
-  static const List<String> categories = ["Makanan", "Minuman", "Sembako", "Lainnya"];
   static const List<String> roles = ["Owner", "Manager", "Kasir", "Gudang", "Finance"];
   static const List<String> productTypes = ["Regular", "Varian", "Grosir"];
   static const Map<String, List<String>> roleAccess = {

@@ -185,10 +185,21 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
   }
 
   Future<void> _openPreview() async {
-    if (_storeUrl == null) return;
-    final uri = Uri.parse(_storeUrl!);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final raw = _storeUrl;
+    if (raw == null || raw.isEmpty) {
+      if (mounted) TopToast.error(context, 'URL toko belum diatur.');
+      return;
+    }
+    var uri = Uri.parse(raw);
+    if (!uri.hasScheme) uri = Uri.parse('https://$raw');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else if (mounted) {
+        TopToast.error(context, 'Tidak dapat membuka browser.');
+      }
+    } catch (e) {
+      if (mounted) TopToast.error(context, 'Gagal membuka website: $e');
     }
   }
 

@@ -41,16 +41,24 @@ class UpdateService {
   static const _apiBase = 'https://api.github.com';
   static const _userAgent = 'nusa-kasir-updater';
   static const Duration _timeout = Duration(seconds: 15);
-  static const Duration _cacheTtl = Duration(minutes: 30);
+  static const Duration _cacheTtl = Duration(minutes: 10);
 
   static UpdateInfo? _cached;
   static DateTime? _cacheTime;
+  // While set, we back off from hitting GitHub to avoid hammering the
+  // unauthenticated rate limit (60 requests/hour/IP).
+  static DateTime? _rateLimitedUntil;
 
   /// Fetches the latest release from GitHub and compares against the
   /// current build number defined in [NusaConfig].
   ///
   /// Results are cached for 30 minutes to avoid hitting GitHub rate limits.
   static Future<UpdateInfo> checkForUpdate({bool force = false}) async {
+    // If we recently hit GitHub's rate limit, don't hammer it again
+    // immediately — return the cached (error) result instead.
+    if (_rateLimitedUntil != null && DateTime.now().isBefore(_rateLimitedUntil!)) {
+      return _cached ?? UpdateInfo.error('Terlalu banyak permintaan. Coba lagi nanti.');
+    }
     if (!force && _cacheTime != null && _cached != null) {
       if (DateTime.now().difference(_cacheTime!) < _cacheTtl) {
         return _cached!;
@@ -67,7 +75,11 @@ class UpdateService {
       final res = await req.close().timeout(_timeout);
 
       if (res.statusCode == 403 || res.statusCode == 429) {
-        return UpdateInfo.error('Terlalu banyak permintaan. Coba lagi nanti.');
+        final err = UpdateInfo.error('Terlalu banyak permintaan. Coba lagi nanti.');
+        _cached = err;
+        _cacheTime = DateTime.now();
+        _rateLimitedUntil = DateTime.now().add(const Duration(minutes: 2));
+        return err;
       }
       if (res.statusCode == 404) {
         return UpdateInfo.error('Repository tidak ditemukan.');
@@ -92,6 +104,7 @@ class UpdateService {
         final result = UpdateInfo.noUpdate();
         _cached = result;
         _cacheTime = DateTime.now();
+        _rateLimitedUntil = null;
         return result;
       }
 
@@ -118,6 +131,7 @@ class UpdateService {
       );
       _cached = result;
       _cacheTime = DateTime.now();
+      _rateLimitedUntil = null;
       return result;
     } on TimeoutException {
       return UpdateInfo.error('Waktu koneksi habis. Periksa koneksi internet.');

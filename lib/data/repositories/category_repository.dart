@@ -5,27 +5,11 @@ class CategoryRepository {
   final AppDatabase db;
   CategoryRepository(this.db);
 
-  /// Get all category names, seeding defaults if empty.
+  /// Get all category names. No defaults are seeded — the user creates
+  /// their own categories from the product form.
   Future<List<String>> getAll() async {
     final rows = await db.select(db.categories).get();
-    if (rows.isEmpty) {
-      await _seedDefaults();
-      final seeded = await db.select(db.categories).get();
-      return seeded.map((r) => r.name).toList();
-    }
     return rows.map((r) => r.name).toList();
-  }
-
-  /// Seed default categories (idempotent — skips if any exist).
-  Future<void> _seedDefaults() async {
-    final count = await db.select(db.categories).get();
-    if (count.isNotEmpty) return;
-    for (final name in _defaults) {
-      await db.into(db.categories).insert(
-        CategoriesCompanion.insert(name: name),
-        mode: InsertMode.insertOrIgnore,
-      );
-    }
   }
 
   /// Add a new category; returns the name on success.
@@ -49,5 +33,4 @@ class CategoryRepository {
         .write(CategoriesCompanion(name: Value(newName.trim())));
   }
 
-  static const _defaults = ['Makanan', 'Minuman', 'Sembako', 'Lainnya'];
 }

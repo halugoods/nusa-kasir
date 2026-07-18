@@ -198,6 +198,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final sell = _toInt(_sell.text);
     if (name.isEmpty) { TopToast.error(context, 'Nama produk wajib diisi'); return; }
     if (sell == null) { TopToast.error(context, 'Harga jual wajib diisi'); return; }
+    if (_category.isEmpty) { TopToast.error(context, 'Pilih atau buat kategori dulu'); return; }
     final db = ref.read(databaseProvider);
     final buy = _toInt(_buy.text) ?? 0;
     final stock = _toInt(_stock.text) ?? 0;
@@ -506,32 +507,20 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       for (final cat in _availableCategories)
         DropdownMenuItem(
           value: cat,
-          child: Row(children: [
-            Icon(NusaConfig.catIcons[cat] ?? Icons.category_rounded, size: 18, color: NusaConfig.primaryColor),
-            const SizedBox(width: 10),
-            Expanded(child: Text(cat, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
-          ]),
+          child: Text(cat, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         ),
       const DropdownMenuItem<String>(
         value: '__divider__',
         enabled: false,
         child: Divider(height: 1, thickness: 1),
       ),
-      DropdownMenuItem<String>(
+      const DropdownMenuItem<String>(
         value: '__add__',
-        child: Row(children: [
-          const Icon(Icons.add, size: 18, color: NusaConfig.primaryColor),
-          const SizedBox(width: 10),
-          const Text('Tambah Kategori', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor)),
-        ]),
+        child: Text('Tambah Kategori', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor)),
       ),
-      DropdownMenuItem<String>(
+      const DropdownMenuItem<String>(
         value: '__manage__',
-        child: Row(children: [
-          Icon(Icons.tune_rounded, size: 18, color: NusaConfig.textSecondary),
-          const SizedBox(width: 10),
-          const Text('Kelola Kategori', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.textSecondary)),
-        ]),
+        child: Text('Kelola Kategori', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.textSecondary)),
       ),
     ];
     return NusaDropdownField<String>(
@@ -586,8 +575,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(children: [
-                  Icon(NusaConfig.catIcons[cat] ?? Icons.category_rounded, size: 18, color: NusaConfig.primaryColor),
-                  const SizedBox(width: 10),
                   Expanded(child: Text(cat, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.textPrimary))),
                   TextButton(onPressed: () => _renameCategory(ctx, setSt, cats, cat), child: const Text('Ubah')),
                   TextButton(

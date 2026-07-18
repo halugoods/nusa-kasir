@@ -9,6 +9,7 @@ import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
+import 'package:nusa_kasir/data/repositories/category_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_cart_controls.dart';
 
@@ -34,6 +35,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
   final _search = TextEditingController();
   final List<_StoreItem> _cart = [];
   bool _showCart = false;
+  List<String> _allCats = [];
 
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
@@ -68,8 +70,11 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
     final settingsRepo = SettingsRepository(db);
     final storeName = await settingsRepo.getStoreName();
     if (mounted) {
+      final catRepo = CategoryRepository(db);
+      final cats = await catRepo.getAll();
       setState(() {
         _allProducts = all;
+        _allCats = cats;
         _loading = false;
         _storeName = storeName.isNotEmpty ? storeName : 'NUSA Toko';
         _storePhone = '';
@@ -164,7 +169,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final products = _filtered();
-    final cats = ['Semua', ...NusaConfig.categories];
+    final cats = ['Semua', ..._allCats];
 
     return Scaffold(
       backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
@@ -302,7 +307,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
                               crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12,
                               childAspectRatio: (() {
                                 final colW = (MediaQuery.of(context).size.width - 32 - 12) / 2;
-                                return (colW / (colW + 144)).clamp(0.4, 0.72);
+                                return (colW / (colW + 110)).clamp(0.4, 0.85);
                               })()),
                             itemCount: products.length,
                             itemBuilder: (_, i) => _ProductCard(
@@ -583,12 +588,13 @@ class _ProductCard extends StatelessWidget {
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.10), blurRadius: 10, offset: const Offset(0, 3))],
           border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          // ── Image area (square) ──
-          AspectRatio(
-            aspectRatio: 1,
-            child: ClipRRect(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(NusaConfig.radiusLG)),
+        padding: const EdgeInsets.all(10),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // ── Image (inset, square with own rounded corners) ──
+          ClipRRect(
+            borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
+            child: AspectRatio(
+              aspectRatio: 1,
               child: Stack(children: [
                 if (hasImage)
                   Image.file(File(product.imagePath!), fit: BoxFit.cover, width: double.infinity)
@@ -596,69 +602,65 @@ class _ProductCard extends StatelessWidget {
                   Container(
                     decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient)),
                     alignment: Alignment.center,
-                    child: Text(initials, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5)),
+                    child: Text(initials, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5)),
                   ),
-                // Wishlist button
-                Positioned(top: 8, right: 8,
+                // Wishlist button (top-right)
+                Positioned(top: 6, right: 6,
                   child: GestureDetector(
                     onTap: onWishlist,
                     child: Container(
-                      width: 32, height: 32,
+                      width: 30, height: 30,
                       decoration: BoxDecoration(
                         color: isWishlisted ? NusaConfig.primaryColor : Colors.black.withValues(alpha: 0.25),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(isWishlisted ? Icons.favorite : Icons.favorite_border, size: 16, color: Colors.white),
+                      child: Icon(isWishlisted ? Icons.favorite : Icons.favorite_border, size: 14, color: Colors.white),
                     ),
                   ),
                 ),
-                // HABIS badge
-                if (outOfStock)
-                  Positioned(top: 10, left: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(color: NusaConfig.primaryColor, borderRadius: BorderRadius.circular(NusaConfig.radiusSM)),
-                      child: const Text('HABIS', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+                // Stock badge (top-left)
+                Positioned(top: 6, left: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: outOfStock ? NusaConfig.stockOut : NusaConfig.surfaceColor.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(NusaConfig.radiusFull),
+                    ),
+                    child: Text(
+                      outOfStock ? 'Habis' : '${product.stock}x',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                        color: outOfStock ? NusaConfig.stockOutText : NusaConfig.primaryColor),
                     ),
                   ),
-                // Stock badge top-left (in-stock)
-                if (!outOfStock)
-                  Positioned(top: 10, left: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: NusaConfig.surfaceColor.withValues(alpha: 0.92), borderRadius: BorderRadius.circular(NusaConfig.radiusFull)),
-                      child: Text('${product.stock}x', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor)),
-                    ),
-                  ),
-                if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.35)),
+                ),
+                if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.4)),
               ]),
             ),
           ),
-          // ── Info foot ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.25,
-                  color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
-              const SizedBox(height: 3),
-              Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
-              const SizedBox(height: 8),
-              Text(formatRupiah(product.sellPrice),
-                style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
-              const SizedBox(height: 10),
-              outOfStock
-                  ? Container(
-                      height: 36,
-                      decoration: BoxDecoration(color: isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill, borderRadius: BorderRadius.circular(10)),
-                      alignment: Alignment.center,
-                      child: const Text('Stok Habis', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: NusaConfig.textTertiary)),
-                    )
-                  : cartQty == 0
-                      ? NusaAddButton(onTap: onAdd, fullWidth: true)
-                      : NusaQtyStepper(qty: cartQty, onDecrement: onDecrement, onIncrement: onAdd, fullWidth: true),
-            ]),
-          ),
+          const SizedBox(height: 8),
+          // ── Name ──
+          Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, height: 1.25,
+              color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
+          const SizedBox(height: 2),
+          // ── Category ──
+          Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+          const SizedBox(height: 6),
+          // ── Price ──
+          Text(formatRupiah(product.sellPrice),
+            style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
+          const SizedBox(height: 8),
+          // ── Action ──
+          outOfStock
+              ? Container(
+                  height: 36,
+                  decoration: BoxDecoration(color: isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill, borderRadius: BorderRadius.circular(10)),
+                  alignment: Alignment.center,
+                  child: const Text('Stok Habis', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: NusaConfig.textTertiary)),
+                )
+              : cartQty == 0
+                  ? NusaAddButton(onTap: onAdd, fullWidth: true)
+                  : NusaQtyStepper(qty: cartQty, onDecrement: onDecrement, onIncrement: onAdd, fullWidth: true),
         ]),
       ),
     );
