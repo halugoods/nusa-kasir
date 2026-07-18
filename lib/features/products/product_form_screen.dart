@@ -502,60 +502,176 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   // ── Category section at bottom with CRUD ──
   Widget _buildCategorySection(bool isDark) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Label
-      const Text('Kategori', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5)),
-      const SizedBox(height: 8),
-      // Dropdown chip row
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          ..._availableCategories.map((cat) => GestureDetector(
-            onTap: () => setState(() => _category = cat),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: _category == cat
-                    ? NusaConfig.primaryColor
-                    : (isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _category == cat ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkBorder : NusaConfig.inputBorder),
+    final items = <DropdownMenuItem<String>>[
+      for (final cat in _availableCategories)
+        DropdownMenuItem(
+          value: cat,
+          child: Row(children: [
+            Icon(NusaConfig.catIcons[cat] ?? Icons.category_rounded, size: 18, color: NusaConfig.primaryColor),
+            const SizedBox(width: 10),
+            Expanded(child: Text(cat, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+          ]),
+        ),
+      const DropdownMenuItem<String>(
+        value: '__divider__',
+        enabled: false,
+        child: Divider(height: 1, thickness: 1),
+      ),
+      DropdownMenuItem<String>(
+        value: '__add__',
+        child: Row(children: [
+          const Icon(Icons.add, size: 18, color: NusaConfig.primaryColor),
+          const SizedBox(width: 10),
+          const Text('Tambah Kategori', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor)),
+        ]),
+      ),
+      DropdownMenuItem<String>(
+        value: '__manage__',
+        child: Row(children: [
+          Icon(Icons.tune_rounded, size: 18, color: NusaConfig.textSecondary),
+          const SizedBox(width: 10),
+          const Text('Kelola Kategori', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.textSecondary)),
+        ]),
+      ),
+    ];
+    return NusaDropdownField<String>(
+      label: 'Kategori',
+      value: _category.isNotEmpty ? _category : null,
+      items: items,
+      onChanged: (val) {
+        if (val == null) return;
+        if (val == '__add__') {
+          _showAddCategoryDialog();
+        } else if (val == '__manage__') {
+          _showManageCategorySheet();
+        } else {
+          setState(() => _category = val);
+        }
+      },
+    );
+  }
+
+  // ── Category management (reachable from the dropdown) ──
+  Future<void> _showManageCategorySheet() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cats = List<String>.from(_availableCategories);
+    if (!mounted) return;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            top: 8, left: 16, right: 16,
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(margin: const EdgeInsets.symmetric(vertical: 10), width: 40, height: 4,
+              decoration: BoxDecoration(color: NusaConfig.dividerColor, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 4),
+            const Text('Kelola Kategori', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: NusaConfig.textPrimary)),
+            const SizedBox(height: 12),
+            ...cats.map((cat) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(children: [
+                  Icon(NusaConfig.catIcons[cat] ?? Icons.category_rounded, size: 18, color: NusaConfig.primaryColor),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(cat, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.textPrimary))),
+                  TextButton(onPressed: () => _renameCategory(ctx, setSt, cats, cat), child: const Text('Ubah')),
+                  TextButton(
+                    onPressed: () => _confirmDeleteCategory(ctx, setSt, cats, cat),
+                    child: const Text('Hapus', style: TextStyle(color: NusaConfig.error)),
+                  ),
+                ]),
+              ),
+            )),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async { Navigator.pop(ctx); await _showAddCategoryDialog(); },
+                icon: const Icon(Icons.add),
+                label: const Text('Tambah Kategori'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: NusaConfig.primaryColor,
+                  side: const BorderSide(color: NusaConfig.primaryColor),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(NusaConfig.catIcons[cat] ?? Icons.category_rounded,
-                  size: 16,
-                  color: _category == cat ? Colors.white : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                const SizedBox(width: 6),
-                Text(cat, style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w600,
-                  color: _category == cat ? Colors.white : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-                )),
-              ]),
             ),
-          )),
-          // Add category button
-          GestureDetector(
-            onTap: _showAddCategoryDialog,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.5), style: BorderStyle.solid),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.add, size: 16, color: NusaConfig.primaryColor),
-                const SizedBox(width: 4),
-                const Text('Tambah Kategori', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
-              ]),
-            ),
+          ]),
+        ),
+      ),
+    );
+    await _loadCategories();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _renameCategory(BuildContext ctx, StateSetter setSt, List<String> cats, String oldName) async {
+    final ctrl = TextEditingController(text: oldName);
+    final newName = await showDialog<String>(
+      context: ctx,
+      builder: (d) => AlertDialog(
+        title: const Text('Ubah Nama Kategori'),
+        content: TextField(controller: ctrl, autofocus: true,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+          textCapitalization: TextCapitalization.words),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(d, ctrl.text.trim()),
+            style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white),
+            child: const Text('Simpan'),
           ),
         ],
       ),
-    ]);
+    );
+    if (newName != null && newName.isNotEmpty && newName != oldName) {
+      final catRepo = CategoryRepository(ref.read(databaseProvider));
+      await catRepo.rename(oldName, newName);
+      setSt(() { final i = cats.indexOf(oldName); if (i >= 0) cats[i] = newName; });
+      if (_category == oldName) setState(() => _category = newName);
+    }
+  }
+
+  Future<void> _confirmDeleteCategory(BuildContext ctx, StateSetter setSt, List<String> cats, String name) async {
+    final ok = await showDialog<bool>(
+      context: ctx,
+      builder: (d) => AlertDialog(
+        title: const Text('Hapus Kategori'),
+        content: Text('Hapus kategori "$name"? Produk dengan kategori ini akan dipindah ke "Lainnya".'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(d, true),
+            style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.error, foregroundColor: Colors.white),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      final catRepo = CategoryRepository(ref.read(databaseProvider));
+      final db = ref.read(databaseProvider);
+      await catRepo.delete(name);
+      await (db.update(db.products)..where((t) => t.category.equals(name)))
+          .write(ProductsCompanion(category: const Value('Lainnya')));
+      setSt(() => cats.remove(name));
+      if (_category == name) setState(() => _category = cats.isNotEmpty ? cats.first : '');
+    }
   }
 
   // ── Toggle card with visual depth ──

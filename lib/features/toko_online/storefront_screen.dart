@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -9,6 +10,7 @@ import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
+import 'package:nusa_kasir/shared/widgets/nusa_cart_controls.dart';
 
 /// Customer-facing online store screen.
 /// Route: /toko
@@ -93,7 +95,23 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
     }).toList();
   }
 
-  void _toggleCartItem(Product p) {
+  void _incCart(Product p) {
+    setState(() {
+      final idx = _cart.indexWhere((c) => c.product.id == p.id);
+      if (idx >= 0) {
+        _cart[idx].qty++;
+      } else {
+        _cart.add(_StoreItem(product: p));
+        // Show cart popup
+        _showCartPopup = true;
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) setState(() => _showCartPopup = false);
+        });
+      }
+    });
+  }
+
+  void _decCart(Product p) {
     setState(() {
       final idx = _cart.indexWhere((c) => c.product.id == p.id);
       if (idx >= 0) {
@@ -102,13 +120,6 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
         } else {
           _cart[idx].qty--;
         }
-      } else {
-        _cart.add(_StoreItem(product: p));
-        // Show cart popup
-        _showCartPopup = true;
-        Future.delayed(const Duration(seconds: 4), () {
-          if (mounted) setState(() => _showCartPopup = false);
-        });
       }
     });
   }
@@ -287,15 +298,19 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
                           child: GridView.builder(
                             controller: _scrollCtrl,
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.62),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12,
+                              childAspectRatio: (() {
+                                final colW = (MediaQuery.of(context).size.width - 32 - 12) / 2;
+                                return (colW / (colW + 144)).clamp(0.4, 0.72);
+                              })()),
                             itemCount: products.length,
                             itemBuilder: (_, i) => _ProductCard(
                               product: products[i], isDark: isDark,
-                              inCart: _cart.any((c) => c.product.id == products[i].id),
                               cartQty: _cart.firstWhere((c) => c.product.id == products[i].id, orElse: () => _StoreItem(product: products[i])).qty,
+                              onAdd: () => _incCart(products[i]),
+                              onDecrement: () => _decCart(products[i]),
                               isWishlisted: _wishlist.contains(products[i].id),
-                              onToggle: () => _toggleCartItem(products[i]),
                               onWishlist: () => _toggleWishlist(products[i].id),
                               initials: _initials(products[i].name),
                             ),
@@ -540,15 +555,15 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
 class _ProductCard extends StatelessWidget {
   final Product product;
   final bool isDark;
-  final bool inCart;
   final int cartQty;
-  final VoidCallback onToggle;
+  final VoidCallback onAdd;
+  final VoidCallback onDecrement;
   final bool isWishlisted;
   final VoidCallback onWishlist;
   final String initials;
   const _ProductCard({
     required this.product, required this.isDark,
-    required this.inCart, required this.cartQty, required this.onToggle,
+    required this.cartQty, required this.onAdd, required this.onDecrement,
     required this.isWishlisted, required this.onWishlist,
     required this.initials,
   });
@@ -560,12 +575,13 @@ class _ProductCard extends StatelessWidget {
     final hasImage = product.imagePath != null && product.imagePath!.isNotEmpty && File(product.imagePath!).existsSync();
 
     return GestureDetector(
-      onTap: outOfStock ? null : () { if (cartQty == 0) onToggle(); },
+      onTap: outOfStock ? null : () { if (cartQty == 0) onAdd(); },
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
           borderRadius: BorderRadius.circular(NusaConfig.radiusLG),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.10), blurRadius: 10, offset: const Offset(0, 3))],
+          border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           // ── Image area (square) ──
@@ -574,7 +590,6 @@ class _ProductCard extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.vertical(top: Radius.circular(NusaConfig.radiusLG)),
               child: Stack(children: [
-                // Background: photo or gradient + initials
                 if (hasImage)
                   Image.file(File(product.imagePath!), fit: BoxFit.cover, width: double.infinity)
                 else
@@ -606,57 +621,43 @@ class _ProductCard extends StatelessWidget {
                       child: const Text('HABIS', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
                     ),
                   ),
+                // Stock badge top-left (in-stock)
+                if (!outOfStock)
+                  Positioned(top: 10, left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: NusaConfig.surfaceColor.withValues(alpha: 0.92), borderRadius: BorderRadius.circular(NusaConfig.radiusFull)),
+                      child: Text('${product.stock}x', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor)),
+                    ),
+                  ),
                 if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.35)),
               ]),
             ),
           ),
-          // ── Info ──
+          // ── Info foot ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.3,
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.25,
                   color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
               const SizedBox(height: 3),
-              Text(formatRupiah(product.sellPrice),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
-              const SizedBox(height: 2),
               Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+              const SizedBox(height: 8),
+              Text(formatRupiah(product.sellPrice),
+                style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
+              const SizedBox(height: 10),
+              outOfStock
+                  ? Container(
+                      height: 36,
+                      decoration: BoxDecoration(color: isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill, borderRadius: BorderRadius.circular(10)),
+                      alignment: Alignment.center,
+                      child: const Text('Stok Habis', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: NusaConfig.textTertiary)),
+                    )
+                  : cartQty == 0
+                      ? NusaAddButton(onTap: onAdd, fullWidth: true)
+                      : NusaQtyStepper(qty: cartQty, onDecrement: onDecrement, onIncrement: onAdd, fullWidth: true),
             ]),
-          ),
-          // ── Single action button ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-            child: outOfStock
-                ? const SizedBox(height: 32)
-                : cartQty == 0
-                    ? Center(
-                        child: SizedBox(
-                          height: 32,
-                          child: OutlinedButton(
-                            onPressed: onToggle,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: NusaConfig.primaryColor,
-                              side: const BorderSide(color: NusaConfig.primaryColor, width: 1.5),
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                            ),
-                            child: const Text('+ Tambah'),
-                          ),
-                        ),
-                      )
-                    : Center(
-                        child: Container(
-                          height: 32,
-                          decoration: BoxDecoration(color: NusaConfig.primaryColor, borderRadius: BorderRadius.circular(10)),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            GestureDetector(onTap: onToggle, child: const SizedBox(width: 32, height: 32, child: Center(child: Icon(Icons.remove, size: 16, color: Colors.white)))),
-                            Container(constraints: const BoxConstraints(minWidth: 24), child: Text('$cartQty', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white), textAlign: TextAlign.center)),
-                            GestureDetector(onTap: onToggle, child: const SizedBox(width: 32, height: 32, child: Center(child: Icon(Icons.add, size: 16, color: Colors.white)))),
-                          ]),
-                        ),
-                      ),
           ),
         ]),
       ),

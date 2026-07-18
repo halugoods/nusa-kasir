@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
@@ -12,6 +13,7 @@ import 'package:nusa_kasir/data/repositories/customer_repository.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/features/pos/cart.dart';
 import "package:nusa_kasir/shared/widgets/top_toast.dart";
+import 'package:nusa_kasir/shared/widgets/nusa_cart_controls.dart';
 
 class PosScreen extends ConsumerStatefulWidget {
   final int? sessionId;
@@ -354,8 +356,9 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       );
     }
 
-    final aspectRatios = {2: 0.75, 3: 0.68};
-    final ratio = aspectRatios[_gridColumns] ?? 0.9;
+    final cross = _gridColumns;
+    final colW = (MediaQuery.of(context).size.width - 32 - 10 * (cross - 1)) / cross;
+    final ratio = (colW / (colW + 144)).clamp(0.4, 0.72);
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -686,7 +689,8 @@ class _ProductCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
             borderRadius: BorderRadius.circular(NusaConfig.radiusLG),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.08), blurRadius: 8, offset: const Offset(0, 2))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.08), blurRadius: 10, offset: const Offset(0, 3))],
+            border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             // ── Image area (square) ──
@@ -702,7 +706,7 @@ class _ProductCard extends StatelessWidget {
                     Container(
                       decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient)),
                       alignment: Alignment.center,
-                      child: Text(_initials(product.name), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5)),
+                      child: Text(_initials(product.name), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5)),
                     ),
                   // Stock badge top-left
                   Positioned(top: 8, left: 8,
@@ -724,62 +728,37 @@ class _ProductCard extends StatelessWidget {
                 ]),
               ),
             ),
-            // ── Info ──
+            // ── Info foot ──
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.3,
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.25,
                     color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
                 const SizedBox(height: 3),
-                Text(formatRupiah(product.sellPrice),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
-                const SizedBox(height: 2),
                 Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                const SizedBox(height: 8),
+                Text(formatRupiah(product.sellPrice),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
+                const SizedBox(height: 10),
+                outOfStock
+                    ? Container(
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text('Stok Habis', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: NusaConfig.textTertiary)),
+                      )
+                    : qtyInCart == 0
+                        ? NusaAddButton(onTap: onAdd, fullWidth: true)
+                        : NusaQtyStepper(qty: qtyInCart, onDecrement: onDecrement, onIncrement: onIncrement, fullWidth: true),
               ]),
-            ),
-            // ── Action ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
-              child: outOfStock
-                  ? const SizedBox(height: 28)
-                  : qtyInCart == 0
-                      ? Align(alignment: Alignment.center, child: _AddButton(onTap: onAdd, disabled: outOfStock))
-                      : Align(alignment: Alignment.center, child: _QtyStepper(qty: qtyInCart, onDecrement: onDecrement, onIncrement: onIncrement)),
             ),
           ]),
         ),
       ),
-    );
-  }
-}
-
-class _QtyStepper extends StatelessWidget {
-  final int qty;
-  final VoidCallback onDecrement, onIncrement;
-  const _QtyStepper({required this.qty, required this.onDecrement, required this.onIncrement});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 28,
-      decoration: BoxDecoration(
-        color: NusaConfig.primarySoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: NusaConfig.primaryColor, width: 1.5),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        GestureDetector(
-          onTap: onDecrement, behavior: HitTestBehavior.opaque,
-          child: const SizedBox(width: 28, height: 28, child: Center(child: Icon(Icons.remove, size: 16, color: NusaConfig.primaryColor))),
-        ),
-        Container(constraints: const BoxConstraints(minWidth: 22),
-          child: Text('$qty', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor), textAlign: TextAlign.center)),
-        GestureDetector(
-          onTap: onIncrement, behavior: HitTestBehavior.opaque,
-          child: const SizedBox(width: 28, height: 28, child: Center(child: Icon(Icons.add, size: 16, color: NusaConfig.primaryColor))),
-        ),
-      ]),
     );
   }
 }
@@ -818,38 +797,6 @@ class _CartItemTile extends StatelessWidget {
         const SizedBox(width: 8),
         Text(formatRupiah(item.subtotal), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
       ]),
-    );
-  }
-}
-
-class _AddButton extends StatefulWidget {
-  final VoidCallback onTap; final bool disabled;
-  const _AddButton({required this.onTap, required this.disabled});
-  @override
-  State<_AddButton> createState() => _AddButtonState();
-}
-
-class _AddButtonState extends State<_AddButton> {
-  bool _pressed = false;
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: widget.disabled ? null : (_) => setState(() => _pressed = true),
-      onTapUp: widget.disabled ? null : (_) { setState(() => _pressed = false); widget.onTap(); },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.85 : 1.0, duration: const Duration(milliseconds: 100),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 28, height: 28,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: widget.disabled ? NusaConfig.textTertiary : NusaConfig.primaryColor,
-            boxShadow: widget.disabled ? [] : [BoxShadow(color: NusaConfig.primaryColor.withValues(alpha: 0.35), blurRadius: 6, offset: const Offset(0, 2))],
-          ),
-          child: const Icon(Icons.add, color: Colors.white, size: 18),
-        ),
-      ),
     );
   }
 }
@@ -939,11 +886,11 @@ class _ProductListCard extends StatelessWidget {
               const SizedBox(width: 8),
               // Action
               if (outOfStock)
-                const SizedBox(width: 28, height: 28)
+                const SizedBox(width: 32, height: 32)
               else if (qtyInCart == 0)
-                _AddButton(onTap: onAdd, disabled: false)
+                NusaAddButton(onTap: onAdd)
               else
-                _QtyStepper(qty: qtyInCart, onDecrement: onDecrement, onIncrement: onIncrement),
+                NusaQtyStepper(qty: qtyInCart, onDecrement: onDecrement, onIncrement: onIncrement),
             ]),
           ),
         ),

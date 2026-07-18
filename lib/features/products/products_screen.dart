@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -465,10 +466,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
   // 2-column grid view
   Widget _buildGridView() {
+    final colW = (MediaQuery.of(context).size.width - 32 - 10) / 2;
+    final ratio = (colW / (colW + 144)).clamp(0.4, 0.72);
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.65),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: ratio),
       itemCount: _products.length,
       itemBuilder: (_, i) => _ProductGridCard(
         product: _products[i],
@@ -625,71 +628,74 @@ class _ProductGridCard extends StatelessWidget {
     final hasImage = product.imagePath != null && product.imagePath!.isNotEmpty && File(product.imagePath!).existsSync();
     final gradient = NusaConfig.catGradientFor(product.category);
 
-    return GestureDetector(
-      onTap: onEdit,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-          borderRadius: BorderRadius.circular(NusaConfig.radiusLG),
-          border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06), blurRadius: 8, offset: const Offset(0, 2))],
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          // Image area (square)
-          AspectRatio(
-            aspectRatio: 1,
-            child: ClipRRect(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(NusaConfig.radiusLG)),
-              child: Stack(children: [
-                if (hasImage)
-                  Image.file(File(product.imagePath!), fit: BoxFit.cover, width: double.infinity)
-                else
-                  Container(
-                    decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient)),
-                    alignment: Alignment.center,
-                    child: Text(_initials(product.name), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5)),
-                  ),
-                // Stock badge top-left
-                Positioned(top: 8, left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: outOfStock ? NusaConfig.stockOut : (product.stock <= product.minStock ? NusaConfig.stockLow : NusaConfig.surfaceColor.withValues(alpha: 0.9)),
-                      borderRadius: BorderRadius.circular(NusaConfig.radiusFull)),
-                    child: Text(
-                      outOfStock ? 'Habis' : '${product.stock}x',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                        color: outOfStock ? NusaConfig.stockOutText : (product.stock <= product.minStock ? NusaConfig.stockLowText : NusaConfig.primaryColor)),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(NusaConfig.radiusLG),
+      child: InkWell(
+        onTap: onEdit,
+        borderRadius: BorderRadius.circular(NusaConfig.radiusLG),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: BorderRadius.circular(NusaConfig.radiusLG),
+            border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06), blurRadius: 10, offset: const Offset(0, 3))],
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            // Image area (square)
+            AspectRatio(
+              aspectRatio: 1,
+              child: ClipRRect(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(NusaConfig.radiusLG)),
+                child: Stack(children: [
+                  if (hasImage)
+                    Image.file(File(product.imagePath!), fit: BoxFit.cover, width: double.infinity)
+                  else
+                    Container(
+                      decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient)),
+                      alignment: Alignment.center,
+                      child: Text(_initials(product.name), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5)),
+                    ),
+                  // Stock badge top-left
+                  Positioned(top: 8, left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: outOfStock ? NusaConfig.stockOut : (product.stock <= product.minStock ? NusaConfig.stockLow : NusaConfig.surfaceColor.withValues(alpha: 0.92)),
+                        borderRadius: BorderRadius.circular(NusaConfig.radiusFull)),
+                      child: Text(
+                        outOfStock ? 'Habis' : '${product.stock}x',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                          color: outOfStock ? NusaConfig.stockOutText : (product.stock <= product.minStock ? NusaConfig.stockLowText : NusaConfig.primaryColor)),
+                      ),
                     ),
                   ),
-                ),
-                if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.35)),
+                  if (outOfStock) Container(color: Colors.white.withValues(alpha: 0.4)),
+                ]),
+              ),
+            ),
+            // Info foot
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.25,
+                    color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+                const SizedBox(height: 3),
+                Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                const SizedBox(height: 8),
+                Text(formatRupiah(product.sellPrice),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
+                const SizedBox(height: 10),
+                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  _ActionButton(icon: Icons.edit_outlined, color: NusaConfig.textSecondary, onTap: onEdit),
+                  const SizedBox(width: 6),
+                  _ActionButton(icon: Icons.delete_outline, color: NusaConfig.error, onTap: onDelete),
+                ]),
               ]),
             ),
-          ),
-          // Info
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 2),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
-              const SizedBox(height: 2),
-              Text(formatRupiah(product.sellPrice), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
-              const SizedBox(height: 2),
-              Text(product.category, style: TextStyle(fontSize: 10, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
-            ]),
-          ),
-          const Spacer(),
-          // Actions
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-            child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-              _ActionButton(icon: Icons.edit_outlined, color: NusaConfig.textSecondary, onTap: onEdit),
-              const SizedBox(width: 4),
-              _ActionButton(icon: Icons.delete_outline, color: NusaConfig.error, onTap: onDelete),
-            ]),
-          ),
-        ]),
+          ]),
+        ),
       ),
     );
   }
