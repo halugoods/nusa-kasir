@@ -145,12 +145,12 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                     ),
                   ]),
                   const SizedBox(height: 18),
-                  NusaInput('Nama Pelanggan', controller: nameCtrl),
+                  NusaInput('Nama Pelanggan', controller: nameCtrl, hint: 'Cth: Dimas'),
                   const SizedBox(height: 12),
                   NusaInput('Telepon (opsional)',
-                      controller: phoneCtrl, type: TextInputType.phone),
+                      controller: phoneCtrl, type: TextInputType.phone, hint: 'Cth: 0812xxxx'),
                   const SizedBox(height: 12),
-                  NusaInput('Alamat (opsional)', controller: addressCtrl),
+                  NusaInput('Alamat (opsional)', controller: addressCtrl, hint: 'Cth: Jl. Merdeka No.1'),
                   const SizedBox(height: 20),
                   NusaButton(
                     'Simpan',
@@ -190,7 +190,15 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _CustomerDetailSheet(customer: c, phone: phone),
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(ctx).brightness == Brightness.dark
+              ? NusaConfig.darkSurface
+              : NusaConfig.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: _CustomerDetailSheet(customer: c, phone: phone),
+      ),
     );
   }
 
@@ -353,40 +361,36 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
         border: Border.all(
             color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
       ),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.zero,
-        itemCount: options.length,
-        separatorBuilder: (_, __) => const SizedBox.shrink(),
-        itemBuilder: (_, i) {
-          final opt = options[i];
+      child: Row(
+        children: options.map((opt) {
           final active = opt == selected;
-          return GestureDetector(
-            onTap: () => onSelect(opt),
-            child: Container(
-              height: 36,
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: active ? NusaConfig.primaryColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                opt,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: active
-                      ? Colors.white
-                      : (isDark
-                          ? NusaConfig.darkTextSecondary
-                          : NusaConfig.textSecondary),
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onSelect(opt),
+              child: Container(
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: active ? NusaConfig.primaryColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  opt,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: active
+                        ? Colors.white
+                        : (isDark
+                            ? NusaConfig.darkTextSecondary
+                            : NusaConfig.textSecondary),
+                  ),
                 ),
               ),
             ),
           );
-        },
+        }).toList(),
       ),
     );
   }

@@ -1,8 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
@@ -22,14 +28,12 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 }
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
-  String _timeFilter = 'Semua';
+  String _timeFilter = 'Hari ini';
   String _payFilter = 'Semua';
-  DateTime? _customDate;
+  DateTimeRange? _dateRange;
   int _refreshKey = 0;
   final _searchCtrl = TextEditingController();
   String _searchQuery = '';
-
-  static const _payChips = ['Semua', 'Tunai', 'QRIS', 'Transfer'];
 
   @override
   void dispose() {
@@ -50,13 +54,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       '30 Hari' => all
           .where((t) => t.date.isAfter(now.subtract(const Duration(days: 30))))
           .toList(),
-      'custom' => _customDate == null
+      'custom' => _dateRange == null
           ? all
           : all
               .where((t) =>
-                  t.date.year == _customDate!.year &&
-                  t.date.month == _customDate!.month &&
-                  t.date.day == _customDate!.day)
+                  !t.date.isBefore(_dateRange!.start) &&
+                  !t.date.isAfter(
+                      _dateRange!.end.add(const Duration(days: 1))))
               .toList(),
       _ => all,
     };
@@ -71,53 +75,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     return filtered;
   }
 
-  List<String> get _timeOptions => [
-        'Semua',
-        'Hari ini',
-        '7 Hari',
-        '30 Hari',
-        if (_timeFilter == 'custom' && _customDate != null)
-          _fmtDate(_customDate!)
-        else
-          'Pilih Tanggal',
-      ];
-
-  String get _selectedTimeLabel =>
-      (_timeFilter == 'custom' && _customDate != null)
-          ? _fmtDate(_customDate!)
-          : _timeFilter;
-
-  void _onTimeSelect(String v) {
-    if (_timeFilter == 'custom' && v == _fmtDate(_customDate!)) {
-      _pickDate();
-      return;
-    }
-    if (v == 'Pilih Tanggal') {
-      _pickDate();
-      return;
-    }
-    setState(() {
-      _timeFilter = v;
-      _customDate = null;
-    });
-  }
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _customDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
-    );
-    if (picked != null && mounted) {
-      setState(() {
-        _timeFilter = 'custom';
-        _customDate = picked;
-      });
-    }
-  }
-
-  static String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
+  String get _selectedTimeLabel => _timeFilter; 
 
   Future<void> _voidTransaction(Transaction tx) async {
     final reasonCtrl = TextEditingController();
@@ -222,52 +180,90 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
   }
 
-  Widget _pillChip(
-    String label,
-    bool active, {
-    Color activeColor = NusaConfig.primaryColor,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 36,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: active
-              ? activeColor
-              : (isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill),
-          borderRadius: BorderRadius.circular(NusaConfig.radiusFull),
-          border: active
-              ? null
-              : Border.all(
-                  color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
+  Widget _timeDropdown(bool isDark) {
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _timeFilter == 'custom' ? 'custom' : _timeFilter,
+          isDense: true,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: active
-                ? Colors.white
-                : (isDark
-                    ? NusaConfig.darkTextSecondary
-                    : NusaConfig.textSecondary),
+            fontWeight: FontWeight.w600,
+            color: isDark
+                ? NusaConfig.darkTextSecondary
+                : NusaConfig.textSecondary,
           ),
+          borderRadius: BorderRadius.circular(12),
+          underline: const SizedBox.shrink(),
+          icon: Icon(Icons.expand_more_rounded,
+              size: 18,
+              color: isDark
+                  ? NusaConfig.darkTextTertiary
+                  : NusaConfig.textTertiary),
+          items: [
+            _ddItem('Hari ini'),
+            _ddItem('7 Hari'),
+            _ddItem('30 Hari'),
+            if (_timeFilter == 'custom' && _dateRange != null)
+              DropdownMenuItem(
+                value: 'custom',
+                enabled: false,
+                child: Text(
+                  '${_dateRange!.start.day}/${_dateRange!.start.month} - ${_dateRange!.end.day}/${_dateRange!.end.month}',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: NusaConfig.primaryColor,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+            _ddItem('Pilih Periode'),
+          ],
+          onChanged: (v) {
+            if (v == 'Pilih Periode') {
+              _pickDateRange();
+            } else {
+              setState(() {
+                _timeFilter = v!;
+                _dateRange = null;
+              });
+            }
+          },
         ),
       ),
     );
   }
 
-  Widget _segmented({
-    required List<String> options,
-    required String selected,
-    required ValueChanged<String> onSelect,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  DropdownMenuItem<String> _ddItem(String label) => DropdownMenuItem(
+        value: label,
+        child: Text(label),
+      );
+
+  Future<void> _pickDateRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+      initialDateRange: _dateRange ??
+          DateTimeRange(start: DateTime.now(), end: DateTime.now()),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _timeFilter = 'custom';
+        _dateRange = picked;
+      });
+    }
+  }
+
+  Widget _paymentSegmented(bool isDark) {
+    const opts = ['Semua', 'Tunai', 'QRIS', 'Transfer'];
     return Container(
       height: 36,
       decoration: BoxDecoration(
@@ -276,40 +272,176 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         border: Border.all(
             color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
       ),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.zero,
-        itemCount: options.length,
-        separatorBuilder: (_, __) => const SizedBox.shrink(),
-        itemBuilder: (_, i) {
-          final opt = options[i];
-          final active = opt == selected;
-          return GestureDetector(
-            onTap: () => onSelect(opt),
-            child: Container(
-              height: 36,
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: active ? NusaConfig.primaryColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                opt,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: active
-                      ? Colors.white
-                      : (isDark
-                          ? NusaConfig.darkTextSecondary
-                          : NusaConfig.textSecondary),
+      child: Row(
+        children: opts.map((opt) {
+          final active = _payFilter == opt;
+          final Color activeColor;
+          if (opt == 'QRIS') {
+            activeColor = NusaConfig.payQris;
+          } else if (opt == 'Transfer') {
+            activeColor = NusaConfig.payTransfer;
+          } else {
+            activeColor = NusaConfig.primaryColor;
+          }
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _payFilter = opt),
+              child: Container(
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: active ? activeColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  opt,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: active
+                        ? Colors.white
+                        : (isDark
+                            ? NusaConfig.darkTextSecondary
+                            : NusaConfig.textSecondary),
+                  ),
                 ),
               ),
             ),
           );
-        },
+        }).toList(),
+      ),
+    );
+  }
+
+  // ── Share / bagikan ──
+
+  Future<void> _showShareSheet(Transaction tx, String? custName, String? custPhone) async {
+    final rawItems = _parseItems(tx.items);
+    final dateStr =
+        '${tx.date.day.toString().padLeft(2, '0')}/${tx.date.month.toString().padLeft(2, '0')}/${tx.date.year} '
+        '${tx.date.hour.toString().padLeft(2, '0')}:${tx.date.minute.toString().padLeft(2, '0')}';
+
+    // Build text receipt for share
+    final buf = StringBuffer();
+    buf.writeln('NUSA');
+    buf.writeln('Aplikasi Kasir untuk Toko Kelontong');
+    buf.writeln('═══════════════════════════════════');
+    buf.writeln('Invoice: ${tx.invoice}');
+    buf.writeln('Tanggal: $dateStr');
+    if (custName != null) buf.writeln('Pelanggan: $custName');
+    buf.writeln('═══════════════════════════════════');
+    for (final it in rawItems) {
+      buf.writeln('  ${it['name']} x${it['qty']}  ${formatRupiah((it['qty'] as int) * (it['price'] as int))}');
+    }
+    buf.writeln('═══════════════════════════════════');
+    buf.writeln('Subtotal: ${formatRupiah(tx.total + tx.discount)}');
+    if (tx.discount > 0) buf.writeln('Diskon: -${formatRupiah(tx.discount)}');
+    buf.writeln('TOTAL: ${formatRupiah(tx.total)}');
+    buf.writeln('Bayar: ${tx.cashGiven != null ? formatRupiah(tx.cashGiven!) : tx.paymentMethod}');
+    if (tx.cashReturn != null) buf.writeln('Kembali: ${formatRupiah(tx.cashReturn!)}');
+    buf.writeln('═══════════════════════════════════');
+    buf.writeln('Terima kasih!');
+
+    final text = buf.toString();
+
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(ctx).brightness == Brightness.dark
+              ? NusaConfig.darkSurface
+              : NusaConfig.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: NusaConfig.dividerColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('Bagikan Struk ${tx.invoice}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                )),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      if (custPhone != null && custPhone.isNotEmpty) {
+                        final digits = custPhone.replaceAll(RegExp(r'\D'), '');
+                        final normalized = digits.startsWith('0')
+                            ? '62${digits.substring(1)}'
+                            : digits.startsWith('62') ? digits : '62$digits';
+                        final waUrl = 'https://wa.me/$normalized?text=${Uri.encodeComponent(text)}';
+                        launchUrl(Uri.parse(waUrl));
+                      } else {
+                        SharePlus.instance.share(ShareParams(text: text));
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF25D366).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(children: [
+                        Icon(Icons.chat_rounded, size: 32, color: const Color(0xFF25D366)),
+                        const SizedBox(height: 8),
+                        Text( custPhone != null && custPhone.isNotEmpty ? 'Kirim WA' : 'Share',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13, fontWeight: FontWeight.w700,
+                              color: const Color(0xFF25D366))),
+                        if (custPhone != null && custPhone.isNotEmpty)
+                          Text(custPhone,
+                              style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      ]),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      SharePlus.instance.share(ShareParams(text: text));
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: NusaConfig.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(children: [
+                        Icon(Icons.download_rounded, size: 32, color: NusaConfig.primaryColor),
+                        const SizedBox(height: 8),
+                        Text('Unduh Struk',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13, fontWeight: FontWeight.w700,
+                              color: NusaConfig.primaryColor)),
+                        Text('Teks',
+                            style: TextStyle(fontSize: 10, color: NusaConfig.textTertiary)),
+                      ]),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -354,51 +486,36 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   prefixIcon: const Icon(Icons.search_rounded,
                       color: NusaConfig.textSecondary, size: 22),
                   suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 20),
-                          onPressed: () {
+                      ? GestureDetector(
+                          onTap: () {
                             _searchCtrl.clear();
                             setState(() => _searchQuery = '');
                           },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: const Icon(Icons.clear_rounded,
+                                color: NusaConfig.textSecondary, size: 20),
+                          ),
                         )
                       : null,
                   border: InputBorder.none,
+                  isDense: true,
                   contentPadding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          // ── Time filter ──
+          // ── Time dropdown ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _segmented(
-              options: _timeOptions,
-              selected: _selectedTimeLabel,
-              onSelect: _onTimeSelect,
-            ),
+            child: _timeDropdown(isDark),
           ),
           const SizedBox(height: 8),
-          // ── Payment filter ──
-          SizedBox(
-            height: 36,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _payChips.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) => _pillChip(
-                _payChips[i],
-                _payFilter == _payChips[i],
-                activeColor: _payChips[i] == 'QRIS'
-                    ? NusaConfig.payQris
-                    : _payChips[i] == 'Transfer'
-                        ? NusaConfig.payTransfer
-                        : NusaConfig.payCash,
-                onTap: () => setState(() => _payFilter = _payChips[i]),
-              ),
-            ),
+          // ── Payment segmented switch ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _paymentSegmented(isDark),
           ),
           const SizedBox(height: 8),
           Expanded(
@@ -495,6 +612,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             tx: list[i],
                             onVoid: () => _voidTransaction(list[i]),
                             onReprint: () => _reprintTransaction(list[i]),
+                            onShare: () async {
+                              String? custName;
+                              String? custPhone;
+                              if (list[i].customerId != null) {
+                                final custRepo = CustomerRepository(ref.read(databaseProvider));
+                                final cust = await custRepo.byId(list[i].customerId!);
+                                if (cust != null) {
+                                  custName = cust.name;
+                                  custPhone = cust.phone;
+                                }
+                              }
+                              _showShareSheet(list[i], custName, custPhone);
+                            },
                           ),
                         ),
                       ),
@@ -514,8 +644,13 @@ class _TransactionCard extends StatefulWidget {
   final Transaction tx;
   final VoidCallback onVoid;
   final VoidCallback onReprint;
-  const _TransactionCard(
-      {required this.tx, required this.onVoid, required this.onReprint});
+  final VoidCallback onShare;
+  const _TransactionCard({
+    required this.tx,
+    required this.onVoid,
+    required this.onReprint,
+    required this.onShare,
+  });
 
   @override
   State<_TransactionCard> createState() => _TransactionCardState();
@@ -705,6 +840,9 @@ class _TransactionCardState extends State<_TransactionCard> {
                                   Row(children: [
                                     _actionIcon(Icons.print_rounded,
                                         NusaConfig.info, widget.onReprint),
+                                    const SizedBox(width: 6),
+                                    _actionIcon(Icons.share_rounded,
+                                        NusaConfig.accentGreen, widget.onShare),
                                     if (!isVoided) ...[
                                       const SizedBox(width: 6),
                                       _actionIcon(Icons.undo_rounded,

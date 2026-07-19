@@ -27,9 +27,9 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   List<Product> _products = [];
   List<StockMovement> _movements = [];
   bool _loading = true;
-  String _typeFilter = 'Semua'; // Semua | Masuk | Keluar
-  String _timeFilter = 'Semua'; // Semua | Hari ini | 7 Hari | 30 Hari | custom
-  DateTime? _customDate;
+  String _typeFilter = ''; // ''=all | 'in' | 'out'
+  String _timeFilter = 'Hari ini';
+  DateTimeRange? _dateRange;
 
   @override
   void initState() {
@@ -60,28 +60,27 @@ class _StockScreenState extends ConsumerState<StockScreen> {
 
   List<StockMovement> get _filteredMovements {
     var list = _movements;
-    if (_typeFilter != 'Semua') {
-      final t = _typeFilter == 'Masuk' ? 'in' : 'out';
-      list = list.where((m) => m.type == t).toList();
+    if (_typeFilter == 'in') {
+      list = list.where((m) => m.type == 'in').toList();
+    } else if (_typeFilter == 'out') {
+      list = list.where((m) => m.type == 'out').toList();
     }
-    if (_timeFilter != 'Semua') {
-      if (_timeFilter == 'custom' && _customDate != null) {
-        final d = _customDate!;
-        list = list
-            .where((m) =>
-                m.date.year == d.year &&
-                m.date.month == d.month &&
-                m.date.day == d.day)
-            .toList();
-      } else {
-        final now = DateTime.now();
-        final start = _timeFilter == 'Hari ini'
-            ? DateTime(now.year, now.month, now.day)
-            : _timeFilter == '7 Hari'
-                ? now.subtract(const Duration(days: 7))
-                : now.subtract(const Duration(days: 30));
-        list = list.where((m) => m.date.isAfter(start)).toList();
-      }
+    if (_timeFilter == 'custom' && _dateRange != null) {
+      list = list
+          .where((m) =>
+              !m.date.isBefore(_dateRange!.start) &&
+              !m.date.isAfter(_dateRange!.end.add(const Duration(days: 1))))
+          .toList();
+    } else {
+      final now = DateTime.now();
+      final start = _timeFilter == 'Hari ini'
+          ? DateTime(now.year, now.month, now.day)
+          : _timeFilter == '7 Hari'
+              ? now.subtract(const Duration(days: 7))
+              : _timeFilter == '30 Hari'
+                  ? now.subtract(const Duration(days: 30))
+                  : DateTime(2000);
+      list = list.where((m) => m.date.isAfter(start)).toList();
     }
     return list;
   }
@@ -274,71 +273,154 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   }
 
   Widget _buildFilterBar(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        _Segmented(
-          options: const ['Semua', 'Masuk', 'Keluar'],
-          selected: _typeFilter,
-          onSelect: (v) => setState(() => _typeFilter = v),
+        // ── Type switch (Masuk | Keluar) bagi rata ──
+        Expanded(
+          child: Container(
+            height: 36,
+            decoration: BoxDecoration(
+              color:
+                  isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color:
+                      isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+            ),
+            child: Row(
+              children: [
+                _typeBtn('Masuk', 'in', true),
+                _typeBtn('Keluar', 'out', false),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: 8),
-        _Segmented(
-          options: _timeOptions,
-          selected: _selectedTimeLabel,
-          onSelect: _onTimeSelect,
-        ),
+        const SizedBox(width: 10),
+        // ── Time dropdown ──
+        _timeDropdown(isDark),
       ],
     );
   }
 
-  List<String> get _timeOptions => [
-        'Semua',
-        'Hari ini',
-        '7 Hari',
-        '30 Hari',
-        if (_timeFilter == 'custom' && _customDate != null)
-          _fmtDate(_customDate!)
-        else
-          'Pilih Tanggal',
-      ];
-
-  String get _selectedTimeLabel =>
-      (_timeFilter == 'custom' && _customDate != null)
-          ? _fmtDate(_customDate!)
-          : _timeFilter;
-
-  void _onTimeSelect(String v) {
-    if (_timeFilter == 'custom' && v == _fmtDate(_customDate!)) {
-      _pickDate();
-      return;
-    }
-    if (v == 'Pilih Tanggal') {
-      _pickDate();
-      return;
-    }
-    setState(() {
-      _timeFilter = v;
-      _customDate = null;
-    });
+  Widget _typeBtn(String label, String value, bool isLeft) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final active = _typeFilter == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _typeFilter = value == _typeFilter ? '' : value),
+        child: Container(
+          height: 36,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: active ? NusaConfig.primaryColor : Colors.transparent,
+            borderRadius: BorderRadius.horizontal(
+              left: Radius.circular(isLeft ? 8 : 0),
+              right: Radius.circular(isLeft ? 0 : 8),
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: active
+                  ? Colors.white
+                  : (isDark
+                      ? NusaConfig.darkTextSecondary
+                      : NusaConfig.textSecondary),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+  Widget _timeDropdown(bool isDark) {
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _timeFilter == 'custom' ? 'custom' : _timeFilter,
+          isDense: true,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isDark
+                ? NusaConfig.darkTextSecondary
+                : NusaConfig.textSecondary,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          underline: const SizedBox.shrink(),
+          icon: Icon(Icons.expand_more_rounded,
+              size: 18,
+              color: isDark
+                  ? NusaConfig.darkTextTertiary
+                  : NusaConfig.textTertiary),
+          items: [
+            _ddItem('Hari ini'),
+            _ddItem('7 Hari'),
+            _ddItem('30 Hari'),
+            if (_timeFilter == 'custom' && _dateRange != null)
+              DropdownMenuItem(
+                value: 'custom',
+                enabled: false,
+                child: Text(
+                  '${_dateRange!.start.day}/${_dateRange!.start.month} - ${_dateRange!.end.day}/${_dateRange!.end.month}',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: NusaConfig.primaryColor,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+            _ddItem('Pilih Periode'),
+          ],
+          onChanged: (v) {
+            if (v == 'Pilih Periode') {
+              _pickDateRange();
+            } else {
+              setState(() {
+                _timeFilter = v!;
+                _dateRange = null;
+              });
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  DropdownMenuItem<String> _ddItem(String label) => DropdownMenuItem(
+        value: label,
+        child: Text(label),
+      );
+
+  Future<void> _pickDateRange() async {
+    final picked = await showDateRangePicker(
       context: context,
-      initialDate: _customDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 1)),
+          initialDateRange: _dateRange ??
+          DateTimeRange(
+            start: DateTime.now(),
+            end: DateTime.now(),
+          ),
     );
     if (picked != null && mounted) {
       setState(() {
         _timeFilter = 'custom';
-        _customDate = picked;
+        _dateRange = picked;
       });
     }
   }
-
-  static String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 }
 
 // ═══════════════════════════════════════════
@@ -1297,17 +1379,19 @@ class _AdjustSheetState extends State<_AdjustSheet> {
                 ]),
               ),
             ],
-            const SizedBox(height: 16),
-            NusaInput(
-              isIn ? 'Jumlah stok masuk' : 'Jumlah stok keluar',
-              controller: _qty,
-              type: TextInputType.number,
-            ),
-            const SizedBox(height: 20),
-            NusaButton(
-              isIn ? 'Tambah Stok' : 'Kurangi Stok',
-              onPressed: _saving ? null : _save,
-            ),
+            if (selected != null) ...[
+              const SizedBox(height: 16),
+              NusaInput(
+                isIn ? 'Jumlah stok masuk' : 'Jumlah stok keluar',
+                controller: _qty,
+                type: TextInputType.number,
+              ),
+              const SizedBox(height: 20),
+              NusaButton(
+                isIn ? 'Tambah Stok' : 'Kurangi Stok',
+                onPressed: _saving ? null : _save,
+              ),
+            ],
             const SizedBox(height: 4),
           ],
         ),
