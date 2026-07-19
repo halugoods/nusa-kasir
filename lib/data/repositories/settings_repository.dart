@@ -94,4 +94,24 @@ class SettingsRepository {
     );
     await (db.update(db.settings)..where((t) => t.id.equals(1))).write(c);
   }
+
+  // ── Receipt footer ──
+  Future<String?> getReceiptFooter() async =>
+      (await db.select(db.settings).getSingleOrNull())?.receiptFooter;
+
+  Future<void> setReceiptFooter(String text) async {
+    await ensureRow();
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(receiptFooter: Value(text)));
+  }
+
+  // ── Store logo path ──
+  Future<String?> getStoreLogoPath() async =>
+      (await db.select(db.settings).getSingleOrNull())?.storeLogoPath;
+
+  Future<void> setStoreLogoPath(String path) async {
+    await ensureRow();
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(storeLogoPath: Value(path)));
+  }
 }

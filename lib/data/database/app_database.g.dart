@@ -6825,6 +6825,28 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _receiptFooterMeta = const VerificationMeta(
+    'receiptFooter',
+  );
+  @override
+  late final GeneratedColumn<String> receiptFooter = GeneratedColumn<String>(
+    'receipt_footer',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _storeLogoPathMeta = const VerificationMeta(
+    'storeLogoPath',
+  );
+  @override
+  late final GeneratedColumn<String> storeLogoPath = GeneratedColumn<String>(
+    'store_logo_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6840,6 +6862,8 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     bankName,
     bankAccount,
     bankHolder,
+    receiptFooter,
+    storeLogoPath,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6940,6 +6964,24 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         bankHolder.isAcceptableOrUnknown(data['bank_holder']!, _bankHolderMeta),
       );
     }
+    if (data.containsKey('receipt_footer')) {
+      context.handle(
+        _receiptFooterMeta,
+        receiptFooter.isAcceptableOrUnknown(
+          data['receipt_footer']!,
+          _receiptFooterMeta,
+        ),
+      );
+    }
+    if (data.containsKey('store_logo_path')) {
+      context.handle(
+        _storeLogoPathMeta,
+        storeLogoPath.isAcceptableOrUnknown(
+          data['store_logo_path']!,
+          _storeLogoPathMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7001,6 +7043,14 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.string,
         data['${effectivePrefix}bank_holder'],
       ),
+      receiptFooter: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_footer'],
+      ),
+      storeLogoPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}store_logo_path'],
+      ),
     );
   }
 
@@ -7024,6 +7074,8 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String? bankName;
   final String? bankAccount;
   final String? bankHolder;
+  final String? receiptFooter;
+  final String? storeLogoPath;
   const Setting({
     required this.id,
     required this.storeName,
@@ -7038,6 +7090,8 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.bankName,
     this.bankAccount,
     this.bankHolder,
+    this.receiptFooter,
+    this.storeLogoPath,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7070,6 +7124,12 @@ class Setting extends DataClass implements Insertable<Setting> {
     }
     if (!nullToAbsent || bankHolder != null) {
       map['bank_holder'] = Variable<String>(bankHolder);
+    }
+    if (!nullToAbsent || receiptFooter != null) {
+      map['receipt_footer'] = Variable<String>(receiptFooter);
+    }
+    if (!nullToAbsent || storeLogoPath != null) {
+      map['store_logo_path'] = Variable<String>(storeLogoPath);
     }
     return map;
   }
@@ -7105,6 +7165,12 @@ class Setting extends DataClass implements Insertable<Setting> {
       bankHolder: bankHolder == null && nullToAbsent
           ? const Value.absent()
           : Value(bankHolder),
+      receiptFooter: receiptFooter == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receiptFooter),
+      storeLogoPath: storeLogoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(storeLogoPath),
     );
   }
 
@@ -7127,6 +7193,8 @@ class Setting extends DataClass implements Insertable<Setting> {
       bankName: serializer.fromJson<String?>(json['bankName']),
       bankAccount: serializer.fromJson<String?>(json['bankAccount']),
       bankHolder: serializer.fromJson<String?>(json['bankHolder']),
+      receiptFooter: serializer.fromJson<String?>(json['receiptFooter']),
+      storeLogoPath: serializer.fromJson<String?>(json['storeLogoPath']),
     );
   }
   @override
@@ -7146,6 +7214,8 @@ class Setting extends DataClass implements Insertable<Setting> {
       'bankName': serializer.toJson<String?>(bankName),
       'bankAccount': serializer.toJson<String?>(bankAccount),
       'bankHolder': serializer.toJson<String?>(bankHolder),
+      'receiptFooter': serializer.toJson<String?>(receiptFooter),
+      'storeLogoPath': serializer.toJson<String?>(storeLogoPath),
     };
   }
 
@@ -7163,6 +7233,8 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<String?> bankName = const Value.absent(),
     Value<String?> bankAccount = const Value.absent(),
     Value<String?> bankHolder = const Value.absent(),
+    Value<String?> receiptFooter = const Value.absent(),
+    Value<String?> storeLogoPath = const Value.absent(),
   }) => Setting(
     id: id ?? this.id,
     storeName: storeName ?? this.storeName,
@@ -7177,6 +7249,12 @@ class Setting extends DataClass implements Insertable<Setting> {
     bankName: bankName.present ? bankName.value : this.bankName,
     bankAccount: bankAccount.present ? bankAccount.value : this.bankAccount,
     bankHolder: bankHolder.present ? bankHolder.value : this.bankHolder,
+    receiptFooter: receiptFooter.present
+        ? receiptFooter.value
+        : this.receiptFooter,
+    storeLogoPath: storeLogoPath.present
+        ? storeLogoPath.value
+        : this.storeLogoPath,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -7209,6 +7287,12 @@ class Setting extends DataClass implements Insertable<Setting> {
       bankHolder: data.bankHolder.present
           ? data.bankHolder.value
           : this.bankHolder,
+      receiptFooter: data.receiptFooter.present
+          ? data.receiptFooter.value
+          : this.receiptFooter,
+      storeLogoPath: data.storeLogoPath.present
+          ? data.storeLogoPath.value
+          : this.storeLogoPath,
     );
   }
 
@@ -7227,7 +7311,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('posGridColumns: $posGridColumns, ')
           ..write('bankName: $bankName, ')
           ..write('bankAccount: $bankAccount, ')
-          ..write('bankHolder: $bankHolder')
+          ..write('bankHolder: $bankHolder, ')
+          ..write('receiptFooter: $receiptFooter, ')
+          ..write('storeLogoPath: $storeLogoPath')
           ..write(')'))
         .toString();
   }
@@ -7247,6 +7333,8 @@ class Setting extends DataClass implements Insertable<Setting> {
     bankName,
     bankAccount,
     bankHolder,
+    receiptFooter,
+    storeLogoPath,
   );
   @override
   bool operator ==(Object other) =>
@@ -7264,7 +7352,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.posGridColumns == this.posGridColumns &&
           other.bankName == this.bankName &&
           other.bankAccount == this.bankAccount &&
-          other.bankHolder == this.bankHolder);
+          other.bankHolder == this.bankHolder &&
+          other.receiptFooter == this.receiptFooter &&
+          other.storeLogoPath == this.storeLogoPath);
 }
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
@@ -7281,6 +7371,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String?> bankName;
   final Value<String?> bankAccount;
   final Value<String?> bankHolder;
+  final Value<String?> receiptFooter;
+  final Value<String?> storeLogoPath;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.storeName = const Value.absent(),
@@ -7295,6 +7387,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.bankName = const Value.absent(),
     this.bankAccount = const Value.absent(),
     this.bankHolder = const Value.absent(),
+    this.receiptFooter = const Value.absent(),
+    this.storeLogoPath = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -7310,6 +7404,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.bankName = const Value.absent(),
     this.bankAccount = const Value.absent(),
     this.bankHolder = const Value.absent(),
+    this.receiptFooter = const Value.absent(),
+    this.storeLogoPath = const Value.absent(),
   });
   static Insertable<Setting> custom({
     Expression<int>? id,
@@ -7325,6 +7421,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<String>? bankName,
     Expression<String>? bankAccount,
     Expression<String>? bankHolder,
+    Expression<String>? receiptFooter,
+    Expression<String>? storeLogoPath,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7340,6 +7438,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (bankName != null) 'bank_name': bankName,
       if (bankAccount != null) 'bank_account': bankAccount,
       if (bankHolder != null) 'bank_holder': bankHolder,
+      if (receiptFooter != null) 'receipt_footer': receiptFooter,
+      if (storeLogoPath != null) 'store_logo_path': storeLogoPath,
     });
   }
 
@@ -7357,6 +7457,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String?>? bankName,
     Value<String?>? bankAccount,
     Value<String?>? bankHolder,
+    Value<String?>? receiptFooter,
+    Value<String?>? storeLogoPath,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -7372,6 +7474,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       bankName: bankName ?? this.bankName,
       bankAccount: bankAccount ?? this.bankAccount,
       bankHolder: bankHolder ?? this.bankHolder,
+      receiptFooter: receiptFooter ?? this.receiptFooter,
+      storeLogoPath: storeLogoPath ?? this.storeLogoPath,
     );
   }
 
@@ -7417,6 +7521,12 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (bankHolder.present) {
       map['bank_holder'] = Variable<String>(bankHolder.value);
     }
+    if (receiptFooter.present) {
+      map['receipt_footer'] = Variable<String>(receiptFooter.value);
+    }
+    if (storeLogoPath.present) {
+      map['store_logo_path'] = Variable<String>(storeLogoPath.value);
+    }
     return map;
   }
 
@@ -7435,7 +7545,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('posGridColumns: $posGridColumns, ')
           ..write('bankName: $bankName, ')
           ..write('bankAccount: $bankAccount, ')
-          ..write('bankHolder: $bankHolder')
+          ..write('bankHolder: $bankHolder, ')
+          ..write('receiptFooter: $receiptFooter, ')
+          ..write('storeLogoPath: $storeLogoPath')
           ..write(')'))
         .toString();
   }
@@ -12996,6 +13108,8 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> bankName,
       Value<String?> bankAccount,
       Value<String?> bankHolder,
+      Value<String?> receiptFooter,
+      Value<String?> storeLogoPath,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -13012,6 +13126,8 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> bankName,
       Value<String?> bankAccount,
       Value<String?> bankHolder,
+      Value<String?> receiptFooter,
+      Value<String?> storeLogoPath,
     });
 
 class $$SettingsTableFilterComposer
@@ -13085,6 +13201,16 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<String> get bankHolder => $composableBuilder(
     column: $table.bankHolder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptFooter => $composableBuilder(
+    column: $table.receiptFooter,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get storeLogoPath => $composableBuilder(
+    column: $table.storeLogoPath,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -13162,6 +13288,16 @@ class $$SettingsTableOrderingComposer
     column: $table.bankHolder,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get receiptFooter => $composableBuilder(
+    column: $table.receiptFooter,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get storeLogoPath => $composableBuilder(
+    column: $table.storeLogoPath,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsTableAnnotationComposer
@@ -13227,6 +13363,16 @@ class $$SettingsTableAnnotationComposer
     column: $table.bankHolder,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get receiptFooter => $composableBuilder(
+    column: $table.receiptFooter,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get storeLogoPath => $composableBuilder(
+    column: $table.storeLogoPath,
+    builder: (column) => column,
+  );
 }
 
 class $$SettingsTableTableManager
@@ -13270,6 +13416,8 @@ class $$SettingsTableTableManager
                 Value<String?> bankName = const Value.absent(),
                 Value<String?> bankAccount = const Value.absent(),
                 Value<String?> bankHolder = const Value.absent(),
+                Value<String?> receiptFooter = const Value.absent(),
+                Value<String?> storeLogoPath = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 storeName: storeName,
@@ -13284,6 +13432,8 @@ class $$SettingsTableTableManager
                 bankName: bankName,
                 bankAccount: bankAccount,
                 bankHolder: bankHolder,
+                receiptFooter: receiptFooter,
+                storeLogoPath: storeLogoPath,
               ),
           createCompanionCallback:
               ({
@@ -13300,6 +13450,8 @@ class $$SettingsTableTableManager
                 Value<String?> bankName = const Value.absent(),
                 Value<String?> bankAccount = const Value.absent(),
                 Value<String?> bankHolder = const Value.absent(),
+                Value<String?> receiptFooter = const Value.absent(),
+                Value<String?> storeLogoPath = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 storeName: storeName,
@@ -13314,6 +13466,8 @@ class $$SettingsTableTableManager
                 bankName: bankName,
                 bankAccount: bankAccount,
                 bankHolder: bankHolder,
+                receiptFooter: receiptFooter,
+                storeLogoPath: storeLogoPath,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

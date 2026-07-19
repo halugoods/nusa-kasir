@@ -13,7 +13,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.test() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -49,6 +49,10 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 9) {
         await m.createTable(categories);
+      }
+      if (from < 10) {
+        await m.addColumn(settings, settings.receiptFooter);
+        await m.addColumn(settings, settings.storeLogoPath);
       }
     },
   );

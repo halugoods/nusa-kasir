@@ -151,6 +151,8 @@ class Settings extends Table {
   TextColumn get bankName => text().nullable()();
   TextColumn get bankAccount => text().nullable()();
   TextColumn get bankHolder => text().nullable()();
+  TextColumn get receiptFooter => text().nullable()();
+  TextColumn get storeLogoPath => text().nullable()();
   @override
   Set<Column> get primaryKey => {id};
 }

@@ -49,12 +49,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           .where((t) =>
               !t.date.isBefore(DateTime(now.year, now.month, now.day)))
           .toList(),
-      '7 Hari' => all
+      'Kemarin' => all
+          .where((t) =>
+              !t.date.isBefore(DateTime(now.year, now.month, now.day - 1)) &&
+              t.date.isBefore(DateTime(now.year, now.month, now.day)))
+          .toList(),
+      'Minggu ini' => all
           .where((t) => t.date.isAfter(now.subtract(const Duration(days: 7))))
           .toList(),
-      '30 Hari' => all
+      'Bulan ini' => all
           .where((t) => t.date.isAfter(now.subtract(const Duration(days: 30))))
           .toList(),
+      'Tahun ini' => all
+          .where((t) => !t.date.isBefore(DateTime(now.year, 1, 1)))
+          .toList(),
+      'Semua' => all,
       'custom' => _dateRange == null
           ? all
           : all
@@ -211,8 +220,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   : NusaConfig.textTertiary),
           items: [
             _ddItem('Hari ini'),
-            _ddItem('7 Hari'),
-            _ddItem('30 Hari'),
+            _ddItem('Kemarin'),
+            _ddItem('Minggu ini'),
+            _ddItem('Bulan ini'),
+            _ddItem('Tahun ini'),
+            _ddItem('Semua'),
             if (_timeFilter == 'custom' && _dateRange != null)
               DropdownMenuItem(
                 value: 'custom',
@@ -337,118 +349,112 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   Widget _buildReceiptPreview(Transaction tx,
       List<Map<String, dynamic>> rawItems, String dateStr, String? custName) {
+    const mono = TextStyle(
+        fontFamily: 'monospace', fontSize: 10, height: 1.4, color: Colors.black87);
+    const monoBold = TextStyle(
+        fontFamily: 'monospace', fontSize: 10, height: 1.4,
+        fontWeight: FontWeight.bold, color: Colors.black87);
+    const monoBig = TextStyle(
+        fontFamily: 'monospace', fontSize: 13, height: 1.4,
+        fontWeight: FontWeight.bold, color: Colors.black87);
+    const monoHeader = TextStyle(
+        fontFamily: 'monospace', fontSize: 14, height: 1.3,
+        fontWeight: FontWeight.bold, color: Colors.black87);
+    const monoGrey = TextStyle(
+        fontFamily: 'monospace', fontSize: 10, height: 1.4,
+        color: Color(0xFF555555));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Center(
-            child: Text('NUSA',
-                style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold))),
-        const SizedBox(height: 2),
-        Center(
-            child: Text(tx.invoice,
-                style: const TextStyle(
-                    fontFamily: 'monospace', fontSize: 9, color: Colors.grey))),
-        const SizedBox(height: 4),
-        _rDash(),
-        const SizedBox(height: 4),
-        _rRow('Tgl', dateStr),
-        if (custName != null) _rRow('Pel', custName),
-        const SizedBox(height: 4),
-        _rDash(),
-        const SizedBox(height: 4),
-        ...rawItems.map((it) => Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${it['name']}',
-                        style: const TextStyle(
-                            fontFamily: 'monospace', fontSize: 9)),
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('${it['qty']} x ${formatRupiah(it['price'] as int)}',
-                              style: const TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontSize: 8,
-                                  color: Colors.grey)),
-                          Text(
-                              formatRupiah(
-                                  (it['qty'] as int) * (it['price'] as int)),
-                              style: const TextStyle(
-                                  fontFamily: 'monospace', fontSize: 9)),
-                        ]),
+        Center(child: Text('NUSA', style: monoHeader)),
+        if (tx.invoice.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Center(child: Text(tx.invoice, style: mono)),
+        ],
+        const SizedBox(height: 6),
+        _buildRDash(),
+        const SizedBox(height: 6),
+        _buildRRow('ID  : ', tx.invoice, mono, mono),
+        _buildRRow('Tgl : ', dateStr, mono, mono),
+        if (custName != null) _buildRRow('Pel  : ', custName, mono, mono),
+        if (tx.cashierName != null && tx.cashierName!.isNotEmpty)
+          _buildRRow('Kasir:', tx.cashierName!, mono, mono),
+        const SizedBox(height: 6),
+        _buildRDash(),
+        const SizedBox(height: 6),
+        ...rawItems.map((it) {
+          final name = '${it['name']}';
+          final qty = (it['qty'] as num).toInt();
+          final price = (it['price'] as num).toInt();
+          final subtotal = qty * price;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: mono),
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    Text('$qty x ${formatRupiah(price)}', style: monoGrey),
+                    Text(formatRupiah(subtotal), style: mono),
                   ]),
-            )),
-        const SizedBox(height: 4),
-        _rDash(),
-        const SizedBox(height: 4),
+                ]),
+          );
+        }),
+        const SizedBox(height: 6),
+        _buildRDash(),
+        const SizedBox(height: 6),
         if (tx.discount > 0)
           Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Diskon',
-                      style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 8,
-                          color: Colors.grey)),
-                  Text('-${formatRupiah(tx.discount)}',
-                      style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 8,
-                          color: Colors.grey)),
-                ]),
+            padding: const EdgeInsets.only(bottom: 3),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('Diskon/Potongan', style: monoGrey),
+              Text('-${formatRupiah(tx.discount)}', style: monoGrey),
+            ]),
           ),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('TOTAL',
-              style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold)),
-          Text(formatRupiah(tx.total),
-              style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold)),
-        ]),
-        const SizedBox(height: 2),
-        _rRow('Bayar', tx.paymentMethod),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('TOTAL', style: monoBig),
+            Text(formatRupiah(tx.total), style: monoBig),
+          ]),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('Bayar (${tx.paymentMethod})', style: monoGrey),
+            Text(formatRupiah(tx.cashGiven ?? tx.total), style: monoGrey),
+          ]),
+        ),
         if (tx.cashReturn != null && tx.cashReturn! > 0)
-          _rRow('Kembali', formatRupiah(tx.cashReturn!)),
-        const SizedBox(height: 4),
-        _rDash(),
-        const SizedBox(height: 4),
-        Center(
-            child: Text('Terima Kasih!',
-                style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold))),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('Kembali', style: monoGrey),
+              Text(formatRupiah(tx.cashReturn!), style: monoGrey),
+            ]),
+          ),
+        const SizedBox(height: 6),
+        _buildRDash(),
+        const SizedBox(height: 8),
+        Center(child: Text('Terima Kasih!', style: monoBold)),
       ],
     );
   }
 
-  Widget _rDash() => SizedBox(
+  Widget _buildRDash() => SizedBox(
         height: 2,
         child: CustomPaint(painter: _DashPainter2()),
       );
 
-  Widget _rRow(String label, String value) => Padding(
-        padding: const EdgeInsets.only(bottom: 1),
+  Widget _buildRRow(String label, String value, TextStyle mono, TextStyle monoGrey) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 2),
         child: Row(children: [
-          Text('$label : ',
-              style: const TextStyle(
-                  fontFamily: 'monospace', fontSize: 8, color: Colors.grey)),
+          Text(label, style: monoGrey),
           const Spacer(),
-          Text(value,
-              style: const TextStyle(
-                  fontFamily: 'monospace', fontSize: 8, color: Colors.grey)),
+          Flexible(child: Text(value, style: mono, textAlign: TextAlign.right)),
         ]),
       );
 
@@ -703,6 +709,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 18),
           // ── Payment segmented + time dropdown inline ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -942,90 +949,72 @@ class _TransactionCardState extends State<_TransactionCard> {
                     offset: const Offset(0, 3))
               ],
             ),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Left accent bar ──
-                  Container(
-                    width: 4,
-                    decoration: BoxDecoration(
-                      color: accent,
-                      borderRadius: BorderRadius.horizontal(
-                          left: Radius.circular(NusaConfig.radiusLG)),
-                    ),
-                  ),
-                  // ── Content ──
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ── Header ──
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(children: [
-                                      Text(tx.invoice,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                            decoration: isVoided
-                                                ? TextDecoration.lineThrough
-                                                : null,
-                                            color: isDark
-                                                ? NusaConfig.darkTextPrimary
-                                                : NusaConfig.textPrimary,
-                                          )),
-                                      if (isVoided) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: NusaConfig.primaryColor
-                                                .withValues(alpha: 0.12),
-                                            borderRadius:
-                                                BorderRadius.circular(6),
-                                          ),
-                                          child: const Text('VOID',
-                                              style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w800,
-                                                  color:
-                                                      NusaConfig.primaryColor)),
-                                        ),
-                                      ],
-                                    ]),
-                                    const SizedBox(height: 4),
-                                    Row(children: [
-                                      Icon(_payIcon(),
-                                          size: 14,
-                                          color: isVoided
-                                              ? NusaConfig.textTertiary
-                                              : accent),
-                                      const SizedBox(width: 4),
-                                      Text('$relDate • ${tx.paymentMethod}',
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: isVoided
-                                                ? NusaConfig.textTertiary
-                                                : (isDark
-                                                    ? NusaConfig
-                                                        .darkTextTertiary
-                                                    : NusaConfig.textTertiary),
-                                          )),
-                                    ]),
-                                  ],
+                  // ── Header ──
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(children: [
+                              Text(tx.invoice,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    decoration: isVoided
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    color: isDark
+                                        ? NusaConfig.darkTextPrimary
+                                        : NusaConfig.textPrimary,
+                                  )),
+                              if (isVoided) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: NusaConfig.primaryColor
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text('VOID',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          color: NusaConfig.primaryColor)),
                                 ),
-                              ),
-                              Column(
+                              ],
+                            ]),
+                            const SizedBox(height: 4),
+                            Row(children: [
+                              Icon(_payIcon(),
+                                  size: 14,
+                                  color: isVoided
+                                      ? NusaConfig.textTertiary
+                                      : accent),
+                              const SizedBox(width: 4),
+                              Text('$relDate • ${tx.paymentMethod}',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: isVoided
+                                        ? NusaConfig.textTertiary
+                                        : (isDark
+                                            ? NusaConfig.darkTextTertiary
+                                            : NusaConfig.textTertiary),
+                                  )),
+                            ]),
+                          ],
+                        ),
+                      ),
+                      Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(formatRupiah(tx.total),
@@ -1148,11 +1137,7 @@ class _TransactionCardState extends State<_TransactionCard> {
                                 ),
                               ),
                             ],
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
+                  ],
                 ],
               ),
             ),

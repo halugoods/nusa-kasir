@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
@@ -163,6 +167,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                               SizedBox(height: 4),
                               Text('Atur QRIS & rekening bank untuk transfer',
+                                  style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Pengaturan Struk
+              NusaCard(
+                InkWell(
+                  onTap: () => _showReceiptSettings(),
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Icon(Icons.receipt_long, color: Color(0xFF10B981)),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Pengaturan Struk',
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                              SizedBox(height: 4),
+                              Text('Atur footer struk & upload logo toko',
                                   style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
                             ],
                           ),
@@ -902,6 +936,142 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ── Pengaturan Struk ──
+
+  Future<void> _showReceiptSettings() async {
+    final repo = ref.read(settingsRepoProvider);
+    final currentFooter = await repo.getReceiptFooter() ?? '';
+    final currentLogo = await repo.getStoreLogoPath();
+    final footerCtrl = TextEditingController(text: currentFooter);
+
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) {
+          String? logoPath = currentLogo;
+          return Container(
+            decoration: BoxDecoration(
+              color: Theme.of(ctx).brightness == Brightness.dark
+                  ? NusaConfig.darkSurface
+                  : NusaConfig.surfaceColor,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: EdgeInsets.only(
+              left: 24, right: 24, top: 16,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 40,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: NusaConfig.dividerColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text('Pengaturan Struk',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    )),
+                const SizedBox(height: 20),
+                // Logo toko
+                const Text('Logo Toko',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const SizedBox(height: 8),
+                if (logoPath != null && logoPath.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(File(logoPath),
+                          height: 80, fit: BoxFit.contain),
+                    ),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final result = await FilePicker.pickFiles(
+                      type: FileType.image,
+                    );
+                    if (result != null && result.files.single.path != null) {
+                      final path = result.files.single.path!;
+                      await repo.setStoreLogoPath(path);
+                      setSt(() => logoPath = path);
+                    }
+                  },
+                  icon: const Icon(Icons.image_outlined, size: 18),
+                  label: Text(logoPath != null && logoPath!.isNotEmpty
+                      ? 'Ganti Logo'
+                      : 'Pilih Logo'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: NusaConfig.primaryColor,
+                    side: BorderSide(color: NusaConfig.primaryColor),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+                if (logoPath != null && logoPath!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  TextButton(
+                    onPressed: () async {
+                      await repo.setStoreLogoPath('');
+                      setSt(() => logoPath = null);
+                    },
+                    child: const Text('Hapus Logo',
+                        style: TextStyle(color: NusaConfig.primaryColor)),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                // Footer teks
+                const Text('Footer Struk',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).brightness == Brightness.dark
+                        ? NusaConfig.darkInputFill
+                        : NusaConfig.inputFill,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(ctx).brightness == Brightness.dark
+                          ? NusaConfig.darkInputBorder
+                          : NusaConfig.inputBorder,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: footerCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      hintText: 'Terima kasih, ditunggu pesanan selanjutnya!',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.all(14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                NusaButton('Simpan', onPressed: () async {
+                  await repo.setReceiptFooter(footerCtrl.text.trim());
+                  if (mounted) Navigator.pop(ctx);
+                }),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

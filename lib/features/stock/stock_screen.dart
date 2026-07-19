@@ -75,12 +75,16 @@ class _StockScreenState extends ConsumerState<StockScreen> {
       final now = DateTime.now();
       final start = _timeFilter == 'Hari ini'
           ? DateTime(now.year, now.month, now.day)
-          : _timeFilter == '7 Hari'
-              ? now.subtract(const Duration(days: 7))
-              : _timeFilter == '30 Hari'
-                  ? now.subtract(const Duration(days: 30))
-                  : DateTime(2000);
-      list = list.where((m) => m.date.isAfter(start)).toList();
+          : _timeFilter == 'Kemarin'
+              ? DateTime(now.year, now.month, now.day - 1)
+              : _timeFilter == 'Minggu ini'
+                  ? now.subtract(const Duration(days: 7))
+                  : _timeFilter == 'Bulan ini'
+                      ? now.subtract(const Duration(days: 30))
+                      : _timeFilter == 'Tahun ini'
+                          ? DateTime(now.year, 1, 1)
+                          : DateTime(2000);
+      list = list.where((m) => _timeFilter == 'Semua' || m.date.isAfter(start)).toList();
     }
     return list;
   }
@@ -367,8 +371,11 @@ class _StockScreenState extends ConsumerState<StockScreen> {
                   : NusaConfig.textTertiary),
           items: [
             _ddItem('Hari ini'),
-            _ddItem('7 Hari'),
-            _ddItem('30 Hari'),
+            _ddItem('Kemarin'),
+            _ddItem('Minggu ini'),
+            _ddItem('Bulan ini'),
+            _ddItem('Tahun ini'),
+            _ddItem('Semua'),
             if (_timeFilter == 'custom' && _dateRange != null)
               DropdownMenuItem(
                 value: 'custom',
