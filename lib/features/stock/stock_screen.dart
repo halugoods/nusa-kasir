@@ -27,8 +27,9 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   List<Product> _products = [];
   List<StockMovement> _movements = [];
   bool _loading = true;
-  String _typeFilter = 'all'; // all | in | out
-  String _timeFilter = 'all'; // all | today | 7d | 30d
+  String _typeFilter = 'Semua'; // Semua | Masuk | Keluar
+  String _timeFilter = 'Semua'; // Semua | Hari ini | 7 Hari | 30 Hari | custom
+  DateTime? _customDate;
 
   @override
   void initState() {
@@ -59,17 +60,28 @@ class _StockScreenState extends ConsumerState<StockScreen> {
 
   List<StockMovement> get _filteredMovements {
     var list = _movements;
-    if (_typeFilter != 'all') {
-      list = list.where((m) => m.type == _typeFilter).toList();
+    if (_typeFilter != 'Semua') {
+      final t = _typeFilter == 'Masuk' ? 'in' : 'out';
+      list = list.where((m) => m.type == t).toList();
     }
-    if (_timeFilter != 'all') {
-      final now = DateTime.now();
-      final start = _timeFilter == 'today'
-          ? DateTime(now.year, now.month, now.day)
-          : _timeFilter == '7d'
-              ? now.subtract(const Duration(days: 7))
-              : now.subtract(const Duration(days: 30));
-      list = list.where((m) => m.date.isAfter(start)).toList();
+    if (_timeFilter != 'Semua') {
+      if (_timeFilter == 'custom' && _customDate != null) {
+        final d = _customDate!;
+        list = list
+            .where((m) =>
+                m.date.year == d.year &&
+                m.date.month == d.month &&
+                m.date.day == d.day)
+            .toList();
+      } else {
+        final now = DateTime.now();
+        final start = _timeFilter == 'Hari ini'
+            ? DateTime(now.year, now.month, now.day)
+            : _timeFilter == '7 Hari'
+                ? now.subtract(const Duration(days: 7))
+                : now.subtract(const Duration(days: 30));
+        list = list.where((m) => m.date.isAfter(start)).toList();
+      }
     }
     return list;
   }
@@ -265,52 +277,68 @@ class _StockScreenState extends ConsumerState<StockScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            _FilterChip(
-                label: 'Semua',
-                active: _typeFilter == 'all',
-                onTap: () => setState(() => _typeFilter = 'all')),
-            _FilterChip(
-                label: 'Masuk',
-                active: _typeFilter == 'in',
-                activeColor: NusaConfig.accentGreen,
-                onTap: () => setState(() => _typeFilter = 'in')),
-            _FilterChip(
-                label: 'Keluar',
-                active: _typeFilter == 'out',
-                activeColor: NusaConfig.primaryColor,
-                onTap: () => setState(() => _typeFilter = 'out')),
-          ],
+        _Segmented(
+          options: const ['Semua', 'Masuk', 'Keluar'],
+          selected: _typeFilter,
+          onSelect: (v) => setState(() => _typeFilter = v),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            _FilterChip(
-                label: 'Semua',
-                active: _timeFilter == 'all',
-                onTap: () => setState(() => _timeFilter = 'all')),
-            _FilterChip(
-                label: 'Hari ini',
-                active: _timeFilter == 'today',
-                onTap: () => setState(() => _timeFilter = 'today')),
-            _FilterChip(
-                label: '7 Hari',
-                active: _timeFilter == '7d',
-                onTap: () => setState(() => _timeFilter = '7d')),
-            _FilterChip(
-                label: '30 Hari',
-                active: _timeFilter == '30d',
-                onTap: () => setState(() => _timeFilter = '30d')),
-          ],
+        _Segmented(
+          options: _timeOptions,
+          selected: _selectedTimeLabel,
+          onSelect: _onTimeSelect,
         ),
       ],
     );
   }
+
+  List<String> get _timeOptions => [
+        'Semua',
+        'Hari ini',
+        '7 Hari',
+        '30 Hari',
+        if (_timeFilter == 'custom' && _customDate != null)
+          _fmtDate(_customDate!)
+        else
+          'Pilih Tanggal',
+      ];
+
+  String get _selectedTimeLabel =>
+      (_timeFilter == 'custom' && _customDate != null)
+          ? _fmtDate(_customDate!)
+          : _timeFilter;
+
+  void _onTimeSelect(String v) {
+    if (_timeFilter == 'custom' && v == _fmtDate(_customDate!)) {
+      _pickDate();
+      return;
+    }
+    if (v == 'Pilih Tanggal') {
+      _pickDate();
+      return;
+    }
+    setState(() {
+      _timeFilter = v;
+      _customDate = null;
+    });
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _customDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _timeFilter = 'custom';
+        _customDate = picked;
+      });
+    }
+  }
+
+  static String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 }
 
 // ═══════════════════════════════════════════
@@ -502,52 +530,63 @@ class _SectionHeader extends StatelessWidget {
 //  Filter chip
 // ═══════════════════════════════════════════
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool active;
-  final Color activeColor;
-  final VoidCallback onTap;
-
-  const _FilterChip({
-    required this.label,
-    required this.active,
-    this.activeColor = NusaConfig.primaryColor,
-    required this.onTap,
+class _Segmented extends StatelessWidget {
+  final List<String> options;
+  final String selected;
+  final ValueChanged<String> onSelect;
+  final double height;
+  const _Segmented({
+    required this.options,
+    required this.selected,
+    required this.onSelect,
+    this.height = 36,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: active
-              ? activeColor
-              : (isDark
-                  ? NusaConfig.darkSurface2
-                  : NusaConfig.inputFill),
-          borderRadius: BorderRadius.circular(NusaConfig.radiusFull),
-          border: active
-              ? null
-              : Border.all(
-                  color: isDark
-                      ? NusaConfig.darkBorder
-                      : NusaConfig.dividerColor),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: active
-                ? Colors.white
-                : (isDark
-                    ? NusaConfig.darkTextSecondary
-                    : NusaConfig.textSecondary),
-          ),
-        ),
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: options.length,
+        separatorBuilder: (_, __) => const SizedBox.shrink(),
+        itemBuilder: (_, i) {
+          final opt = options[i];
+          final active = opt == selected;
+          return GestureDetector(
+            onTap: () => onSelect(opt),
+            child: Container(
+              height: height,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: active ? NusaConfig.primaryColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                opt,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: active
+                      ? Colors.white
+                      : (isDark
+                          ? NusaConfig.darkTextSecondary
+                          : NusaConfig.textSecondary),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -22,13 +22,13 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 }
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
-  String _timeFilter = 'Hari Ini';
+  String _timeFilter = 'Semua';
   String _payFilter = 'Semua';
+  DateTime? _customDate;
   int _refreshKey = 0;
   final _searchCtrl = TextEditingController();
   String _searchQuery = '';
 
-  static const _timeChips = ['Hari Ini', 'Minggu Ini', 'Bulan Ini', 'Semua'];
   static const _payChips = ['Semua', 'Tunai', 'QRIS', 'Transfer'];
 
   @override
@@ -39,13 +39,25 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   List<Transaction> _filter(List<Transaction> all) {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final weekAgo = now.subtract(const Duration(days: 7));
-    final monthStart = DateTime(now.year, now.month, 1);
     var filtered = switch (_timeFilter) {
-      'Hari Ini' => all.where((t) => !t.date.isBefore(today)).toList(),
-      'Minggu Ini' => all.where((t) => t.date.isAfter(weekAgo)).toList(),
-      'Bulan Ini' => all.where((t) => !t.date.isBefore(monthStart)).toList(),
+      'Hari ini' => all
+          .where((t) =>
+              !t.date.isBefore(DateTime(now.year, now.month, now.day)))
+          .toList(),
+      '7 Hari' => all
+          .where((t) => t.date.isAfter(now.subtract(const Duration(days: 7))))
+          .toList(),
+      '30 Hari' => all
+          .where((t) => t.date.isAfter(now.subtract(const Duration(days: 30))))
+          .toList(),
+      'custom' => _customDate == null
+          ? all
+          : all
+              .where((t) =>
+                  t.date.year == _customDate!.year &&
+                  t.date.month == _customDate!.month &&
+                  t.date.day == _customDate!.day)
+              .toList(),
       _ => all,
     };
     if (_payFilter != 'Semua') {
@@ -58,6 +70,54 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
     return filtered;
   }
+
+  List<String> get _timeOptions => [
+        'Semua',
+        'Hari ini',
+        '7 Hari',
+        '30 Hari',
+        if (_timeFilter == 'custom' && _customDate != null)
+          _fmtDate(_customDate!)
+        else
+          'Pilih Tanggal',
+      ];
+
+  String get _selectedTimeLabel =>
+      (_timeFilter == 'custom' && _customDate != null)
+          ? _fmtDate(_customDate!)
+          : _timeFilter;
+
+  void _onTimeSelect(String v) {
+    if (_timeFilter == 'custom' && v == _fmtDate(_customDate!)) {
+      _pickDate();
+      return;
+    }
+    if (v == 'Pilih Tanggal') {
+      _pickDate();
+      return;
+    }
+    setState(() {
+      _timeFilter = v;
+      _customDate = null;
+    });
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _customDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _timeFilter = 'custom';
+        _customDate = picked;
+      });
+    }
+  }
+
+  static String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
   Future<void> _voidTransaction(Transaction tx) async {
     final reasonCtrl = TextEditingController();
@@ -172,7 +232,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        height: 36,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: active
               ? activeColor
@@ -185,6 +247,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         ),
         child: Text(
           label,
+          textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -195,6 +258,58 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     : NusaConfig.textSecondary),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _segmented({
+    required List<String> options,
+    required String selected,
+    required ValueChanged<String> onSelect,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: options.length,
+        separatorBuilder: (_, __) => const SizedBox.shrink(),
+        itemBuilder: (_, i) {
+          final opt = options[i];
+          final active = opt == selected;
+          return GestureDetector(
+            onTap: () => onSelect(opt),
+            child: Container(
+              height: 36,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: active ? NusaConfig.primaryColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                opt,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: active
+                      ? Colors.white
+                      : (isDark
+                          ? NusaConfig.darkTextSecondary
+                          : NusaConfig.textSecondary),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -256,18 +371,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           ),
           const SizedBox(height: 10),
           // ── Time filter ──
-          SizedBox(
-            height: 36,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _timeChips.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) => _pillChip(
-                _timeChips[i],
-                _timeFilter == _timeChips[i],
-                onTap: () => setState(() => _timeFilter = _timeChips[i]),
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _segmented(
+              options: _timeOptions,
+              selected: _selectedTimeLabel,
+              onSelect: _onTimeSelect,
             ),
           ),
           const SizedBox(height: 8),
