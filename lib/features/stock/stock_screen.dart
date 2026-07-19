@@ -27,7 +27,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   List<Product> _products = [];
   List<StockMovement> _movements = [];
   bool _loading = true;
-  String _typeFilter = ''; // ''=all | 'in' | 'out'
+  String _typeFilter = 'in'; // ''=all | 'in' | 'out'
   String _timeFilter = 'Hari ini';
   DateTimeRange? _dateRange;
 

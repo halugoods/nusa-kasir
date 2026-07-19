@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
@@ -314,133 +315,329 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
-  // ── Share / bagikan ──
+  // ── Share / bagikan dengan preview gambar ──
 
-  Future<void> _showShareSheet(Transaction tx, String? custName, String? custPhone) async {
+  Future<File?> _captureReceipt(GlobalKey key, Transaction tx) async {
+    try {
+      final boundary =
+          key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      final image = await boundary.toImage(pixelRatio: 3);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return null;
+      final dir = await getTemporaryDirectory();
+      final file = File(
+          '${dir.path}/struk_${tx.invoice.replaceAll('/', '_')}.png');
+      await file.writeAsBytes(byteData.buffer.asUint8List());
+      return file;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _buildReceiptPreview(Transaction tx,
+      List<Map<String, dynamic>> rawItems, String dateStr, String? custName) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+            child: Text('NUSA',
+                style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold))),
+        const SizedBox(height: 2),
+        Center(
+            child: Text(tx.invoice,
+                style: const TextStyle(
+                    fontFamily: 'monospace', fontSize: 9, color: Colors.grey))),
+        const SizedBox(height: 4),
+        _rDash(),
+        const SizedBox(height: 4),
+        _rRow('Tgl', dateStr),
+        if (custName != null) _rRow('Pel', custName),
+        const SizedBox(height: 4),
+        _rDash(),
+        const SizedBox(height: 4),
+        ...rawItems.map((it) => Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${it['name']}',
+                        style: const TextStyle(
+                            fontFamily: 'monospace', fontSize: 9)),
+                    Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('${it['qty']} x ${formatRupiah(it['price'] as int)}',
+                              style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 8,
+                                  color: Colors.grey)),
+                          Text(
+                              formatRupiah(
+                                  (it['qty'] as int) * (it['price'] as int)),
+                              style: const TextStyle(
+                                  fontFamily: 'monospace', fontSize: 9)),
+                        ]),
+                  ]),
+            )),
+        const SizedBox(height: 4),
+        _rDash(),
+        const SizedBox(height: 4),
+        if (tx.discount > 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Diskon',
+                      style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 8,
+                          color: Colors.grey)),
+                  Text('-${formatRupiah(tx.discount)}',
+                      style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 8,
+                          color: Colors.grey)),
+                ]),
+          ),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('TOTAL',
+              style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold)),
+          Text(formatRupiah(tx.total),
+              style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold)),
+        ]),
+        const SizedBox(height: 2),
+        _rRow('Bayar', tx.paymentMethod),
+        if (tx.cashReturn != null && tx.cashReturn! > 0)
+          _rRow('Kembali', formatRupiah(tx.cashReturn!)),
+        const SizedBox(height: 4),
+        _rDash(),
+        const SizedBox(height: 4),
+        Center(
+            child: Text('Terima Kasih!',
+                style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold))),
+      ],
+    );
+  }
+
+  Widget _rDash() => SizedBox(
+        height: 2,
+        child: CustomPaint(painter: _DashPainter2()),
+      );
+
+  Widget _rRow(String label, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: 1),
+        child: Row(children: [
+          Text('$label : ',
+              style: const TextStyle(
+                  fontFamily: 'monospace', fontSize: 8, color: Colors.grey)),
+          const Spacer(),
+          Text(value,
+              style: const TextStyle(
+                  fontFamily: 'monospace', fontSize: 8, color: Colors.grey)),
+        ]),
+      );
+
+  Future<void> _showShareSheet(
+      Transaction tx, String? custName, String? custPhone) async {
     final rawItems = _parseItems(tx.items);
     final dateStr =
         '${tx.date.day.toString().padLeft(2, '0')}/${tx.date.month.toString().padLeft(2, '0')}/${tx.date.year} '
         '${tx.date.hour.toString().padLeft(2, '0')}:${tx.date.minute.toString().padLeft(2, '0')}';
 
-    // Build text receipt for share
-    final buf = StringBuffer();
-    buf.writeln('NUSA');
-    buf.writeln('Aplikasi Kasir untuk Toko Kelontong');
-    buf.writeln('═══════════════════════════════════');
-    buf.writeln('Invoice: ${tx.invoice}');
-    buf.writeln('Tanggal: $dateStr');
-    if (custName != null) buf.writeln('Pelanggan: $custName');
-    buf.writeln('═══════════════════════════════════');
-    for (final it in rawItems) {
-      buf.writeln('  ${it['name']} x${it['qty']}  ${formatRupiah((it['qty'] as int) * (it['price'] as int))}');
-    }
-    buf.writeln('═══════════════════════════════════');
-    buf.writeln('Subtotal: ${formatRupiah(tx.total + tx.discount)}');
-    if (tx.discount > 0) buf.writeln('Diskon: -${formatRupiah(tx.discount)}');
-    buf.writeln('TOTAL: ${formatRupiah(tx.total)}');
-    buf.writeln('Bayar: ${tx.cashGiven != null ? formatRupiah(tx.cashGiven!) : tx.paymentMethod}');
-    if (tx.cashReturn != null) buf.writeln('Kembali: ${formatRupiah(tx.cashReturn!)}');
-    buf.writeln('═══════════════════════════════════');
-    buf.writeln('Terima kasih!');
-
-    final text = buf.toString();
+    final receiptKey = GlobalKey();
+    bool capturing = false;
 
     if (!mounted) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(ctx).brightness == Brightness.dark
-              ? NusaConfig.darkSurface
-              : NusaConfig.surfaceColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: NusaConfig.dividerColor,
-                borderRadius: BorderRadius.circular(2),
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).brightness == Brightness.dark
+                ? NusaConfig.darkSurface
+                : NusaConfig.surfaceColor,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: NusaConfig.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text('Bagikan Struk ${tx.invoice}',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                )),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      if (custPhone != null && custPhone.isNotEmpty) {
-                        final digits = custPhone.replaceAll(RegExp(r'\D'), '');
-                        final normalized = digits.startsWith('0')
-                            ? '62${digits.substring(1)}'
-                            : digits.startsWith('62') ? digits : '62$digits';
-                        final waUrl = 'https://wa.me/$normalized?text=${Uri.encodeComponent(text)}';
-                        launchUrl(Uri.parse(waUrl));
-                      } else {
-                        SharePlus.instance.share(ShareParams(text: text));
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF25D366).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(children: [
-                        Icon(Icons.chat_rounded, size: 32, color: const Color(0xFF25D366)),
-                        const SizedBox(height: 8),
-                        Text( custPhone != null && custPhone.isNotEmpty ? 'Kirim WA' : 'Share',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13, fontWeight: FontWeight.w700,
-                              color: const Color(0xFF25D366))),
-                        if (custPhone != null && custPhone.isNotEmpty)
-                          Text(custPhone,
-                              style: TextStyle(fontSize: 10, color: Colors.grey)),
-                      ]),
-                    ),
+              const SizedBox(height: 12),
+              Text('Bagikan Struk ${tx.invoice}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  )),
+              const SizedBox(height: 16),
+              // ── Receipt preview image ──
+              RepaintBoundary(
+                key: receiptKey,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
                   ),
+                  child: _buildReceiptPreview(
+                      tx, rawItems, dateStr, custName),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      SharePlus.instance.share(ShareParams(text: text));
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: NusaConfig.primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
+              ),
+              const SizedBox(height: 20),
+              if (capturing)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 3)),
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () async {
+                          setSt(() => capturing = true);
+                          final file =
+                              await _captureReceipt(receiptKey, tx);
+                          setSt(() => capturing = false);
+                          if (file != null && mounted) {
+                            Navigator.pop(ctx);
+                            // Kirim via WA — share file image
+                            if (custPhone != null &&
+                                custPhone.isNotEmpty) {
+                              // Direct WA with text (image not supported via wa.me)
+                              final wabuf = StringBuffer();
+                              wabuf.writeln(
+                                  '*STRUK ${tx.invoice}*');
+                              wabuf.writeln(
+                                  '--------------------------------');
+                              wabuf.writeln(
+                                  'Total: ${formatRupiah(tx.total)}');
+                              wabuf.writeln(
+                                  'Bayar: ${tx.paymentMethod}');
+                              wabuf.writeln(
+                                  '--------------------------------');
+                              wabuf.writeln(
+                                  'Terima kasih!');
+                              final digits = custPhone
+                                  .replaceAll(RegExp(r'\D'), '');
+                              final normalized = digits.startsWith('0')
+                                  ? '62${digits.substring(1)}'
+                                  : digits.startsWith('62')
+                                      ? digits
+                                      : '62$digits';
+                              final waUrl =
+                                  'https://wa.me/$normalized?text=${Uri.encodeComponent(wabuf.toString())}';
+                              launchUrl(Uri.parse(waUrl));
+                            } else {
+                              SharePlus.instance.share(ShareParams(
+                                  files: [XFile(file.path)]));
+                            }
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF25D366)
+                                .withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(children: [
+                            const Icon(Icons.chat_rounded,
+                                size: 32, color: Color(0xFF25D366)),
+                            const SizedBox(height: 8),
+                            Text(
+                                custPhone != null &&
+                                        custPhone.isNotEmpty
+                                    ? 'Kirim WA'
+                                    : 'Share',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF25D366),
+                                )),
+                            if (custPhone != null &&
+                                custPhone.isNotEmpty)
+                              Text(custPhone,
+                                  style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey)),
+                          ]),
+                        ),
                       ),
-                      child: Column(children: [
-                        Icon(Icons.download_rounded, size: 32, color: NusaConfig.primaryColor),
-                        const SizedBox(height: 8),
-                        Text('Unduh Struk',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13, fontWeight: FontWeight.w700,
-                              color: NusaConfig.primaryColor)),
-                        Text('Teks',
-                            style: TextStyle(fontSize: 10, color: NusaConfig.textTertiary)),
-                      ]),
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () async {
+                          setSt(() => capturing = true);
+                          final file =
+                              await _captureReceipt(receiptKey, tx);
+                          setSt(() => capturing = false);
+                          if (file != null && mounted) {
+                            Navigator.pop(ctx);
+                            SharePlus.instance.share(ShareParams(
+                                files: [XFile(file.path)]));
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: NusaConfig.primaryColor
+                                .withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(children: [
+                            Icon(Icons.download_rounded,
+                                size: 32,
+                                color: NusaConfig.primaryColor),
+                            const SizedBox(height: 8),
+                            Text('Unduh Struk',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: NusaConfig.primaryColor,
+                                )),
+                            Text('Gambar',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    color:
+                                        NusaConfig.textTertiary)),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -506,16 +703,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
             ),
           ),
-          // ── Time dropdown ──
+          // ── Payment segmented + time dropdown inline ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _timeDropdown(isDark),
-          ),
-          const SizedBox(height: 8),
-          // ── Payment segmented switch ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _paymentSegmented(isDark),
+            child: Row(
+              children: [
+                Expanded(child: _paymentSegmented(isDark)),
+                const SizedBox(width: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 150),
+                  child: _timeDropdown(isDark),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           Expanded(
@@ -991,4 +1191,24 @@ List<Map<String, dynamic>> _parseItems(String json) {
     // ignore malformed items
   }
   return [];
+}
+
+class _DashPainter2 extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.grey.shade300
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    const dashW = 3.0;
+    const gapW = 2.0;
+    double x = 0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 0), Offset((x + dashW).clamp(0, size.width), 0), paint);
+      x += dashW + gapW;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

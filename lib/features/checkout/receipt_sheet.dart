@@ -240,28 +240,23 @@ class ReceiptSheet extends ConsumerWidget {
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      // Cetak + Kirim WA side by side
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _actionBtn(
-                              icon: Icons.print,
-                              label: 'Cetak Printer',
-                              color: const Color(0xFF3B82F6),
-                              onTap: () => _printReceipt(context, ref, storeName),
-                            ),
+                      // Cetak Printer — full width
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _printReceipt(context, ref, storeName),
+                          icon: const Icon(Icons.print, size: 18),
+                          label: const Text('Cetak Printer',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF3B82F6),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                            elevation: 0,
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _actionBtn(
-                              icon: Icons.chat,
-                              label: 'Kirim WA',
-                              color: const Color(0xFF25D366),
-                              onTap: () => _sendWhatsApp(context, storeName),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
