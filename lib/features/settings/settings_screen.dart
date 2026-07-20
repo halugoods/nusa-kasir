@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -125,7 +125,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 InkWell(
                   onTap: () => context.push('/toko_online_setup'),
                   borderRadius: BorderRadius.circular(20),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(14),
                     child: Row(
                       children: [
@@ -139,11 +139,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                               SizedBox(height: 4),
                               Text('Aktifkan & atur toko online (Vercel)',
-                                  style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+                                  style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                             ],
                           ),
                         ),
-                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                        Icon(Icons.chevron_right, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                       ],
                     ),
                   ),
@@ -155,7 +155,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 InkWell(
                   onTap: () => context.push('/pengaturan_pembayaran'),
                   borderRadius: BorderRadius.circular(20),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(14),
                     child: Row(
                       children: [
@@ -169,11 +169,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                               SizedBox(height: 4),
                               Text('Atur QRIS & rekening bank untuk transfer',
-                                  style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+                                  style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                             ],
                           ),
                         ),
-                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                        Icon(Icons.chevron_right, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                       ],
                     ),
                   ),
@@ -185,7 +185,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 InkWell(
                   onTap: () => _showReceiptSettings(),
                   borderRadius: BorderRadius.circular(20),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(14),
                     child: Row(
                       children: [
@@ -199,11 +199,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                               SizedBox(height: 4),
                               Text('Atur footer struk & upload logo toko',
-                                  style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+                                  style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                             ],
                           ),
                         ),
-                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                        Icon(Icons.chevron_right, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                       ],
                     ),
                   ),
@@ -239,9 +239,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   );
                                 }
                               : null,
-                          child: const Padding(
+                          child: Padding(
                             padding: EdgeInsets.all(4),
-                            child: Icon(Icons.copy, size: 16, color: NusaConfig.textSecondary),
+                            child: Icon(Icons.copy, size: 16, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                           ),
                         ),
                       ],
@@ -280,11 +280,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        _themeChip('Terang', 'light', Icons.light_mode),
+                        _themeChip('Terang', 'light', Icons.light_mode, isDark),
                         const SizedBox(width: 8),
-                        _themeChip('Gelap', 'dark', Icons.dark_mode),
+                        _themeChip('Gelap', 'dark', Icons.dark_mode, isDark),
                         const SizedBox(width: 8),
-                        _themeChip('Sistem', 'system', Icons.phone_android),
+                        _themeChip('Sistem', 'system', Icons.phone_android, isDark),
                       ],
                     ),
                   ],
@@ -306,7 +306,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     },
                   ),
                   borderRadius: BorderRadius.circular(20),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(14),
                     child: Row(
                       children: [
@@ -324,7 +324,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         ),
                         Icon(Icons.chevron_right,
-                            color: Color(0xFF6B7280)),
+                            color: isDark ? NusaConfig.darkTextSecondary : const Color(0xFF6B7280)),
                       ],
                     ),
                   ),
@@ -369,8 +369,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                     : _checkingUpdate
                                         ? 'Memeriksa...'
                                         : 'v${NusaConfig.appVersion}+${NusaConfig.appBuildNumber}',
-                                style: const TextStyle(
-                                    fontSize: 13, color: NusaConfig.textSecondary),
+                                style: TextStyle(
+                                    fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                               ),
                             ],
                           ),
@@ -386,7 +386,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             _updateInfo?.hasUpdate == true
                                 ? Icons.download
                                 : Icons.refresh,
-                            color: NusaConfig.textSecondary,
+                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                           ),
                       ],
                     ),
@@ -400,7 +400,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 InkWell(
                   onTap: () => _showManageRoles(),
                   borderRadius: BorderRadius.circular(20),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(14),
                     child: Row(
                       children: [
@@ -416,11 +416,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               SizedBox(height: 4),
                               Text('Tambah, edit, atau hapus role karyawan',
                                   style: TextStyle(
-                                      fontSize: 13, color: NusaConfig.textSecondary)),
+                                      fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                             ],
                           ),
                         ),
-                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                        Icon(Icons.chevron_right, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                       ],
                     ),
                   ),
@@ -431,7 +431,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 InkWell(
                   onTap: () => showBackupSheet(context, ref),
                   borderRadius: BorderRadius.circular(20),
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(14),
                     child: Row(
                       children: [
@@ -447,11 +447,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               SizedBox(height: 4),
                               Text('Simpan atau muat file database',
                                   style: TextStyle(
-                                      fontSize: 13, color: NusaConfig.textSecondary)),
+                                      fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                             ],
                           ),
                         ),
-                        Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                        Icon(Icons.chevron_right, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                       ],
                     ),
                   ),
@@ -469,7 +469,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Row(
                         children: [
                           Icon(Icons.info_outline,
-                              size: 20, color: NusaConfig.textSecondary),
+                              size: 20, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -482,9 +482,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                     'Versi ${NusaConfig.appVersion} (build ${NusaConfig.appBuildNumber})',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 13,
-                                        color: NusaConfig.textSecondary)),
+                                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                               ],
                             ),
                           ),
@@ -493,15 +493,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const SizedBox(height: 12),
                       const Divider(),
                       const SizedBox(height: 12),
-                      const Row(
+                      Row(
                         children: [
                           Icon(Icons.person_outline,
-                              size: 18, color: NusaConfig.textSecondary),
+                              size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                           SizedBox(width: 10),
                           Text('Dibuat oleh Halu Goods',
                               style: TextStyle(
                                   fontSize: 14,
-                                  color: NusaConfig.textSecondary)),
+                                  color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -577,7 +577,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Aplikasi sudah versi terbaru ✨'),
+            content: const Text('Aplikasi sudah versi terbaru âœ¨'),
             backgroundColor: Colors.green.shade700,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -629,7 +629,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   fontSize: 13,
                   color: isDark
                       ? NusaConfig.darkTextSecondary
-                      : NusaConfig.textSecondary),
+                      : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
             ),
             if (info.fileSizeBytes != null && info.fileSizeBytes! > 0) ...[
               const SizedBox(height: 4),
@@ -639,7 +639,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     fontSize: 13,
                     color: isDark
                         ? NusaConfig.darkTextSecondary
-                        : NusaConfig.textSecondary),
+                        : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
               ),
             ],
             if (info.changelog != null && info.changelog!.isNotEmpty) ...[
@@ -659,7 +659,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     fontSize: 13,
                     color: isDark
                         ? NusaConfig.darkTextPrimary
-                        : NusaConfig.textPrimary,
+                        : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                     height: 1.5,
                   ),
                 ),
@@ -673,7 +673,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   fontSize: 12,
                   color: isDark
                       ? NusaConfig.darkTextTertiary
-                      : NusaConfig.textTertiary,
+                      : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
                   height: 1.4,
                 ),
               ),
@@ -715,7 +715,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  // ── Kelola Role / Jabatan ─────────────────────────────────
+  // â”€â”€ Kelola Role / Jabatan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _showManageRoles() async {
     final roleRepo = RoleRepository();
@@ -773,9 +773,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   await _showRoleForm(roleRepo, existing: r);
                                   if (mounted) _showManageRoles();
                                 },
-                                child: const Padding(
+                                child: Padding(
                                   padding: EdgeInsets.all(8),
-                                  child: Icon(Icons.edit, size: 18, color: NusaConfig.textSecondary),
+                                  child: Icon(Icons.edit, size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                                 ),
                               ),
                             if (!isDefault)
@@ -944,7 +944,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  // ── Pengaturan Struk ──
+  // â”€â”€ Pengaturan Struk â”€â”€
 
   Future<void> _showReceiptSettings() async {
     final repo = ref.read(settingsRepoProvider);
@@ -1072,9 +1072,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     controller: footerCtrl,
                     maxLines: 3,
                     style: TextStyle(
-                      color: setDark
-                          ? NusaConfig.darkTextPrimary
-                          : NusaConfig.textPrimary,
+                    color: setDark
+                        ? NusaConfig.darkTextPrimary
+                        : NusaConfig.textPrimary,
                     ),
                     decoration: InputDecoration(
                       hintText: 'Terima kasih, ditunggu pesanan selanjutnya!',
@@ -1102,7 +1102,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _themeChip(String label, String mode, IconData icon) {
+  Widget _themeChip(String label, String mode, IconData icon, bool isDark) {
     final selected = _themeMode == mode;
     return Expanded(
       child: GestureDetector(
@@ -1124,13 +1124,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               Icon(icon,
                   size: 20,
-                  color: selected ? NusaConfig.primaryColor : NusaConfig.textSecondary),
+                  color: selected ? NusaConfig.primaryColor : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
               const SizedBox(height: 4),
               Text(label,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: selected ? NusaConfig.primaryColor : NusaConfig.textSecondary,
+                    color: selected ? NusaConfig.primaryColor : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                   )),
             ],
           ),

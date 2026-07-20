@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -105,7 +105,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     return list;
   }
 
-  // ── Export / Import bottom sheet ──
+  // â”€â”€ Export / Import bottom sheet â”€â”€
 
   void _showExportImportSheet() {
     showModalBottomSheet(
@@ -226,7 +226,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     }
   }
 
-  // ── Barcode scan ──
+  // â”€â”€ Barcode scan â”€â”€
 
   Future<void> _scanBarcode() async {
     final controller = MobileScannerController();
@@ -278,7 +278,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     if (mounted) { TopToast.success(context, 'Produk dihapus'); _load(); }
   }
 
-  // ── Build ──
+  // â”€â”€ Build â”€â”€
 
   @override
   Widget build(BuildContext context) {
@@ -339,7 +339,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
                 ),
-                child: const Icon(Icons.file_download_outlined, size: 18, color: NusaConfig.textSecondary),
+                child: Icon(Icons.file_download_outlined, size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
               ),
             ),
           ]),
@@ -353,7 +353,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
             'Cari nama atau barcode...',
             controller: _search,
             hint: 'Cari nama atau barcode...',
-            prefixIcon: const Icon(Icons.search, color: NusaConfig.textSecondary),
+            prefixIcon: Icon(Icons.search, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
             suffixIcon: GestureDetector(
               onTap: _scanBarcode,
               child: const Padding(
@@ -382,7 +382,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 final selected = label == _statusFilter;
                 return FilterChip(
                   label: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                    color: selected ? Colors.white : NusaConfig.textPrimary)),
+                    color: selected ? Colors.white : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                   selected: selected, showCheckmark: false,
                   selectedColor: NusaConfig.primaryColor,
                   backgroundColor: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
@@ -398,12 +398,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
-              const Icon(Icons.sort, size: 18, color: NusaConfig.textSecondary),
+              Icon(Icons.sort, size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
               const SizedBox(width: 8),
               DropdownButtonHideUnderline(
                 child: DropdownButton<_SortBy>(
                   value: _sortBy, isDense: true,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: NusaConfig.textPrimary),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
                   items: _sortLabels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
                   onChanged: (v) { if (v != null) { setState(() => _sortBy = v); _load(); } },
                 ),
@@ -482,7 +482,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   }
 }
 
-// ── Segment Tab ──
+// â”€â”€ Segment Tab â”€â”€
 
 class _SegmentTab extends StatelessWidget {
   final String label;
@@ -510,7 +510,7 @@ class _SegmentTab extends StatelessWidget {
   }
 }
 
-// ── Grid Toggle Button ──
+// â”€â”€ Grid Toggle Button â”€â”€
 
 class _GridToggleBtn extends StatelessWidget {
   final IconData icon;
@@ -520,6 +520,7 @@ class _GridToggleBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -529,13 +530,13 @@ class _GridToggleBtn extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, size: 18,
-          color: active ? NusaConfig.primaryColor : NusaConfig.textTertiary),
+          color: active ? NusaConfig.primaryColor : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
       ),
     );
   }
 }
 
-// ── Kategori View (inline) ──
+// â”€â”€ Kategori View (inline) â”€â”€
 
 class _KategoriView extends ConsumerStatefulWidget {
   @override
@@ -564,9 +565,9 @@ class _KategoriViewState extends ConsumerState<_KategoriView> {
     final cats = _counts.entries.toList();
     if (cats.isEmpty) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.category_outlined, size: 48, color: NusaConfig.textTertiary),
+        Icon(Icons.category_outlined, size: 48, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
         const SizedBox(height: 8),
-        Text('Belum ada kategori', style: const TextStyle(color: NusaConfig.textSecondary)),
+        Text('Belum ada kategori', style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
       ]));
     }
     return RefreshIndicator(
@@ -592,10 +593,10 @@ class _KategoriViewState extends ConsumerState<_KategoriView> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(cat, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                     const SizedBox(height: 2),
-                    Text('$count produk', style: const TextStyle(fontSize: 12, color: NusaConfig.textSecondary)),
+                    Text('$count produk', style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                   ]),
                 ),
-                const Icon(Icons.chevron_right, size: 20, color: NusaConfig.textTertiary),
+                Icon(Icons.chevron_right, size: 20, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
               ]),
             ),
           );
@@ -605,7 +606,7 @@ class _KategoriViewState extends ConsumerState<_KategoriView> {
   }
 }
 
-// ── Product Grid Card (2-column) ──
+// â”€â”€ Product Grid Card (2-column) â”€â”€
 
 class _ProductGridCard extends StatelessWidget {
   final Product product;
@@ -643,7 +644,7 @@ class _ProductGridCard extends StatelessWidget {
           ),
           padding: const EdgeInsets.all(10),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // ── Image (inset) ──
+            // â”€â”€ Image (inset) â”€â”€
             ClipRRect(
               borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
               child: AspectRatio(
@@ -676,21 +677,21 @@ class _ProductGridCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            // ── Name ──
+            // â”€â”€ Name â”€â”€
             Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, height: 1.25,
                 color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
             const SizedBox(height: 2),
-            // ── Category ──
+            // â”€â”€ Category â”€â”€
             Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
             const SizedBox(height: 6),
-            // ── Price ──
+            // â”€â”€ Price â”€â”€
             Text(formatRupiah(product.sellPrice),
               style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
             const Spacer(),
-            // ── Actions ──
+            // â”€â”€ Actions â”€â”€
             Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-              _ActionButton(icon: Icons.edit_outlined, color: NusaConfig.textSecondary, onTap: onEdit),
+              _ActionButton(icon: Icons.edit_outlined, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, onTap: onEdit),
               const SizedBox(width: 6),
               _ActionButton(icon: Icons.delete_outline, color: NusaConfig.error, onTap: onDelete),
             ]),
@@ -701,7 +702,7 @@ class _ProductGridCard extends StatelessWidget {
   }
 }
 
-// ── Product List Card (1-column, thin horizontal) ──
+// â”€â”€ Product List Card (1-column, thin horizontal) â”€â”€
 
 class _ProductListCard extends StatelessWidget {
   final Product product;
@@ -776,7 +777,7 @@ class _ProductListCard extends StatelessWidget {
           const SizedBox(width: 8),
           // Actions
           Row(mainAxisSize: MainAxisSize.min, children: [
-            _ActionButton(icon: Icons.edit_outlined, color: NusaConfig.textSecondary, onTap: onEdit),
+            _ActionButton(icon: Icons.edit_outlined, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, onTap: onEdit),
             const SizedBox(width: 4),
             _ActionButton(icon: Icons.delete_outline, color: NusaConfig.error, onTap: onDelete),
           ]),
@@ -793,6 +794,7 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
@@ -809,6 +811,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(

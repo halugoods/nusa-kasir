@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -129,6 +129,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     String role = employee?.role ?? _roles.first;
     String? error;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
@@ -182,8 +183,8 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
           actions: [
             TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Batal',
-                    style: TextStyle(color: NusaConfig.textSecondary))),
+                child: Text('Batal',
+                    style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))),
             ElevatedButton(
               onPressed: () async {
                 final name = nameC.text.trim();
@@ -250,6 +251,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final employees = _filtered;
 
     return ScreenScaffold(
@@ -262,7 +264,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
               'Cari karyawan...',
               controller: _searchCtrl,
               type: TextInputType.text,
-              prefixIcon: const Icon(Icons.search, color: NusaConfig.textSecondary),
+              prefixIcon: Icon(Icons.search, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
             ),
           ),
           Expanded(

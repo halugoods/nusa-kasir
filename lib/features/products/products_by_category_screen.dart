@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -76,13 +76,13 @@ class _ProductsByCategoryScreenState extends ConsumerState<ProductsByCategoryScr
             DropdownButtonHideUnderline(
               child: DropdownButton<_SortBy>(
                 value: _sortBy, isDense: true,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: NusaConfig.textPrimary),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
                 items: _sortLabels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
                 onChanged: (v) { if (v != null) setState(() { _sortBy = v; _products = _sort(_products); }); },
               ),
             ),
             const Spacer(),
-            Text('${items.length} produk', style: const TextStyle(fontSize: 12, color: NusaConfig.textTertiary)),
+            Text('${items.length} produk', style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
           ]),
         ),
         Expanded(
@@ -92,7 +92,7 @@ class _ProductsByCategoryScreenState extends ConsumerState<ProductsByCategoryScr
                   ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.inventory_2_outlined, size: 56, color: NusaConfig.textTertiary.withValues(alpha: 0.5)),
                       const SizedBox(height: 8),
-                      const Text('Tidak ada produk di kategori ini', style: TextStyle(color: NusaConfig.textSecondary)),
+                      Text('Tidak ada produk di kategori ini', style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                     ]))
                   : RefreshIndicator(
                       onRefresh: _load,
@@ -112,7 +112,7 @@ class _ProductsByCategoryScreenState extends ConsumerState<ProductsByCategoryScr
   }
 }
 
-// ── Shared sort enum & labels ──
+// â”€â”€ Shared sort enum & labels â”€â”€
 
 enum _SortBy { nameAsc, nameDesc, priceHigh, priceLow }
 
@@ -123,7 +123,7 @@ const _sortLabels = <_SortBy, String>{
   _SortBy.priceLow: 'Harga (Terendah)',
 };
 
-// ── Product Card ──
+// â”€â”€ Product Card â”€â”€
 
 class _ProductCard extends StatelessWidget {
   final Product product;
@@ -132,6 +132,7 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasImage = product.imagePath != null && product.imagePath!.isNotEmpty && File(product.imagePath!).existsSync();
 
     return NusaCard(
@@ -153,9 +154,9 @@ class _ProductCard extends StatelessWidget {
         const SizedBox(width: NusaConfig.spaceSM),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(product.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+            Text(product.name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
             const SizedBox(height: 2),
-            Text(product.category, style: const TextStyle(fontSize: 11, color: NusaConfig.textSecondary)),
+            Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
             const SizedBox(height: 3),
             Text(formatRupiah(product.sellPrice), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor)),
           ]),
@@ -164,9 +165,9 @@ class _ProductCard extends StatelessWidget {
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
           NusaStatusBadge(stock: product.stock, minStock: product.minStock),
           const SizedBox(height: 4),
-          Text('Stok: ${product.stock}', style: const TextStyle(fontSize: 12, color: NusaConfig.textSecondary)),
+          Text('Stok: ${product.stock}', style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           const SizedBox(height: 4),
-          Icon(Icons.chevron_right, size: 18, color: NusaConfig.textTertiary),
+          Icon(Icons.chevron_right, size: 18, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
         ]),
       ]),
     );

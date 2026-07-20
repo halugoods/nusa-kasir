@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -44,7 +44,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     }
   }
 
-  /// Absen Masuk: PIN → input kas awal (mandatory) → checkInWithCash.
+  /// Absen Masuk: PIN â†’ input kas awal (mandatory) â†’ checkInWithCash.
   Future<void> _checkIn(Employee e) async {
     final result = await PinDialog.show(
       context: context,
@@ -63,7 +63,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     _load();
   }
 
-  /// Absen Pulang: PIN → input kas akhir (mandatory) → checkOutWithCash.
+  /// Absen Pulang: PIN â†’ input kas akhir (mandatory) â†’ checkOutWithCash.
   Future<void> _checkOut(Employee e) async {
     final result = await PinDialog.show(
       context: context,
@@ -85,6 +85,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   /// Show mandatory cash input dialog. Returns null if cancelled.
   Future<int?> _showCashInput(String title, String hint) async {
     final ctrl = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return showDialog<int>(
       context: context,
       barrierDismissible: false,
@@ -95,8 +96,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal',
-                style: TextStyle(color: NusaConfig.textSecondary)),
+            child: Text('Batal',
+                style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -191,6 +192,7 @@ class _EmployeeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final inTime = today?.checkIn;
     final outTime = today?.checkOut;
     final pettyCash = today?.pettyCash;
@@ -285,7 +287,7 @@ class _EmployeeCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          // Times row — wraps on narrow screens
+          // Times row â€” wraps on narrow screens
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -358,6 +360,7 @@ class _ActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ElevatedButton(
       onPressed: enabled ? onTap : null,
       style: ElevatedButton.styleFrom(
@@ -411,25 +414,28 @@ class _Info extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color ?? NusaConfig.textSecondary),
+          Icon(icon, size: 14, color: color ?? (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           const SizedBox(width: 4),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label,
-                  style: const TextStyle(
-                      fontSize: 10, color: NusaConfig.textSecondary)),
+                  style: TextStyle(
+                      fontSize: 10, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
               const SizedBox(height: 2),
               Text(value,
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: color ?? NusaConfig.textPrimary)),
+                      color: color ?? (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
             ],
           ),
         ],
       );
+  }
 }

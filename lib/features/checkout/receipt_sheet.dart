@@ -470,7 +470,7 @@ class ReceiptSheet extends ConsumerWidget {
     return CustomPaint(
       size: const Size(double.infinity, 1),
       painter: _DashPainter(
-          color: isDark ? const Color(0xFF555555) : const Color(0xFF999999)),
+          color: isDark ? NusaConfig.darkDivider : const Color(0xFF999999)),
     );
   }
 

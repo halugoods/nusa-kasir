@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -146,7 +146,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     if (widget.sessionId == null) { if (mounted) context.go('/home'); return; }
     final repo = CashierSessionRepository(ref.read(databaseProvider));
     await repo.close(widget.sessionId!);
-    if (mounted) { context.go('/home'); TopToast.success(context, 'Kasir ditutup. Sampai jumpa! 👋'); }
+    if (mounted) { context.go('/home'); TopToast.success(context, 'Kasir ditutup. Sampai jumpa! ðŸ‘‹'); }
   }
 
   @override
@@ -167,7 +167,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  // ═══════════ NARROW LAYOUT (phone) ═══════════
+  // â•â•â•â•â•â•â•â•â•â•â• NARROW LAYOUT (phone) â•â•â•â•â•â•â•â•â•â•â•
 
   Widget _buildNarrowLayout(bool isDark, List<CartItem> cart, int totalItems, int totalPrice) {
     return Stack(children: [
@@ -182,7 +182,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     ]);
   }
 
-  // ═══════════ WIDE LAYOUT (tablet) ═══════════
+  // â•â•â•â•â•â•â•â•â•â•â• WIDE LAYOUT (tablet) â•â•â•â•â•â•â•â•â•â•â•
 
   Widget _buildWideLayout(bool isDark, List<CartItem> cart, int totalItems, int totalPrice) {
     return Column(children: [
@@ -198,13 +198,13 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     ]);
   }
 
-  // ═══════════ COMPONENTS ═══════════
+  // â•â•â•â•â•â•â•â•â•â•â• COMPONENTS â•â•â•â•â•â•â•â•â•â•â•
 
   Widget _buildTopBar(bool isDark) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
       child: Row(children: [
-        const Text('Kasir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+        Text('Kasir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
         const SizedBox(width: 12),
         _gridToggle(1, Icons.view_agenda_rounded, isDark),
         const SizedBox(width: 4),
@@ -251,7 +251,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           color: active ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, size: 18, color: active ? Colors.white : NusaConfig.textSecondary),
+        child: Icon(icon, size: 18, color: active ? Colors.white : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
       ),
     );
   }
@@ -272,7 +272,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         decoration: InputDecoration(
           hintText: 'Cari produk...',
           hintStyle: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-          prefixIcon: const Icon(Icons.search_rounded, color: NusaConfig.textSecondary, size: 22),
+          prefixIcon: Icon(Icons.search_rounded, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, size: 22),
           suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
             GestureDetector(
               onTap: () => _scanBarcode(context),
@@ -281,7 +281,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
             if (_search.text.isNotEmpty)
               GestureDetector(
                 onTap: () { _search.clear(); setState(() {}); },
-                child: const Icon(Icons.clear_rounded, color: NusaConfig.textSecondary, size: 20),
+                child: Icon(Icons.clear_rounded, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, size: 20),
               ),
           ]),
           border: InputBorder.none,
@@ -315,7 +315,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(NusaConfig.catIcons[chip] ?? Icons.circle, size: 16,
-                  color: selected ? Colors.white : NusaConfig.textSecondary),
+                  color: selected ? Colors.white : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                 const SizedBox(width: 6),
                 Text(chip, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
                   color: selected ? Colors.white : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))),
@@ -361,8 +361,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
 
     final cross = _gridColumns;
     final colW = (MediaQuery.of(context).size.width - 32 - 10 * (cross - 1)) / cross;
-    // Image is inset (10px all sides) → ≈square of (colW-20).
-    // Footer (name+cat+price+action) ≈110px. Ratio = colW/(colW+110).
+    // Image is inset (10px all sides) â†’ â‰ˆsquare of (colW-20).
+    // Footer (name+cat+price+action) â‰ˆ110px. Ratio = colW/(colW+110).
     final ratio = (colW / (colW + 110)).clamp(0.4, 0.85);
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -382,7 +382,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  // ── Cart Bar (collapsed, narrow only) ──
+  // â”€â”€ Cart Bar (collapsed, narrow only) â”€â”€
 
   Widget _buildCartBar(bool isDark, int totalItems, int totalPrice) {
     return GestureDetector(
@@ -420,7 +420,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  // ── Unified Cart Panel (sheet for narrow, sidebar for wide) ──
+  // â”€â”€ Unified Cart Panel (sheet for narrow, sidebar for wide) â”€â”€
 
   Widget _buildCartPanel(bool isDark, List<CartItem> cart, int totalItems, int totalPrice, {required bool isSheet}) {
     final hasMember = _memberName != null;
@@ -433,10 +433,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(children: [
-            const Text('Keranjang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+            Text('Keranjang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
             const Spacer(),
             TextButton(onPressed: () => ref.read(cartProvider.notifier).clear(), child: const Text('Kosongkan', style: TextStyle(color: NusaConfig.primaryColor, fontWeight: FontWeight.w600))),
-            IconButton(onPressed: () => setState(() => _cartExpanded = false), icon: const Icon(Icons.keyboard_arrow_down, color: NusaConfig.textSecondary)),
+            IconButton(onPressed: () => setState(() => _cartExpanded = false), icon: Icon(Icons.keyboard_arrow_down, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           ]),
         ),
       ] else ...[
@@ -445,7 +445,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           child: Row(children: [
             const Icon(Icons.shopping_basket_outlined, color: NusaConfig.primaryColor, size: 20),
             const SizedBox(width: 8),
-            const Expanded(child: Text('Keranjang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary))),
+            Expanded(child: Text('Keranjang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
             TextButton(onPressed: cart.isEmpty ? null : () => ref.read(cartProvider.notifier).clear(), child: const Text('Kosongkan', style: TextStyle(fontSize: 12, color: NusaConfig.primaryColor, fontWeight: FontWeight.w600))),
           ]),
         ),
@@ -463,7 +463,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
             ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.receipt_long_outlined, size: 48, color: NusaConfig.textTertiary.withValues(alpha: 0.5)),
                 const SizedBox(height: 8),
-                const Text('Keranjang masih kosong', style: TextStyle(color: NusaConfig.textTertiary)),
+                Text('Keranjang masih kosong', style: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
               ]))
             : Consumer(
                 builder: (_, ref, __) => ListView.builder(
@@ -550,7 +550,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               decoration: InputDecoration(
                 hintText: 'No WhatsApp member...',
                 hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                prefixIcon: const Icon(Icons.person_outline, size: 18, color: NusaConfig.textSecondary),
+                prefixIcon: Icon(Icons.person_outline, size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                 filled: true, fillColor: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
                 contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(NusaConfig.radiusMD), borderSide: BorderSide.none),
@@ -596,7 +596,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               decoration: InputDecoration(
                 hintText: 'Kode promo...',
                 hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                prefixIcon: const Icon(Icons.local_offer_outlined, size: 16, color: NusaConfig.textSecondary),
+                prefixIcon: Icon(Icons.local_offer_outlined, size: 16, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                 filled: true, fillColor: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
                 contentPadding: const EdgeInsets.symmetric(vertical: 6),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(NusaConfig.radiusMD), borderSide: BorderSide.none),
@@ -647,9 +647,9 @@ class _PosScreenState extends ConsumerState<PosScreen> {
             border: Border.all(color: active ? NusaConfig.primaryColor : NusaConfig.dividerColor, width: active ? 2 : 1),
           ),
           child: Column(children: [
-            Icon(icon, size: 20, color: active ? NusaConfig.primaryColor : NusaConfig.textSecondary),
+            Icon(icon, size: 20, color: active ? NusaConfig.primaryColor : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
             const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: active ? NusaConfig.primaryColor : NusaConfig.textSecondary)),
+            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: active ? NusaConfig.primaryColor : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           ]),
         ),
       ),
@@ -657,7 +657,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   }
 }
 
-// ── Product Card ──
+// â”€â”€ Product Card â”€â”€
 
 class _ProductCard extends StatelessWidget {
   final Product product;
@@ -679,6 +679,7 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final outOfStock = product.stock <= 0;
     final lowStock = !outOfStock && product.stock <= product.minStock;
     final gradient = NusaConfig.catGradientFor(product.category);
@@ -699,7 +700,7 @@ class _ProductCard extends StatelessWidget {
           ),
           padding: const EdgeInsets.all(10),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // ── Image (inset, square with own rounded corners) ──
+            // â”€â”€ Image (inset, square with own rounded corners) â”€â”€
             ClipRRect(
               borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
               child: AspectRatio(
@@ -733,19 +734,19 @@ class _ProductCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            // ── Name ──
+            // â”€â”€ Name â”€â”€
             Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, height: 1.25,
-                color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
+                color: outOfStock ? isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
             const SizedBox(height: 2),
-            // ── Category ──
+            // â”€â”€ Category â”€â”€
             Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
             const SizedBox(height: 6),
-            // ── Price ──
+            // â”€â”€ Price â”€â”€
             Text(formatRupiah(product.sellPrice),
               style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
             const SizedBox(height: 8),
-            // ── Action ──
+            // â”€â”€ Action â”€â”€
             outOfStock
                 ? Container(
                     height: 36,
@@ -754,7 +755,7 @@ class _ProductCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     alignment: Alignment.center,
-                    child: const Text('Stok Habis', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: NusaConfig.textTertiary)),
+                    child: Text('Stok Habis', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
                   )
                 : qtyInCart == 0
                     ? NusaAddButton(onTap: onAdd, fullWidth: true)
@@ -773,6 +774,7 @@ class _CartItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -785,16 +787,16 @@ class _CartItemTile extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(item.name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
-            Text(formatRupiah(item.price), style: const TextStyle(fontSize: 12, color: NusaConfig.textSecondary)),
+            Text(formatRupiah(item.price), style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           ]),
         ),
         Container(
           height: 32,
           decoration: BoxDecoration(border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor), borderRadius: BorderRadius.circular(10), color: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            GestureDetector(onTap: onDecrement, behavior: HitTestBehavior.opaque, child: const SizedBox(width: 30, height: 32, child: Center(child: Icon(Icons.remove, size: 16, color: NusaConfig.textSecondary)))),
-            Text('${item.qty}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
-            GestureDetector(onTap: onIncrement, behavior: HitTestBehavior.opaque, child: const SizedBox(width: 30, height: 32, child: Center(child: Icon(Icons.add, size: 16, color: NusaConfig.textSecondary)))),
+            GestureDetector(onTap: onDecrement, behavior: HitTestBehavior.opaque, child: SizedBox(width: 30, height: 32, child: Center(child: Icon(Icons.remove, size: 16, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)))),
+            Text('${item.qty}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+            GestureDetector(onTap: onIncrement, behavior: HitTestBehavior.opaque, child: SizedBox(width: 30, height: 32, child: Center(child: Icon(Icons.add, size: 16, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)))),
           ]),
         ),
         const SizedBox(width: 8),
@@ -804,7 +806,7 @@ class _CartItemTile extends StatelessWidget {
   }
 }
 
-// ── Product List Card (1-column thin horizontal) ──
+// â”€â”€ Product List Card (1-column thin horizontal) â”€â”€
 
 class _ProductListCard extends StatelessWidget {
   final Product product;
@@ -826,6 +828,7 @@ class _ProductListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final outOfStock = product.stock <= 0;
     final lowStock = !outOfStock && product.stock <= product.minStock;
     final gradient = NusaConfig.catGradientFor(product.category);

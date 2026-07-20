@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:drift/drift.dart' hide Column;
@@ -267,7 +267,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     }
   }
 
-  // ── UI ──
+  // â”€â”€ UI â”€â”€
 
   @override
   Widget build(BuildContext context) {
@@ -279,43 +279,43 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           : SingleChildScrollView(
               padding: const EdgeInsets.all(NusaConfig.spaceMD),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                // ── 1. Product image ──
+                // â”€â”€ 1. Product image â”€â”€
                 _buildImagePicker(isDark),
                 const SizedBox(height: NusaConfig.spaceMD),
 
-                // ── 2. Nama Produk ──
+                // â”€â”€ 2. Nama Produk â”€â”€
                 NusaFormField(label: 'Nama Produk', controller: _name),
                 const SizedBox(height: NusaConfig.spaceSM),
 
-                // ── 3. SKU (opsional) ──
+                // â”€â”€ 3. SKU (opsional) â”€â”€
                 NusaFormField(label: 'SKU (opsional)', controller: _sku),
                 const SizedBox(height: NusaConfig.spaceMD),
 
-                // ── 4. Kategori ──
+                // â”€â”€ 4. Kategori â”€â”€
                 _buildCategorySection(isDark),
                 const SizedBox(height: NusaConfig.spaceMD),
 
-                // ── 5. Harga Beli (opsional) ──
+                // â”€â”€ 5. Harga Beli (opsional) â”€â”€
                 NusaFormField(label: 'Harga Beli (opsional)', controller: _buy, keyboardType: TextInputType.number),
                 const SizedBox(height: NusaConfig.spaceSM),
 
-                // ── 5. Harga Jual ──
+                // â”€â”€ 5. Harga Jual â”€â”€
                 NusaFormField(label: 'Harga Jual', controller: _sell, keyboardType: TextInputType.number),
                 const SizedBox(height: NusaConfig.spaceSM),
 
-                // ── 6. Stok ──
+                // â”€â”€ 6. Stok â”€â”€
                 NusaFormField(label: 'Stok', controller: _stock, keyboardType: TextInputType.number),
                 const SizedBox(height: NusaConfig.spaceSM),
 
-                // ── 7. Kadaluarsa (opsional) ──
+                // â”€â”€ 7. Kadaluarsa (opsional) â”€â”€
                 _buildExpiryPicker(isDark),
                 const SizedBox(height: NusaConfig.spaceSM),
 
-                // ── 8. Stok Minimum (opsional) ──
+                // â”€â”€ 8. Stok Minimum (opsional) â”€â”€
                 NusaFormField(label: 'Stok Minimum (opsional)', controller: _min, keyboardType: TextInputType.number),
                 const SizedBox(height: NusaConfig.spaceMD),
 
-                // ── Divider ──
+                // â”€â”€ Divider â”€â”€
                 Row(children: [
                   Expanded(child: Container(height: 1, color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor)),
                   Padding(
@@ -326,7 +326,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ]),
                 const SizedBox(height: NusaConfig.spaceMD),
 
-                // ── Toggle: Varian ──
+                // â”€â”€ Toggle: Varian â”€â”€
                 _buildToggleCard(
                   title: 'Varian (Rasa/Ukuran)',
                   icon: Icons.layers_outlined,
@@ -336,7 +336,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
                 const SizedBox(height: NusaConfig.spaceSM),
 
-                // ── Toggle: Grosir ──
+                // â”€â”€ Toggle: Grosir â”€â”€
                 _buildToggleCard(
                   title: 'Harga Grosir',
                   icon: Icons.inventory_2_outlined,
@@ -346,7 +346,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
                 const SizedBox(height: NusaConfig.spaceSM),
 
-                // ── Toggle: Barcode ──
+                // â”€â”€ Toggle: Barcode â”€â”€
                 _buildToggleCard(
                   title: 'Barcode',
                   icon: Icons.qr_code_2,
@@ -362,14 +362,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                           child: Column(children: [
                             BarcodeWidget(data: _barcode, barcode: Barcode.code128(), width: double.infinity, height: 70),
                             const SizedBox(height: 6),
-                            Text(_barcode, style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: NusaConfig.textSecondary)),
+                            Text(_barcode, style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                           ]),
                         )
                       : null,
                 ),
                 const SizedBox(height: NusaConfig.spaceSM),
 
-                // ── Toggle: Toko Online ──
+                // â”€â”€ Toggle: Toko Online â”€â”€
                 _buildToggleCard(
                   title: 'Tampil di Toko Online',
                   icon: Icons.storefront_outlined,
@@ -382,20 +382,20 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                             color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
                             borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
                           ),
-                          child: const Text('Produk akan muncul di website toko online Anda.',
-                            style: TextStyle(fontSize: 12, color: NusaConfig.textSecondary)),
+                          child: Text('Produk akan muncul di website toko online Anda.',
+                            style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                         )
                       : null,
                 ),
                 const SizedBox(height: NusaConfig.spaceMD),
 
-                // ── Divider ──
+                // â”€â”€ Divider â”€â”€
                 Row(children: [
                   Expanded(child: Container(height: 1, color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor)),
                 ]),
                 const SizedBox(height: NusaConfig.spaceLG),
 
-                // ── Save button ──
+                // â”€â”€ Save button â”€â”€
                 SizedBox(
                   height: 54,
                   child: ElevatedButton(
@@ -414,7 +414,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     );
   }
 
-  // ── Image picker ──
+  // â”€â”€ Image picker â”€â”€
   Widget _buildImagePicker(bool isDark) {
     return GestureDetector(
       onTap: _pickImage,
@@ -445,17 +445,17 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
               ])
             : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.cloud_upload_outlined, size: 40, color: NusaConfig.textTertiary),
+                Icon(Icons.cloud_upload_outlined, size: 40, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
                 const SizedBox(height: 10),
-                const Text('TAP UNTUK UPLOAD FOTO', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5)),
+                Text('TAP UNTUK UPLOAD FOTO', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, letterSpacing: 0.5)),
                 const SizedBox(height: 4),
-                const Text('atau drag & drop', style: TextStyle(fontSize: 11, color: NusaConfig.textTertiary)),
+                Text('atau drag & drop', style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
               ]),
       ),
     );
   }
 
-  // ── Expiry date picker ──
+  // â”€â”€ Expiry date picker â”€â”€
   Widget _buildExpiryPicker(bool isDark) {
     return GestureDetector(
       onTap: () async {
@@ -477,31 +477,31 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         child: Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Kadaluarsa (opsional)',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5)),
+              Text('Kadaluarsa (opsional)',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, letterSpacing: 0.5)),
               const SizedBox(height: 6),
               Text(
                 _expiryDate != null
                     ? '${_expiryDate!.day}/${_expiryDate!.month}/${_expiryDate!.year}'
                     : 'Pilih tanggal',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
-                  color: _expiryDate != null ? NusaConfig.textPrimary : NusaConfig.textTertiary),
+                  color: _expiryDate != null ? isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
               ),
             ]),
           ),
           if (_expiryDate != null)
             GestureDetector(
               onTap: () => setState(() => _expiryDate = null),
-              child: const Icon(Icons.close, size: 18, color: NusaConfig.textTertiary),
+              child: Icon(Icons.close, size: 18, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
             ),
           const SizedBox(width: 4),
-          const Icon(Icons.calendar_today, size: 18, color: NusaConfig.textSecondary),
+          Icon(Icons.calendar_today, size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
         ]),
       ),
     );
   }
 
-  // ── Category section at bottom with CRUD ──
+  // â”€â”€ Category section at bottom with CRUD â”€â”€
   Widget _buildCategorySection(bool isDark) {
     final items = <DropdownMenuItem<String>>[
       for (final cat in _availableCategories)
@@ -518,9 +518,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         value: '__add__',
         child: Text('Tambah Kategori', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: NusaConfig.primaryColor)),
       ),
-      const DropdownMenuItem<String>(
+      DropdownMenuItem<String>(
         value: '__manage__',
-        child: Text('Kelola Kategori', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.textSecondary)),
+        child: Text('Kelola Kategori', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
       ),
     ];
     return NusaDropdownField<String>(
@@ -540,7 +540,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     );
   }
 
-  // ── Category management (reachable from the dropdown) ──
+  // â”€â”€ Category management (reachable from the dropdown) â”€â”€
   Future<void> _showManageCategorySheet() async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cats = List<String>.from(_availableCategories);
@@ -563,7 +563,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             Container(margin: const EdgeInsets.symmetric(vertical: 10), width: 40, height: 4,
               decoration: BoxDecoration(color: NusaConfig.dividerColor, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 4),
-            const Text('Kelola Kategori', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: NusaConfig.textPrimary)),
+            Text('Kelola Kategori', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
             const SizedBox(height: 12),
             ...cats.map((cat) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -575,7 +575,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(children: [
-                  Expanded(child: Text(cat, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: NusaConfig.textPrimary))),
+                  Expanded(child: Text(cat, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
                   TextButton(onPressed: () => _renameCategory(ctx, setSt, cats, cat), child: const Text('Ubah')),
                   TextButton(
                     onPressed: () => _confirmDeleteCategory(ctx, setSt, cats, cat),
@@ -661,7 +661,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     }
   }
 
-  // ── Toggle card with visual depth ──
+  // â”€â”€ Toggle card with visual depth â”€â”€
   Widget _buildToggleCard({
     required String title,
     required IconData icon,
@@ -687,7 +687,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             Expanded(child: Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))),
             Text(value ? 'ON' : 'OFF',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                color: value ? NusaConfig.accentGreen : NusaConfig.textTertiary)),
+                color: value ? NusaConfig.accentGreen : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
             const SizedBox(width: 8),
             SizedBox(
               height: 24, width: 44,
@@ -707,7 +707,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     );
   }
 
-  // ── Variant list ──
+  // â”€â”€ Variant list â”€â”€
   Widget _buildVariantList(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -739,23 +739,23 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
               ]),
               const SizedBox(height: 8),
-              // Nama Varian — card sendiri
+              // Nama Varian â€” card sendiri
               _variantFieldCard(isDark,
                 label: 'Nama Varian',
                 controller: TextEditingController(text: v.name),
                 onChanged: (val) => _variants[i].name = val,
               ),
               const SizedBox(height: 8),
-              // ± Harga — card sendiri
+              // Â± Harga â€” card sendiri
               _variantFieldCard(isDark,
-                label: '± Harga',
+                label: 'Â± Harga',
                 controller: TextEditingController(text: v.priceAdjustment == 0 ? '' : v.priceAdjustment.toString()),
                 onChanged: (val) => _variants[i].priceAdjustment = int.tryParse(val) ?? 0,
                 keyboardType: TextInputType.number,
                 prefixText: '+/- ',
               ),
               const SizedBox(height: 8),
-              // Stok — card sendiri
+              // Stok â€” card sendiri
               _variantFieldCard(isDark,
                 label: 'Stok',
                 controller: TextEditingController(text: v.stock == 0 ? '' : v.stock.toString()),
@@ -775,7 +775,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     );
   }
 
-  // ── Per-field card for variant / wholesale ──
+  // â”€â”€ Per-field card for variant / wholesale â”€â”€
   Widget _variantFieldCard(bool isDark, {
     required String label,
     required TextEditingController controller,
@@ -797,7 +797,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         style: const TextStyle(fontSize: 13),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(fontSize: 12, color: NusaConfig.textSecondary),
+          labelStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
           isDense: true,
           border: InputBorder.none,
           prefixText: prefixText,
@@ -806,7 +806,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     );
   }
 
-  // ── Wholesale list ──
+  // â”€â”€ Wholesale list â”€â”€
   Widget _buildWholesaleList(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -838,7 +838,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
               ]),
               const SizedBox(height: 8),
-              // Min Qty — card sendiri
+              // Min Qty â€” card sendiri
               _variantFieldCard(isDark,
                 label: 'Min Qty',
                 controller: TextEditingController(text: w.minQty == 1 ? '' : w.minQty.toString()),
@@ -846,7 +846,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 8),
-              // Harga Grosir — card sendiri
+              // Harga Grosir â€” card sendiri
               _variantFieldCard(isDark,
                 label: 'Harga Grosir',
                 controller: TextEditingController(text: w.price == 0 ? '' : w.price.toString()),

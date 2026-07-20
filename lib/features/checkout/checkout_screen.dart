@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -163,7 +163,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               title: Text(customers[i].name,
                   style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text(
-                  '${formatRupiah(customers[i].totalSpent)} • ${customers[i].level}'),
+                  '${formatRupiah(customers[i].totalSpent)} â€¢ ${customers[i].level}'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.pop(ctx, customers[i]),
             ),
@@ -227,7 +227,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           : null;
 
       // Wrap all DB writes (stock, transaction, loyalty, promo) in a single transaction.
-      // If any step fails, it all rolls back — no partial state.
+      // If any step fails, it all rolls back â€” no partial state.
       await db.transaction(() async {
         // Deduct stock for each item
         for (final item in cart) {
@@ -337,26 +337,26 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ── Customer Card ──
+          // â”€â”€ Customer Card â”€â”€
           _buildCustomerCard(isDark),
           const SizedBox(height: 14),
 
-          // ── Ringkasan Belanja Card ──
+          // â”€â”€ Ringkasan Belanja Card â”€â”€
           _buildSummaryCard(isDark, subtotal),
           const SizedBox(height: 14),
 
-          // ── Metode Pembayaran Card ──
+          // â”€â”€ Metode Pembayaran Card â”€â”€
           _buildPaymentMethodCard(isDark),
           const SizedBox(height: 14),
 
-          // ── Detail Pembayaran Card ──
+          // â”€â”€ Detail Pembayaran Card â”€â”€
           if (_paymentMethod == 'Tunai') _buildTunaiCard(isDark),
           if (_paymentMethod == 'QRIS') _buildQrisCard(isDark),
           if (_paymentMethod == 'Transfer') _buildTransferCard(isDark),
 
           const SizedBox(height: 24),
 
-          // ── Konfirmasi Button ──
+          // â”€â”€ Konfirmasi Button â”€â”€
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -395,8 +395,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           Center(
             child: TextButton(
               onPressed: _loading ? null : () => context.pop(),
-              child: const Text('← Kembali ke Kasir',
-                  style: TextStyle(color: NusaConfig.textSecondary, fontWeight: FontWeight.w500)),
+              child: Text('â† Kembali ke Kasir',
+                  style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, fontWeight: FontWeight.w500)),
             ),
           ),
         ],
@@ -404,7 +404,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  // ── Card Builders ────────────────────────────────────────────────
+  // â”€â”€ Card Builders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildCustomerCard(bool isDark) {
     return Container(
@@ -430,8 +430,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
               const SizedBox(height: 2),
               Text(_selectedCustomer != null
-                  ? 'Level: ${_selectedCustomer!.level} • Rp ${formatRupiah(_selectedCustomer!.totalSpent)}'
-                  : 'Opsional — dapatkan diskon member',
+                  ? 'Level: ${_selectedCustomer!.level} â€¢ Rp ${formatRupiah(_selectedCustomer!.totalSpent)}'
+                  : 'Opsional â€” dapatkan diskon member',
                   style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
             ]),
           ),
@@ -441,7 +441,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               child: Container(
                 width: 32, height: 32,
                 decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.close, size: 16, color: NusaConfig.textSecondary),
+                child: Icon(Icons.close, size: 16, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
               ),
             ),
         ]),
@@ -482,7 +482,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           _summaryRow('Tukar Poin', '-${formatRupiah(_pointsUsed)}', isDark, isDiscount: true),
         ],
 
-        // ── Disc / Promo / Points Row ──
+        // â”€â”€ Disc / Promo / Points Row â”€â”€
         const SizedBox(height: 12),
         Row(children: [
           // Promo code
@@ -496,7 +496,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 decoration: InputDecoration(
                   hintText: _appliedPromo != null ? _appliedPromo!.name : 'Kode promo...',
                   hintStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                  prefixIcon: const Icon(Icons.local_offer_outlined, size: 16, color: NusaConfig.textSecondary),
+                  prefixIcon: Icon(Icons.local_offer_outlined, size: 16, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                   filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
                   contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -577,7 +577,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         Divider(color: Colors.grey.withValues(alpha: 0.2)),
         const SizedBox(height: 8),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('TOTAL', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 1)),
+          Text('TOTAL', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, letterSpacing: 1)),
           Text(formatRupiah(_total),
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor, letterSpacing: -0.5)),
         ]),
@@ -633,10 +633,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             border: Border.all(color: active ? NusaConfig.primaryColor : NusaConfig.dividerColor, width: active ? 2 : 1),
           ),
           child: Column(children: [
-            Icon(icon, size: 28, color: active ? NusaConfig.primaryColor : NusaConfig.textTertiary),
+            Icon(icon, size: 28, color: active ? NusaConfig.primaryColor : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
             const SizedBox(height: 6),
             Text(method, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-                color: active ? NusaConfig.primaryColor : NusaConfig.textSecondary)),
+                color: active ? NusaConfig.primaryColor : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           ]),
         ),
       ),
@@ -668,10 +668,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           controller: _cashCtrl,
           keyboardType: TextInputType.number,
           autofocus: true,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
           decoration: InputDecoration(
             hintText: 'Rp 0',
-            hintStyle: const TextStyle(color: NusaConfig.textTertiary, fontSize: 20),
+            hintStyle: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary, fontSize: 20),
             filled: true, fillColor: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
@@ -767,13 +767,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             child: QrImageView(data: _qrisString!, version: QrVersions.auto, size: 180),
           ),
           const SizedBox(height: 12),
-          const Text('Scan QRIS untuk membayar',
-              style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+          Text('Scan QRIS untuk membayar',
+              style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
         ] else ...[
-          const Icon(Icons.qr_code, size: 64, color: Colors.grey),
+          Icon(Icons.qr_code, size: 64, color: isDark ? NusaConfig.darkTextSecondary : Colors.grey),
           const SizedBox(height: 8),
-          const Text('Set QRIS di Pengaturan',
-              style: TextStyle(color: Colors.grey, fontSize: 15)),
+              Text('Set QRIS di Pengaturan',
+                style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : Colors.grey, fontSize: 15)),
         ],
       ]),
     );
@@ -800,7 +800,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         ),
         const SizedBox(height: 12),
         if (hasBankInfo) ...[
-          const Text('Transfer ke rekening', style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+          Text('Transfer ke rekening', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.all(14),
@@ -808,23 +808,23 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 borderRadius: BorderRadius.circular(12)),
             child: Column(children: [
               if (bankName.isNotEmpty)
-                Text(bankName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+                Text(bankName, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
               if (bankAccount.isNotEmpty) ...[
                 const SizedBox(height: 2),
-                Text(bankAccount, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
-                    fontFamily: 'monospace', letterSpacing: 1, color: NusaConfig.textPrimary)),
+                Text(bankAccount, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+                    fontFamily: 'monospace', letterSpacing: 1, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
               ],
               if (bankHolder.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Text('a.n. $bankHolder', style: const TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+                Text('a.n. $bankHolder', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
               ],
             ]),
           ),
         ] else ...[
-          const Icon(Icons.account_balance_wallet_outlined, size: 48, color: Colors.grey),
+          Icon(Icons.account_balance_wallet_outlined, size: 48, color: isDark ? NusaConfig.darkTextSecondary : Colors.grey),
           const SizedBox(height: 8),
-          const Text('Atur rekening di Pengaturan',
-              style: TextStyle(color: Colors.grey, fontSize: 15)),
+              Text('Atur rekening di Pengaturan',
+                style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : Colors.grey, fontSize: 15)),
         ],
       ]),
     );
@@ -838,7 +838,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         const Icon(Icons.stars_rounded, size: 14, color: Colors.amber),
         const SizedBox(width: 4),
         if (_pointsUsed > 0)
-          Text('${_selectedCustomer!.points - _pointsUsed} → ${_pointsUsed} pts',
+          Text('${_selectedCustomer!.points - _pointsUsed} â†’ ${_pointsUsed} pts',
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFB45309)))
         else
           Text('${_selectedCustomer!.points} pts',
@@ -848,6 +848,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   void _showRedeemPoints() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final maxPts = _selectedCustomer?.points ?? 0;
     final maxRp = maxPts; // 1 poin = Rp 1
     final ctrl = TextEditingController();
@@ -863,7 +864,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 style: const TextStyle(fontSize: 13)),
             const SizedBox(height: 4),
             Text('1 poin = Rp 1',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : Colors.grey.shade600)),
             const SizedBox(height: 12),
             TextField(
               controller: ctrl,

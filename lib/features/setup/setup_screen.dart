@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +12,7 @@ import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 
 /// Post-activation setup: store name, owner name, owner PIN.
 ///
-/// Polished onboarding UI — not a plain form.
+/// Polished onboarding UI â€” not a plain form.
 class SetupScreen extends ConsumerStatefulWidget {
   const SetupScreen({super.key});
   @override
@@ -44,7 +44,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       return;
     }
     if (pin.length < 4 || pin.length > 6) {
-      setState(() => _error = 'PIN harus 4–6 digit');
+      setState(() => _error = 'PIN harus 4â€“6 digit');
       return;
     }
     if (int.tryParse(pin) == null) {
@@ -176,7 +176,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Nama Usaha
-                        _sectionLabel('Nama Usaha'),
+                        _sectionLabel('Nama Usaha', isDark),
                         const SizedBox(height: 8),
                         _buildInput(
                           controller: _storeCtrl,
@@ -187,7 +187,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                         const SizedBox(height: 20),
 
                         // Nama Pemilik
-                        _sectionLabel('Nama Pemilik'),
+                        _sectionLabel('Nama Pemilik', isDark),
                         const SizedBox(height: 8),
                         _buildInput(
                           controller: _nameCtrl,
@@ -198,7 +198,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                         const SizedBox(height: 20),
 
                         // PIN Owner
-                        _sectionLabel('PIN Owner (4–6 digit)'),
+                        _sectionLabel('PIN Owner (4â€“6 digit)', isDark),
                         const SizedBox(height: 8),
                         _buildInput(
                           controller: _pinCtrl,
@@ -243,7 +243,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
                         const SizedBox(height: 24),
                         NusaButton(
-                          _loading ? 'Menyimpan...' : 'Mulai Buka Toko 🚀',
+                          _loading ? 'Menyimpan...' : 'Mulai Buka Toko ðŸš€',
                           onPressed: _loading ? null : _submit,
                         ),
                       ],
@@ -259,12 +259,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     );
   }
 
-  Widget _sectionLabel(String text) => Text(
+  Widget _sectionLabel(String text, bool isDark) => Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: NusaConfig.textPrimary,
+          color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
           letterSpacing: 0.3,
         ),
       );
@@ -296,7 +296,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         hintStyle: TextStyle(
           color: isDark
               ? NusaConfig.darkTextTertiary
-              : NusaConfig.textTertiary,
+              : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
           fontSize: 14,
         ),
         prefixIcon: Icon(icon, size: 20, color: NusaConfig.primaryColor),

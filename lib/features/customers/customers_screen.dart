@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -236,7 +236,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
       Column(
         children: [
           const SizedBox(height: 8),
-          // ── Action chips row ──
+          // â”€â”€ Action chips row â”€â”€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
@@ -246,7 +246,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             ]),
           ),
           const SizedBox(height: 8),
-          // ── Search ──
+          // â”€â”€ Search â”€â”€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -267,17 +267,17 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                   fontSize: 15,
                   color: isDark
                       ? NusaConfig.darkTextPrimary
-                      : NusaConfig.textPrimary,
+                      : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Cari nama atau telepon…',
+                  hintText: 'Cari nama atau teleponâ€¦',
                   hintStyle: TextStyle(
                     color: isDark
                         ? NusaConfig.darkTextTertiary
-                        : NusaConfig.textTertiary,
+                        : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
                   ),
-                  prefixIcon: const Icon(Icons.search_rounded,
-                      color: NusaConfig.textSecondary, size: 22),
+                  prefixIcon: Icon(Icons.search_rounded,
+                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, size: 22),
                   border: InputBorder.none,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -286,7 +286,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          // ── Level segmented filter ──
+          // â”€â”€ Level segmented filter â”€â”€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _segmented(
@@ -299,7 +299,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          // ── List ──
+          // â”€â”€ List â”€â”€
           Expanded(
             child: _loading
                 ? const SkeletonList()
@@ -443,7 +443,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                         ? Colors.white
                         : (isDark
                             ? NusaConfig.darkTextSecondary
-                            : NusaConfig.textSecondary),
+                            : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                   ),
                 ),
               ),
@@ -455,9 +455,9 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   }
 }
 
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  Customer tile card
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _CustomerTile extends StatelessWidget {
   final Customer customer;
@@ -528,7 +528,7 @@ class _CustomerTile extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         color: isDark
                             ? NusaConfig.darkTextPrimary
-                            : NusaConfig.textPrimary,
+                            : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                       )),
                   const SizedBox(height: 3),
                   if (c.phone != null && c.phone!.isNotEmpty)
@@ -537,7 +537,7 @@ class _CustomerTile extends StatelessWidget {
                           fontSize: 12,
                           color: isDark
                               ? NusaConfig.darkTextTertiary
-                              : NusaConfig.textTertiary,
+                              : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
                         )),
                   const SizedBox(height: 6),
                   Text('Total: ${formatRupiah(c.totalSpent)}',
@@ -568,7 +568,7 @@ class _CustomerTile extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Icon(Icons.chevron_right_rounded,
-                size: 18, color: NusaConfig.textTertiary),
+                size: 18, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
           ]),
         ),
       ),
@@ -576,9 +576,9 @@ class _CustomerTile extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  Customer detail sheet
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _CustomerDetailSheet extends StatelessWidget {
   final Customer customer;
@@ -651,7 +651,7 @@ class _CustomerDetailSheet extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                           color: isDark
                               ? NusaConfig.darkTextPrimary
-                              : NusaConfig.textPrimary,
+                              : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                         )),
                     const SizedBox(height: 6),
                     Container(
@@ -718,7 +718,7 @@ class _CustomerDetailSheet extends StatelessWidget {
         borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
       ),
       child: Row(children: [
-        Icon(icon, size: 18, color: NusaConfig.textSecondary),
+        Icon(icon, size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
         const SizedBox(width: 10),
         Expanded(
           child: Row(
@@ -729,7 +729,7 @@ class _CustomerDetailSheet extends StatelessWidget {
                     fontSize: 13,
                     color: isDark
                         ? NusaConfig.darkTextTertiary
-                        : NusaConfig.textTertiary,
+                        : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
                   )),
               Text(value,
                   style: GoogleFonts.plusJakartaSans(
@@ -737,7 +737,7 @@ class _CustomerDetailSheet extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: isDark
                         ? NusaConfig.darkTextPrimary
-                        : NusaConfig.textPrimary,
+                        : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                   )),
             ],
           ),
@@ -764,9 +764,9 @@ class _CustomerDetailSheet extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  WA Template Picker Dialog (Step 2)
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _WaTemplatePicker extends StatefulWidget {
   final List<Map<String, String>> templates;
@@ -865,8 +865,8 @@ class _WaTemplatePickerState extends State<_WaTemplatePicker> {
             const SizedBox(height: 8),
             TextField(
               decoration: InputDecoration(
-                hintText: 'Atau tulis pesan custom…',
-                hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                hintText: 'Atau tulis pesan customâ€¦',
+                hintStyle: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextTertiary : Colors.grey.shade400),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 isDense: true,
@@ -910,9 +910,9 @@ class _WaTemplatePickerState extends State<_WaTemplatePicker> {
   }
 }
 
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  WA Template Management Sheet (Step 1)
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _WaTemplateSheet extends StatefulWidget {
   final SettingsRepository repo;
@@ -1178,9 +1178,9 @@ class _WaTemplateSheetState extends State<_WaTemplateSheet> {
   }
 }
 
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  Point Settings Sheet (Step 3)
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _PointSettingsSheet extends StatefulWidget {
   final SettingsRepository repo;
@@ -1288,16 +1288,16 @@ class _PointSettingsSheetState extends State<_PointSettingsSheet> {
 
                     // Points per Rupiah
                     Text('Poin per Rupiah',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: NusaConfig.textSecondary)),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _pointsCtrl,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         hintText: '100',
-                        hintStyle: TextStyle(color: Colors.grey.shade400),
+                        hintStyle: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : Colors.grey.shade400),
                         helperText: 'Setiap Rp ? akan mendapat 1 poin',
-                        helperStyle: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                        helperStyle: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : Colors.grey.shade500),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
@@ -1306,7 +1306,7 @@ class _PointSettingsSheetState extends State<_PointSettingsSheet> {
 
                     // Thresholds
                     Text('Level Threshold (poin minimum)',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: NusaConfig.textSecondary)),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                     const SizedBox(height: 8),
                     _thresholdField('Silver (default)', _silverCtrl, Colors.grey, isDark),
                     const SizedBox(height: 10),

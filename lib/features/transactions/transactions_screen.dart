@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -208,7 +208,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             fontWeight: FontWeight.w600,
             color: isDark
                 ? NusaConfig.darkTextSecondary
-                : NusaConfig.textSecondary,
+                : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
           ),
           borderRadius: BorderRadius.circular(12),
           underline: const SizedBox.shrink(),
@@ -216,7 +216,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               size: 18,
               color: isDark
                   ? NusaConfig.darkTextTertiary
-                  : NusaConfig.textTertiary),
+                  : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
           items: [
             _ddItem('Hari ini'),
             _ddItem('Kemarin'),
@@ -315,7 +315,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         ? Colors.white
                         : (isDark
                             ? NusaConfig.darkTextSecondary
-                            : NusaConfig.textSecondary),
+                            : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                   ),
                 ),
               ),
@@ -326,7 +326,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
-  // ── Share / bagikan dengan preview gambar ──
+  // â”€â”€ Share / bagikan dengan preview gambar â”€â”€
 
   Future<File?> _captureReceipt(GlobalKey key, Transaction tx) async {
     try {
@@ -506,7 +506,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       color: shareDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                     )),
                 const SizedBox(height: 16),
-                // ── Receipt preview image ──
+                // â”€â”€ Receipt preview image â”€â”€
                 RepaintBoundary(
                   key: receiptKey,
                   child: Container(
@@ -540,7 +540,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           setSt(() => capturing = false);
                           if (file != null && mounted) {
                             Navigator.pop(ctx);
-                            // Kirim via WA — share file image
+                            // Kirim via WA â€” share file image
                             if (custPhone != null &&
                                 custPhone.isNotEmpty) {
                               // Direct WA with text (image not supported via wa.me)
@@ -666,7 +666,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       Column(
         children: [
           const SizedBox(height: 8),
-          // ── Search by invoice ──
+          // â”€â”€ Search by invoice â”€â”€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -686,17 +686,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   fontSize: 15,
                   color: isDark
                       ? NusaConfig.darkTextPrimary
-                      : NusaConfig.textPrimary,
+                      : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Cari nomor invoice…',
+                  hintText: 'Cari nomor invoiceâ€¦',
                   hintStyle: TextStyle(
                     color: isDark
                         ? NusaConfig.darkTextTertiary
-                        : NusaConfig.textTertiary,
+                        : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
                   ),
-                  prefixIcon: const Icon(Icons.search_rounded,
-                      color: NusaConfig.textSecondary, size: 22),
+                  prefixIcon: Icon(Icons.search_rounded,
+                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, size: 22),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? GestureDetector(
                           onTap: () {
@@ -705,8 +705,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: const Icon(Icons.clear_rounded,
-                                color: NusaConfig.textSecondary, size: 20),
+                            child: Icon(Icons.clear_rounded,
+                                color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, size: 20),
                           ),
                         )
                       : null,
@@ -719,7 +719,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          // ── Payment segmented + time dropdown inline ──
+          // â”€â”€ Payment segmented + time dropdown inline â”€â”€
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
@@ -745,7 +745,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 if (snap.hasError) {
                   return Center(
                     child: Text('Gagal memuat: ${snap.error}',
-                        style: const TextStyle(color: Colors.grey)),
+                        style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : Colors.grey)),
                   );
                 }
                 final list = _filter(snap.data ?? []);
@@ -766,7 +766,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   },
                   child: Column(
                     children: [
-                      // ── Summary ──
+                      // â”€â”€ Summary â”€â”€
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Container(
@@ -793,7 +793,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                         fontWeight: FontWeight.w700,
                                         color: isDark
                                             ? NusaConfig.darkTextPrimary
-                                            : NusaConfig.textPrimary,
+                                            : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                                       )),
                                   const SizedBox(height: 2),
                                   Text('Rata-rata ${formatRupiah(avg)}',
@@ -802,7 +802,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                         fontWeight: FontWeight.w500,
                                         color: isDark
                                             ? NusaConfig.darkTextTertiary
-                                            : NusaConfig.textTertiary,
+                                            : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
                                       )),
                                 ],
                               ),
@@ -886,8 +886,8 @@ class _TransactionCardState extends State<_TransactionCard> {
     'Transfer': Icons.account_balance_rounded,
   };
 
-  Color _payColor() =>
-      _payColors[widget.tx.paymentMethod] ?? NusaConfig.textSecondary;
+  Color _payColor(bool isDark) =>
+      _payColors[widget.tx.paymentMethod] ?? (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary);
   IconData _payIcon() =>
       _payIcons[widget.tx.paymentMethod] ?? Icons.payment_rounded;
 
@@ -929,7 +929,7 @@ class _TransactionCardState extends State<_TransactionCard> {
     final tx = widget.tx;
     final items = _parseItems(tx.items);
     final isVoided = tx.status == 'Void';
-    final accent = isVoided ? NusaConfig.textTertiary : _payColor();
+    final accent = isVoided ? isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary : _payColor(isDark);
     final relDate = _relDate(tx.date);
 
     return Opacity(
@@ -963,7 +963,7 @@ class _TransactionCardState extends State<_TransactionCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Header ──
+                  // â”€â”€ Header â”€â”€
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -981,7 +981,7 @@ class _TransactionCardState extends State<_TransactionCard> {
                                         : null,
                                     color: isDark
                                         ? NusaConfig.darkTextPrimary
-                                        : NusaConfig.textPrimary,
+                                        : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                                   )),
                               if (isVoided) ...[
                                 const SizedBox(width: 8),
@@ -1006,18 +1006,18 @@ class _TransactionCardState extends State<_TransactionCard> {
                               Icon(_payIcon(),
                                   size: 14,
                                   color: isVoided
-                                      ? NusaConfig.textTertiary
+                                      ? isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary
                                       : accent),
                               const SizedBox(width: 4),
-                              Text('$relDate • ${tx.paymentMethod}',
+                              Text('$relDate â€¢ ${tx.paymentMethod}',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                     color: isVoided
-                                        ? NusaConfig.textTertiary
+                                        ? isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary
                                         : (isDark
                                             ? NusaConfig.darkTextTertiary
-                                            : NusaConfig.textTertiary),
+                                            : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
                                   )),
                             ]),
                           ],
@@ -1031,7 +1031,7 @@ class _TransactionCardState extends State<_TransactionCard> {
                                         fontSize: 16,
                                         fontWeight: FontWeight.w800,
                                         color: isVoided
-                                            ? NusaConfig.textTertiary
+                                            ? isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary
                                             : NusaConfig.primaryColor,
                                       )),
                                   const SizedBox(height: 6),
@@ -1051,7 +1051,7 @@ class _TransactionCardState extends State<_TransactionCard> {
                                         _expanded
                                             ? Icons.expand_less_rounded
                                             : Icons.expand_more_rounded,
-                                        NusaConfig.textTertiary,
+                                        isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
                                         () => setState(
                                             () => _expanded = !_expanded)),
                                   ]),
@@ -1059,7 +1059,7 @@ class _TransactionCardState extends State<_TransactionCard> {
                               ),
                             ],
                           ),
-                          // ── Expanded detail ──
+                          // â”€â”€ Expanded detail â”€â”€
                           if (_expanded) ...[
                             const SizedBox(height: 12),
                             Divider(
@@ -1082,7 +1082,7 @@ class _TransactionCardState extends State<_TransactionCard> {
                                                 color: isDark
                                                     ? NusaConfig
                                                         .darkTextSecondary
-                                                    : NusaConfig.textSecondary,
+                                                    : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                                               ))),
                                       Text(
                                           formatRupiah((it['qty'] as int) *
@@ -1092,7 +1092,7 @@ class _TransactionCardState extends State<_TransactionCard> {
                                             fontWeight: FontWeight.w600,
                                             color: isDark
                                                 ? NusaConfig.darkTextPrimary
-                                                : NusaConfig.textPrimary,
+                                                : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                                           )),
                                     ],
                                   ),
@@ -1166,14 +1166,14 @@ class _TransactionCardState extends State<_TransactionCard> {
                     fontSize: 13,
                     color: isDark
                         ? NusaConfig.darkTextSecondary
-                        : NusaConfig.textSecondary)),
+                        : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
             Text(value,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: isDark
                       ? NusaConfig.darkTextPrimary
-                      : NusaConfig.textPrimary,
+                      : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                 )),
           ],
         ),

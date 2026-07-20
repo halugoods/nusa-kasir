@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:nusa_kasir/core/config/nusa_config.dart';
 
-/// 3-box geometric loading animation — converted from CSS keyframes.
+/// 3-box geometric loading animation â€” converted from CSS keyframes.
 /// Clean, smooth, and lightweight.
 class NusaLoadingAnimation extends StatefulWidget {
   final String statusText;
@@ -35,6 +36,7 @@ class _NusaLoadingAnimationState extends State<NusaLoadingAnimation>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -53,7 +55,7 @@ class _NusaLoadingAnimationState extends State<NusaLoadingAnimation>
         Text(
           widget.statusText,
           style: TextStyle(
-            color: Colors.grey.shade500,
+            color: isDark ? NusaConfig.darkTextSecondary : Colors.grey.shade500,
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
@@ -70,7 +72,7 @@ class _BoxPainter extends CustomPainter {
   final double t;
   _BoxPainter(this.t);
 
-  // Approximated from CSS keyframes — each box morphs through positions.
+  // Approximated from CSS keyframes â€” each box morphs through positions.
   static _BoxRect _box1(double t) {
     if (t < 0.125) return (x: 0, y: 64, w: 112, h: 48);
     if (t < 0.625) return (x: 0, y: 64, w: 48, h: 48);

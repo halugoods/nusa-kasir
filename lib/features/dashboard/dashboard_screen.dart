@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/core/auth/employee_session.dart';
@@ -31,7 +31,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _omzet = 'Rp 0';
   String _trxCount = '0';
   String _avg = 'Rp 0';
-  final String _topProduct = '—';
+  final String _topProduct = 'â€”';
   List<Branche> _branches = [];
   Branche? _activeBranch;
 
@@ -136,7 +136,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
     }
 
-    // Check attendance for each employee — who hasn't checked in today?
+    // Check attendance for each employee â€” who hasn't checked in today?
     // (we'll use this to show badge on employee picker)
     // For now just reload the list
 
@@ -164,7 +164,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  // ── Menu navigation with RBAC guard ────────────────────────────────
+  // â”€â”€ Menu navigation with RBAC guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _handleMenuTap(String route) async {
     final session = ref.read(employeeSessionProvider);
@@ -271,7 +271,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return true;
   }
 
-  // ── Employee Picker + Login ────────────────────────────────────────
+  // â”€â”€ Employee Picker + Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _pickAndLogin() async {
     if (_employees.isEmpty) {
@@ -317,11 +317,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       _currentName = emp.name;
       _currentRole = emp.role;
       _currentEmployeeId = emp.id;
-      TopToast.success(context, 'Halo, ${emp.name}! 👋');
+      TopToast.success(context, 'Halo, ${emp.name}! ðŸ‘‹');
     }
   }
 
-  // ── Buka Kasir ─────────────────────────────────────────────────────
+  // â”€â”€ Buka Kasir â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _bukaKasir() async {
     // Need a logged-in employee session first
@@ -366,7 +366,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         startingCash: 0,
       );
       if (mounted) {
-        TopToast.success(context, 'Kasir dibuka — Halo, ${s.name}! 👋');
+        TopToast.success(context, 'Kasir dibuka â€” Halo, ${s.name}! ðŸ‘‹');
         context.push('/kasir?sessionId=$sessionId');
       }
     } catch (e) {
@@ -383,7 +383,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  // ── Employee Picker with Attendance Badge ─────────────────────────
+  // â”€â”€ Employee Picker with Attendance Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<Employee?> _showEmployeePicker() async {
     // Build attendance status map for today
@@ -426,7 +426,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     fontSize: 13,
                     color: isDark
                         ? NusaConfig.darkTextSecondary
-                        : NusaConfig.textSecondary,
+                        : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -523,10 +523,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ── Build ──────────────────────────────────────────────────────────
+  // â”€â”€ Build â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final session = ref.watch(employeeSessionProvider);
     final role = session?.role ?? 'Owner';
 
@@ -538,13 +539,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
       String accessType;
       if (isOwnerOnly(id) && role != 'Owner' && role != 'Manager') {
-        accessType = '🔒';
+        accessType = 'ðŸ”’';
       } else if (needsPinGuard(id)) {
-        accessType = '🔐';
+        accessType = 'ðŸ”';
       } else if (hasAccess(role, id)) {
-        accessType = '✅';
+        accessType = 'âœ…';
       } else {
-        accessType = '🔒';
+        accessType = 'ðŸ”’';
       }
 
       return {
@@ -562,15 +563,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       userName = _currentName;
       roleText = _currentRole;
       attendanceText = _hasCheckedIn
-          ? 'Hadir • $_checkInTime'
-          : '⚠️  Belum absen hari ini — buka kasir untuk absen otomatis';
+          ? 'Hadir â€¢ $_checkInTime'
+          : 'âš ï¸  Belum absen hari ini â€” buka kasir untuk absen otomatis';
     } else if (_lastCashierName != null) {
       initials = _lastCashierName!.isNotEmpty
           ? _lastCashierName![0].toUpperCase()
           : '?';
       userName = _lastCashierName!;
       roleText = _lastCashierRole;
-      attendanceText = 'Kasir terakhir • $_lastCashierTime';
+      attendanceText = 'Kasir terakhir â€¢ $_lastCashierTime';
     } else {
       initials = '?';
       userName = 'Belum ada sesi kasir';
@@ -660,7 +661,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                         fontWeight: FontWeight.w600,
                                         color: active
                                             ? NusaConfig.primaryColor
-                                            : NusaConfig.textSecondary,
+                                            : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                                       ),
                                     ),
                                   ),
@@ -759,7 +760,7 @@ class _MenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isLocked = access == '🔒';
+    final isLocked = access == 'ðŸ”’';
     final iconColor = _iconColors[icon] ?? NusaConfig.primaryColor;
 
     return GestureDetector(
@@ -817,7 +818,7 @@ class _MenuItem extends StatelessWidget {
                         border: Border.all(color: isDark ? NusaConfig.darkSurface : Colors.white, width: 1.5),
                       ),
                       alignment: Alignment.center,
-                      child: const Text('🔒', style: TextStyle(fontSize: 7)),
+                      child: const Text('ðŸ”’', style: TextStyle(fontSize: 7)),
                     ),
                   ),
                 // Online badge (pending count)
@@ -892,7 +893,7 @@ class MenuIcon extends StatelessWidget {
       );
 }
 
-/// "Kasir" CTA card — subtle gradient card, not just a flat button.
+/// "Kasir" CTA card â€” subtle gradient card, not just a flat button.
 class _BukaKasirCTA extends StatelessWidget {
   final VoidCallback? onTap;
   const _BukaKasirCTA({this.onTap});

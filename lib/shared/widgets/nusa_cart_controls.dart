@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 
-/// Pill "Tambah" button — used uniformly on POS & Storefront product cards.
+/// Pill "Tambah" button â€” used uniformly on POS & Storefront product cards.
 /// Set [fullWidth] to stretch inside a card foot; leave false for compact rows.
 class NusaAddButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -17,6 +17,7 @@ class NusaAddButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final btn = ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
@@ -41,7 +42,7 @@ class NusaAddButton extends StatelessWidget {
   }
 }
 
-/// Full-width / compact quantity stepper (−  qty  +) — uniform across POS & Storefront.
+/// Full-width / compact quantity stepper (âˆ’  qty  +) â€” uniform across POS & Storefront.
 class NusaQtyStepper extends StatelessWidget {
   final int qty;
   final VoidCallback onDecrement;

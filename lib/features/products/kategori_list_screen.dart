@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
@@ -7,7 +7,7 @@ import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
 
-/// Kategori grid screen — navigated to from ProductsScreen "Kategori" segment.
+/// Kategori grid screen â€” navigated to from ProductsScreen "Kategori" segment.
 /// Route: /produk/kategori
 class KategoriListScreen extends ConsumerStatefulWidget {
   const KategoriListScreen({super.key});
@@ -55,7 +55,7 @@ class _KategoriListScreenState extends ConsumerState<KategoriListScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                 child: Row(children: [
-                  const Icon(Icons.sort, size: 18, color: NusaConfig.textSecondary),
+                  Icon(Icons.sort, size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () => setState(() => _sortByCount = !_sortByCount),
@@ -68,14 +68,14 @@ class _KategoriListScreenState extends ConsumerState<KategoriListScreen> {
                       ),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         Text(_sortByCount ? 'Terbanyak' : 'A-Z',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NusaConfig.textSecondary)),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                         const SizedBox(width: 4),
-                        const Icon(Icons.swap_vert, size: 16, color: NusaConfig.textSecondary),
+                        Icon(Icons.swap_vert, size: 16, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                       ]),
                     ),
                   ),
                   const Spacer(),
-                  Text('${_counts.length} kategori', style: const TextStyle(fontSize: 12, color: NusaConfig.textTertiary)),
+                  Text('${_counts.length} kategori', style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
                 ]),
               ),
               const SizedBox(height: 8),
@@ -123,8 +123,8 @@ class _KategoriListScreenState extends ConsumerState<KategoriListScreen> {
                                   children: [
                                     Text(emoji, style: const TextStyle(fontSize: 32)),
                                     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                      Text(cat, style: const TextStyle(
-                                        fontSize: 18, fontWeight: FontWeight.w800, color: NusaConfig.textPrimary,
+                                      Text(cat, style: TextStyle(
+                                        fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                                         letterSpacing: -0.3)),
                                       const SizedBox(height: 2),
                                       Container(
@@ -133,7 +133,7 @@ class _KategoriListScreenState extends ConsumerState<KategoriListScreen> {
                                           color: Colors.black.withValues(alpha: 0.08),
                                           borderRadius: BorderRadius.circular(NusaConfig.radiusFull)),
                                         child: Text('$count produk',
-                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: NusaConfig.textSecondary)),
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                                       ),
                                     ]),
                                   ],

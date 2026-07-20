@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
-/// Empty state placeholder — icon + message + optional action button.
+/// Empty state placeholder â€” icon + message + optional action button.
 class EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
@@ -17,6 +17,7 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
     final subColor = theme.brightness == Brightness.dark
         ? const Color(0xFF94A3B8)

@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 
-/// PIN login dialog — used when an employee needs to authenticate.
+/// PIN login dialog â€” used when an employee needs to authenticate.
 ///
 /// Shows the employee name and role, a PIN input (4-6 digits, obscured),
 /// a "Remember PIN for 8 hours" checkbox, and Masuk/Batal buttons.
@@ -105,7 +105,7 @@ class _PinDialogState extends State<PinDialog>
     }
   }
 
-  Color? get _roleColor {
+  Color? _roleColor(bool isDark) {
     switch (widget.employeeRole) {
       case 'Owner':
         return NusaConfig.primaryColor;
@@ -118,7 +118,7 @@ class _PinDialogState extends State<PinDialog>
       case 'Finance':
         return const Color(0xFF3B82F6);
       default:
-        return NusaConfig.textSecondary;
+        return isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
     }
   }
 
@@ -143,19 +143,19 @@ class _PinDialogState extends State<PinDialog>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header — avatar + name + role
+              // Header â€” avatar + name + role
               Container(
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
-                  color: (_roleColor ?? NusaConfig.primaryColor)
+                  color: (_roleColor(isDark) ?? NusaConfig.primaryColor)
                       .withValues(alpha: 0.12),
                 ),
                 child: Icon(
                   Icons.person_rounded,
                   size: 36,
-                  color: _roleColor ?? NusaConfig.primaryColor,
+                  color: _roleColor(isDark) ?? NusaConfig.primaryColor,
                 ),
               ),
               const SizedBox(height: 16),
@@ -173,7 +173,7 @@ class _PinDialogState extends State<PinDialog>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: (_roleColor ?? NusaConfig.primaryColor)
+                  color: (_roleColor(isDark) ?? NusaConfig.primaryColor)
                       .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -182,7 +182,7 @@ class _PinDialogState extends State<PinDialog>
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: _roleColor ?? NusaConfig.primaryColor,
+                    color: _roleColor(isDark) ?? NusaConfig.primaryColor,
                   ),
                 ),
               ),
@@ -285,7 +285,7 @@ class _PinDialogState extends State<PinDialog>
                           fontSize: 13,
                           color: isDark
                               ? NusaConfig.darkTextSecondary
-                              : NusaConfig.textSecondary,
+                              : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                         ),
                       ),
                     ),

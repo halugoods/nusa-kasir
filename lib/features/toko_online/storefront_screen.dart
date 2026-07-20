@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -94,7 +94,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
     }
   }
 
-  // ── Product initials helper ──
+  // â”€â”€ Product initials helper â”€â”€
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.length >= 2) {
@@ -196,11 +196,11 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
     
     // 2. Send WhatsApp notification (existing flow)
     final itemsText = _cart.map((c) =>
-      '• ${c.product.name} x${c.qty} — ${formatRupiah(c.subtotal)}'
+      'â€¢ ${c.product.name} x${c.qty} â€” ${formatRupiah(c.subtotal)}'
     ).join('\n');
     final msg = Uri.encodeComponent(
-      '🛒 *Pesanan Baru*\n\n'
-      '👤 $name\n📱 $phone\n🏪 $_branch\n💳 $_paymentMethod\n\n'
+      'ðŸ›’ *Pesanan Baru*\n\n'
+      'ðŸ‘¤ $name\nðŸ“± $phone\nðŸª $_branch\nðŸ’³ $_paymentMethod\n\n'
       '*Item:*\n$itemsText\n\n'
       '*Total: ${formatRupiah(_totalPrice)}*');
     final targetPhone = _storePhone ?? '';
@@ -227,7 +227,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            // ── Header ──
+            // â”€â”€ Header â”€â”€
             Container(
               decoration: BoxDecoration(
                 color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
@@ -255,7 +255,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
                         Row(children: [
                           Container(width: 6, height: 6, decoration: const BoxDecoration(color: NusaConfig.success, shape: BoxShape.circle)),
                           const SizedBox(width: 4),
-                          Text('Buka • Online Order', style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                          Text('Buka â€¢ Online Order', style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
                         ]),
                       ]),
                     ),
@@ -305,7 +305,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
                       decoration: InputDecoration(
                         hintText: 'Cari menu...',
                         hintStyle: TextStyle(fontSize: 14, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                        prefixIcon: const Icon(Icons.search_rounded, size: 20, color: NusaConfig.textSecondary),
+                        prefixIcon: Icon(Icons.search_rounded, size: 20, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                         border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(vertical: 11),
                       ),
                     ),
@@ -339,7 +339,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
                 ),
               ]),
             ),
-            // ── Product Grid ──
+            // â”€â”€ Product Grid â”€â”€
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator(color: NusaConfig.primaryColor))
@@ -375,7 +375,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
             ),
           ]),
 
-          // ── Cart popup ──
+          // â”€â”€ Cart popup â”€â”€
           if (_showCartPopup && _totalItems > 0)
             Positioned(
               bottom: 16, left: 16, right: 16,
@@ -394,7 +394,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
                     const Expanded(
                       child: Text('Lihat Keranjang', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
                     ),
-                    Text('$_totalItems item · ${formatRupiah(_totalPrice)}',
+                    Text('$_totalItems item Â· ${formatRupiah(_totalPrice)}',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.9))),
                     const SizedBox(width: 8),
                     const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
@@ -425,7 +425,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(children: [
-                Text('🛒  Keranjang', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+                Text('ðŸ›’  Keranjang', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                 const Spacer(),
                 TextButton(onPressed: () { _cart.clear(); setState(() => _showCart = false); },
                   child: const Text('Kosongkan', style: TextStyle(color: NusaConfig.primaryColor, fontWeight: FontWeight.w600))),
@@ -539,11 +539,11 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
                   Text('METODE PEMBAYARAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, letterSpacing: 0.5)),
                   const SizedBox(height: 8),
                   Row(children: [
-                    _paymentOption('Tunai', Icons.money, setSheetState: setSheetState),
+                    _paymentOption('Tunai', Icons.money, isDark, setSheetState: setSheetState),
                     const SizedBox(width: 10),
-                    _paymentOption('QRIS', Icons.qr_code, setSheetState: setSheetState),
+                    _paymentOption('QRIS', Icons.qr_code, isDark, setSheetState: setSheetState),
                     const SizedBox(width: 10),
-                    _paymentOption('Transfer', Icons.account_balance, setSheetState: setSheetState),
+                    _paymentOption('Transfer', Icons.account_balance, isDark, setSheetState: setSheetState),
                   ]),
                   const SizedBox(height: 24),
                   SizedBox(
@@ -583,7 +583,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
     );
   }
 
-  Widget _paymentOption(String method, IconData icon, {required void Function(void Function()) setSheetState}) {
+  Widget _paymentOption(String method, IconData icon, bool isDark, {required void Function(void Function()) setSheetState}) {
     final active = _paymentMethod == method;
     return Expanded(
       child: GestureDetector(
@@ -597,9 +597,9 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
             border: Border.all(color: active ? NusaConfig.primaryColor : NusaConfig.dividerColor, width: active ? 2 : 1),
           ),
           child: Column(children: [
-            Icon(icon, size: 24, color: active ? NusaConfig.primaryColor : NusaConfig.textSecondary),
+            Icon(icon, size: 24, color: active ? NusaConfig.primaryColor : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
             const SizedBox(height: 4),
-            Text(method, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: active ? NusaConfig.primaryColor : NusaConfig.textSecondary)),
+            Text(method, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: active ? NusaConfig.primaryColor : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           ]),
         ),
       ),
@@ -607,7 +607,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
   }
 }
 
-// ── Product Card (storefront) ──
+// â”€â”€ Product Card (storefront) â”€â”€
 
 class _ProductCard extends StatelessWidget {
   final Product product;
@@ -627,6 +627,7 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final outOfStock = product.stock <= 0;
     final gradient = NusaConfig.catGradientFor(product.category);
     final hasImage = product.imagePath != null && product.imagePath!.isNotEmpty && File(product.imagePath!).existsSync();
@@ -642,7 +643,7 @@ class _ProductCard extends StatelessWidget {
         ),
         padding: const EdgeInsets.all(10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // ── Image (inset, square with own rounded corners) ──
+          // â”€â”€ Image (inset, square with own rounded corners) â”€â”€
           ClipRRect(
             borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
             child: AspectRatio(
@@ -690,25 +691,25 @@ class _ProductCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // ── Name ──
+          // â”€â”€ Name â”€â”€
           Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, height: 1.25,
-              color: outOfStock ? NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
+              color: outOfStock ? isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
           const SizedBox(height: 2),
-          // ── Category ──
+          // â”€â”€ Category â”€â”€
           Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
           const SizedBox(height: 6),
-          // ── Price ──
+          // â”€â”€ Price â”€â”€
           Text(formatRupiah(product.sellPrice),
             style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
           const SizedBox(height: 8),
-          // ── Action ──
+          // â”€â”€ Action â”€â”€
           outOfStock
               ? Container(
                   height: 36,
                   decoration: BoxDecoration(color: isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill, borderRadius: BorderRadius.circular(10)),
                   alignment: Alignment.center,
-                  child: const Text('Stok Habis', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: NusaConfig.textTertiary)),
+                  child: Text('Stok Habis', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
                 )
               : cartQty == 0
                   ? NusaAddButton(onTap: onAdd, fullWidth: true)

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
@@ -123,7 +123,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     return _expenses; // Semua
   }
 
-  Widget _chip(int i) {
+  Widget _chip(int i, bool isDark) {
     final sel = i == _tab;
     return FilterChip(
       label: Text(_tabs[i]),
@@ -132,7 +132,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       selectedColor: NusaConfig.primaryColor,
       checkmarkColor: Colors.white,
       labelStyle: TextStyle(
-        color: sel ? Colors.white : NusaConfig.textPrimary,
+        color: sel ? Colors.white : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
         fontWeight: FontWeight.w600,
       ),
       backgroundColor: NusaConfig.surfaceColor,
@@ -142,11 +142,12 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ScreenScaffold(
       'Keuangan',
       Column(
         children: [
-          // ── Summary cards ──
+          // â”€â”€ Summary cards â”€â”€
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Row(children: [
@@ -173,7 +174,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
             ]),
           ),
           const SizedBox(height: 12),
-          // ── Tab chips ──
+          // â”€â”€ Tab chips â”€â”€
           SizedBox(
             height: 44,
             child: ListView.separated(
@@ -181,24 +182,24 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: _tabs.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) => _chip(i),
+              itemBuilder: (_, i) => _chip(i, isDark),
             ),
           ),
-          // ── Period filter (only for Pengeluaran) ──
+          // â”€â”€ Period filter (only for Pengeluaran) â”€â”€
           if (_tab == 0)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(children: [
-                _PeriodChip('Bulan Ini', 0),
+                _PeriodChip('Bulan Ini', 0, isDark),
                 const SizedBox(width: 8),
-                _PeriodChip('Minggu Ini', 1),
+                _PeriodChip('Minggu Ini', 1, isDark),
                 const SizedBox(width: 8),
-                _PeriodChip('Semua', 2),
+                _PeriodChip('Semua', 2, isDark),
               ]),
             ),
           const SizedBox(height: 4),
           Expanded(
-            child: _body(),
+            child: _body(isDark),
           ),
         ],
       ),
@@ -212,10 +213,10 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     );
   }
 
-  Widget _PeriodChip(String label, int idx) {
+  Widget _PeriodChip(String label, int idx, bool isDark) {
     final sel = _periodFilter == idx;
     return FilterChip(
-      label: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: sel ? Colors.white : NusaConfig.textPrimary)),
+      label: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: sel ? Colors.white : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
       selected: sel,
       showCheckmark: false,
       selectedColor: NusaConfig.primaryColor,
@@ -224,7 +225,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     );
   }
 
-  Widget _body() {
+  Widget _body(bool isDark) {
     final f = FinanceRepository(ref.read(databaseProvider));
     switch (_tab) {
       case 0:
@@ -254,14 +255,14 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                                       fontWeight: FontWeight.w600)),
                               const SizedBox(height: 4),
                               Text(e.description,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 13,
-                                      color: NusaConfig.textSecondary)),
+                                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                               const SizedBox(height: 2),
                               Text(_date(e.date),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 12,
-                                      color: NusaConfig.textSecondary)),
+                                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                             ],
                           ),
                         ),
@@ -321,13 +322,13 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text('Periode: ${p.period}',
-                            style: const TextStyle(
-                                fontSize: 13, color: NusaConfig.textSecondary)),
+                            style: TextStyle(
+                                fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                         const SizedBox(height: 4),
                         Text(
-                            'Gaji: ${formatRupiah(p.salary)} • Bonus: ${formatRupiah(p.bonus)} • Potong: ${formatRupiah(p.deduction)}',
-                            style: const TextStyle(
-                                fontSize: 13, color: NusaConfig.textSecondary)),
+                            'Gaji: ${formatRupiah(p.salary)} â€¢ Bonus: ${formatRupiah(p.bonus)} â€¢ Potong: ${formatRupiah(p.deduction)}',
+                            style: TextStyle(
+                                fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                       ],
                     ),
                   ))
@@ -350,21 +351,21 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600)),
                               const SizedBox(height: 4),
-                              Text('${w.qty} pcs • ${w.type}',
-                                  style: const TextStyle(
+                              Text('${w.qty} pcs â€¢ ${w.type}',
+                                  style: TextStyle(
                                       fontSize: 13,
-                                      color: NusaConfig.textSecondary)),
+                                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                               if (w.reason != null && w.reason!.isNotEmpty)
                                 Text(w.reason!,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 12,
-                                        color: NusaConfig.textSecondary)),
+                                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                             ],
                           ),
                         ),
                         Text(_date(w.date),
-                            style: const TextStyle(
-                                fontSize: 12, color: NusaConfig.textSecondary)),
+                            style: TextStyle(
+                                fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                       ],
                     ),
                   ))
@@ -379,7 +380,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 children: [
-                  Text('Saldo Berjalan: ', style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+                  Text('Saldo Berjalan: ', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                   Text(
                     formatRupiah(_runningBalance),
                     style: TextStyle(
@@ -408,14 +409,14 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                                             fontWeight: FontWeight.w600)),
                                     const SizedBox(height: 4),
                                     Text(l.description,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             fontSize: 13,
-                                            color: NusaConfig.textSecondary)),
+                                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                                     if (l.method != null)
                                       Text('Metode: ${l.method}',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               fontSize: 12,
-                                              color: NusaConfig.textSecondary)),
+                                              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                                   ],
                                 ),
                               ),
@@ -546,6 +547,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   }
 
   void _addPayroll() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final periodC = TextEditingController();
     final salaryC = TextEditingController();
     final bonusC = TextEditingController();
@@ -560,8 +562,8 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (_employees.isEmpty)
-                const Text('Belum ada karyawan.',
-                    style: TextStyle(color: Colors.grey))
+                Text('Belum ada karyawan.',
+                    style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : Colors.grey))
               else
                 DropdownButtonFormField<int>(
                   value: empId,
@@ -610,6 +612,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   }
 
   void _addWaste() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final qtyC = TextEditingController();
     final reasonC = TextEditingController();
     String type = 'Expired';
@@ -623,8 +626,8 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (_products.isEmpty)
-                const Text('Belum ada produk.',
-                    style: TextStyle(color: Colors.grey))
+                Text('Belum ada produk.',
+                    style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : Colors.grey))
               else
                 DropdownButtonFormField<int>(
                   value: prodId,

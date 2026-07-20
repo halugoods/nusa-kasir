@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -39,7 +39,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
   }
 
   /// Convert store name to URL-safe slug.
-  /// Example: "Toko Berkah Jaya 99" → "toko-berkah-jaya-99"
+  /// Example: "Toko Berkah Jaya 99" â†’ "toko-berkah-jaya-99"
   String _slugify(String name) {
     return name
         .trim()
@@ -67,7 +67,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
       return;
     }
 
-    // activation key stays as storeId for internal API — never exposed in URL
+    // activation key stays as storeId for internal API â€” never exposed in URL
 
     // Load store name from local settings as fallback
     final repo = ref.read(settingsRepoProvider);
@@ -93,9 +93,9 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
         final cloudSlug = store['slug'] as String?;
         _storeUrl = 'https://nusa-online.vercel.app/toko/${cloudSlug ?? _slugify(_nameCtrl.text)}';
       }
-      // Note: if store is null (never saved), keep isActive = false — that's correct
+      // Note: if store is null (never saved), keep isActive = false â€” that's correct
     } catch (e) {
-      // Cached state preserved — don't reset _isActive on failed fetch
+      // Cached state preserved â€” don't reset _isActive on failed fetch
     }
 
     if (mounted) setState(() => _loading = false);
@@ -143,7 +143,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
             _storeUrl = 'https://nusa-online.vercel.app/toko/$slug';
           });
           TopToast.success(context, isActive
-              ? 'Toko online diaktifkan! 🎉'
+              ? 'Toko online diaktifkan! ðŸŽ‰'
               : 'Pengaturan disimpan');
         }
       } else {
@@ -251,7 +251,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                     child: Column(
                       children: [
                         Text(
-                          _isActive ? '🟢 Toko Online Aktif' : '⚪ Toko Online Nonaktif',
+                          _isActive ? 'ðŸŸ¢ Toko Online Aktif' : 'âšª Toko Online Nonaktif',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 17,
@@ -273,7 +273,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
 
                   // Store link (only visible when active)
                   if (_isActive && _storeUrl != null) ...[
-                    // ── Link URL card (bottom) ──
+                    // â”€â”€ Link URL card (bottom) â”€â”€
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
@@ -285,7 +285,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('🔗 Link Toko Online',
+                          const Text('ðŸ”— Link Toko Online',
                               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                           const SizedBox(height: 10),
                           Container(
@@ -311,7 +311,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                                 GestureDetector(
                                   onTap: () {
                                     Clipboard.setData(ClipboardData(text: _storeUrl!));
-                                    TopToast.success(context, 'Link disalin! 📋');
+                                    TopToast.success(context, 'Link disalin! ðŸ“‹');
                                   },
                                   child: Container(
                                     width: 36,
@@ -330,7 +330,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                       ),
                     ),
                     const SizedBox(height: 10),
-                    // ── "Buka Website" button as its own separate card (above the link) ──
+                    // â”€â”€ "Buka Website" button as its own separate card (above the link) â”€â”€
                     GestureDetector(
                       onTap: _openPreview,
                       child: Container(
@@ -408,7 +408,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                                 _isActive
                                     ? 'Toko tidak akan muncul di web'
                                     : 'Produk dg centang Online akan tampil',
-                                style: const TextStyle(fontSize: 12, color: NusaConfig.textTertiary),
+                                style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
                               ),
                             ],
                           ),
@@ -428,7 +428,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
 
                   // Sync products button
                   if (_isActive) ...[
-                    NusaButton('🔄 Sinkronkan Produk Sekarang',
+                    NusaButton('ðŸ”„ Sinkronkan Produk Sekarang',
                         onPressed: _saving ? null : () async {
                           setState(() => _saving = true);
                           await _syncProducts();
@@ -440,7 +440,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                     const SizedBox(height: 8),
                     Text(
                       'Produk yang dicentang "Tampil di Toko Online" saat edit produk akan muncul di website.',
-                      style: const TextStyle(fontSize: 11, color: NusaConfig.textTertiary),
+                      style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
                       textAlign: TextAlign.center,
                     ),
                   ],

@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -157,6 +157,7 @@ class _BranchScreenState extends ConsumerState<BranchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final filtered = _filtered;
     return ScreenScaffold(
       'Cabang',
@@ -168,7 +169,7 @@ class _BranchScreenState extends ConsumerState<BranchScreen> {
               controller: _searchCtrl,
               decoration: InputDecoration(
                 hintText: 'Cari cabang...',
-                prefixIcon: const Icon(Icons.search, color: NusaConfig.textSecondary),
+                prefixIcon: Icon(Icons.search, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                 filled: true,
                 fillColor: Theme.of(context).brightness == Brightness.dark
                     ? NusaConfig.darkSurface
@@ -238,8 +239,8 @@ class _BranchScreenState extends ConsumerState<BranchScreen> {
                                             if (info != null) ...[
                                               const SizedBox(height: 4),
                                               Text(info.address,
-                                                  style: const TextStyle(
-                                                      fontSize: 13, color: NusaConfig.textSecondary)),
+                                                  style: TextStyle(
+                                                      fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                                             ],
                                           ],
                                         ),
@@ -258,12 +259,12 @@ class _BranchScreenState extends ConsumerState<BranchScreen> {
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600,
-                                              color: isActive ? NusaConfig.accentGreen : NusaConfig.textSecondary,
+                                              color: isActive ? NusaConfig.accentGreen : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                                             ),
                                           ),
                                         ),
                                       const SizedBox(width: 4),
-                                      const Icon(Icons.chevron_right, color: NusaConfig.textSecondary),
+                                      Icon(Icons.chevron_right, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                                     ],
                                   ),
                                 ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -139,6 +139,7 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ScreenScaffold(
       'Supplier',
       Column(
@@ -230,6 +231,7 @@ class _SupplierTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasPhone = supplier.phone != null && supplier.phone!.isNotEmpty;
     return InkWell(
       onTap: onTap,
@@ -256,13 +258,13 @@ class _SupplierTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   if (hasPhone)
                     Text(supplier.phone!,
-                        style: const TextStyle(
-                            fontSize: 13, color: NusaConfig.textSecondary)),
+                        style: TextStyle(
+                            fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                   if (supplier.contactPerson != null &&
                       supplier.contactPerson!.isNotEmpty)
                     Text('CP: ${supplier.contactPerson}',
-                        style: const TextStyle(
-                            fontSize: 13, color: NusaConfig.textSecondary)),
+                        style: TextStyle(
+                            fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                 ],
               ),
             ),

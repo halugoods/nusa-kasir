@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
@@ -132,6 +132,7 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ScreenScaffold(
       'Spreadsheet',
       SingleChildScrollView(
@@ -213,7 +214,7 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
                         if (_spreadsheetId != null)
                           Icon(Icons.check_circle, color: Colors.green, size: 20)
                         else
-                          const Icon(Icons.info_outline, color: Colors.grey, size: 20),
+                          Icon(Icons.info_outline, color: isDark ? NusaConfig.darkTextSecondary : Colors.grey, size: 20),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -246,13 +247,13 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
                 const Text('Sinkronisasi Data',
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                 const SizedBox(height: 12),
-                _syncTile('Produk', Icons.inventory_2_outlined),
+                _syncTile('Produk', Icons.inventory_2_outlined, isDark: isDark),
                 const SizedBox(height: 8),
-                _syncTile('Transaksi', Icons.receipt_long_outlined),
+                _syncTile('Transaksi', Icons.receipt_long_outlined, isDark: isDark),
                 const SizedBox(height: 8),
-                _syncTile('Stok', Icons.view_module_outlined),
+                _syncTile('Stok', Icons.view_module_outlined, isDark: isDark),
                 const SizedBox(height: 8),
-                _syncTile('Laporan', Icons.paid_outlined),
+                _syncTile('Laporan', Icons.paid_outlined, isDark: isDark),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -271,7 +272,7 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
     );
   }
 
-  Widget _syncTile(String label, IconData icon) {
+  Widget _syncTile(String label, IconData icon, {required bool isDark}) {
     final isActive = _syncing && _syncingTab == label;
     return NusaCard(
       InkWell(
@@ -294,7 +295,7 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               else
-                const Icon(Icons.sync, color: Colors.grey),
+                Icon(Icons.sync, color: isDark ? NusaConfig.darkTextSecondary : Colors.grey),
             ],
           ),
         ),

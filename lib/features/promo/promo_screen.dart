@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -277,6 +277,7 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ScreenScaffold(
       'Promo',
       _loading
@@ -319,6 +320,7 @@ class _PromoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final active = promo.status == 'Aktif';
     final expired = promo.endDate != null &&
         promo.endDate!.isBefore(DateTime.now());
@@ -376,10 +378,10 @@ class _PromoTile extends StatelessWidget {
                               color: NusaConfig.primaryColor)),
                       const SizedBox(height: 4),
                       Text(
-                          'Min. belanja ${formatRupiah(promo.minBelanja)} • Aktif: ${_fmtDate(promo.startDate)}–${_fmtDate(promo.endDate)}',
-                          style: const TextStyle(
+                          'Min. belanja ${formatRupiah(promo.minBelanja)} â€¢ Aktif: ${_fmtDate(promo.startDate)}â€“${_fmtDate(promo.endDate)}',
+                          style: TextStyle(
                               fontSize: 13,
-                              color: NusaConfig.textSecondary)),
+                              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -389,9 +391,9 @@ class _PromoTile extends StatelessWidget {
                               children: [
                                 Text(
                                     'Kuota: ${_quotaLabel(promo)}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 12,
-                                        color: NusaConfig.textSecondary)),
+                                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                                 if (quotaUsed >= 0) ...[
                                   const SizedBox(height: 4),
                                   ClipRRect(
@@ -416,9 +418,9 @@ class _PromoTile extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text('Kode: ${promo.code}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 12,
-                                    color: NusaConfig.textSecondary)),
+                                    color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                           ),
                           InkWell(
                             onTap: () {
@@ -432,10 +434,10 @@ class _PromoTile extends StatelessWidget {
                               );
                             },
                             borderRadius: BorderRadius.circular(8),
-                            child: const Padding(
+                            child: Padding(
                               padding: EdgeInsets.all(4),
                               child: Icon(Icons.copy,
-                                  size: 16, color: NusaConfig.textSecondary),
+                                  size: 16, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                             ),
                           ),
                         ],

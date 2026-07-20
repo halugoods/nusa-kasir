@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -26,7 +26,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     _messages.add(ChatMessage(
       role: 'assistant',
       content:
-          '👋 Halo! Saya AI Assistant NUSA Kasir. Tanya apa saja — stok, laporan, tips bisnis, atau cara pakai fitur. Ada yang bisa saya bantu?',
+          'ðŸ‘‹ Halo! Saya AI Assistant NUSA Kasir. Tanya apa saja â€” stok, laporan, tips bisnis, atau cara pakai fitur. Ada yang bisa saya bantu?',
     ));
   }
 
@@ -71,7 +71,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       if (mounted) {
         setState(() {
           _messages.add(ChatMessage(
-              role: 'assistant', content: '⚠️ Gagal: $e'));
+              role: 'assistant', content: 'âš ï¸ Gagal: $e'));
           _loading = false;
         });
       }
@@ -109,7 +109,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 Expanded(
                   child: Text(
                     _storeName != null
-                        ? 'AI Assistant • $_storeName'
+                        ? 'AI Assistant â€¢ $_storeName'
                         : 'AI Assistant NUSA Kasir',
                     style: const TextStyle(
                         fontSize: 12,
@@ -170,11 +170,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                         fontSize: 15,
                         color: isDark
                             ? NusaConfig.darkTextPrimary
-                            : NusaConfig.textPrimary,
+                            : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                       ),
                       decoration: InputDecoration(
                         hintText: 'Tanya tentang NUSA Kasir...',
-                        hintStyle: const TextStyle(color: NusaConfig.textTertiary),
+                        hintStyle: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
                         filled: true,
                         fillColor: isDark
                             ? NusaConfig.darkSurface2
@@ -262,7 +262,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                       ? Colors.white
                       : (isDark
                           ? NusaConfig.darkTextPrimary
-                          : NusaConfig.textPrimary),
+                          : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
                 ),
               ),
             ),
@@ -305,11 +305,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _dot(),
+                _dot(isDark: isDark),
                 const SizedBox(width: 4),
-                _dot(delay: 200),
+                _dot(delay: 200, isDark: isDark),
                 const SizedBox(width: 4),
-                _dot(delay: 400),
+                _dot(delay: 400, isDark: isDark),
               ],
             ),
           ),
@@ -318,7 +318,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 
-  Widget _dot({int delay = 0}) {
+  Widget _dot({int delay = 0, required bool isDark}) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.3, end: 1.0),
       duration: const Duration(milliseconds: 600),
@@ -328,8 +328,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         child: Container(
           width: 7,
           height: 7,
-          decoration: const BoxDecoration(
-            color: NusaConfig.textTertiary,
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
             shape: BoxShape.circle,
           ),
         ),

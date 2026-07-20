@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -175,7 +175,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
     );
     if (ok != true || !mounted) return;
 
-    // Parse items — fail early if JSON is corrupt
+    // Parse items â€” fail early if JSON is corrupt
     final List items;
     try {
       items = (jsonDecode(order.items) as List).cast<Map<String, dynamic>>();
@@ -201,7 +201,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
 
     try {
       // Wrap stock deduction, transaction, loyalty, and status in a single DB transaction.
-      // If any step fails, the entire block rolls back — no partial state.
+      // If any step fails, the entire block rolls back â€” no partial state.
       await db.transaction(() async {
         // Deduct stock for each item
         for (final item in items) {
@@ -244,16 +244,16 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
       return;
     }
 
-    // Update Supabase (outside transaction — network call)
+    // Update Supabase (outside transaction â€” network call)
     try {
       final svc = OnlineOrderService(Supabase.instance.client);
       await svc.updateOrderStatus(orderId: order.id, status: 'Lunas', processedBy: session?.name);
     } catch (_) {
-      // Supabase sync failed but local DB is consistent — will sync on next poll
+      // Supabase sync failed but local DB is consistent â€” will sync on next poll
     }
 
     if (mounted) {
-      TopToast.success(context, 'Pesanan #${order.invoice} selesai! ✅');
+      TopToast.success(context, 'Pesanan #${order.invoice} selesai! âœ…');
       _load();
     }
   }
@@ -325,7 +325,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
     }
   }
 
-  Color _statusColor(String status) {
+  Color _statusColor(String status, bool isDark) {
     switch (status) {
       case 'Online Baru': return NusaConfig.accentGold;
       case 'Disiapkan': return NusaConfig.accentGreen;
@@ -333,7 +333,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
       case 'Lunas': return const Color(0xFF059669);
       case 'Dibatalkan': return NusaConfig.primaryColor;
       case 'Direfund': return const Color(0xFF6B7280);
-      default: return NusaConfig.textSecondary;
+      default: return isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
     }
   }
 
@@ -350,7 +350,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ScreenScaffold(
-      _tabs[_tabController.index] == 'Semua' ? 'Pesanan Online' : 'Pesanan Online — ${_tabs[_tabController.index]}',
+      _tabs[_tabController.index] == 'Semua' ? 'Pesanan Online' : 'Pesanan Online â€” ${_tabs[_tabController.index]}',
       Column(
         children: [
           // Tab bar
@@ -370,7 +370,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
               labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               labelColor: NusaConfig.primaryColor,
-              unselectedLabelColor: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textTertiary,
+              unselectedLabelColor: isDark ? NusaConfig.darkTextSecondary : isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
               indicator: BoxDecoration(
                 color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
                 borderRadius: BorderRadius.circular(10),
@@ -384,7 +384,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
                     Text(t),
                     if (t != 'Semua') ...[
                       const SizedBox(width: 4),
-                      _badgeFor(t),
+                      _badgeFor(t, isDark),
                     ],
                   ],
                 ),
@@ -414,7 +414,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
     );
   }
 
-  Widget _badgeFor(String tab) {
+  Widget _badgeFor(String tab, bool isDark) {
     int count = 0;
     if (tab == 'Baru') count = _orders.where((o) => o.status == 'Online Baru').length;
     else if (tab == 'Disiapkan') count = _orders.where((o) => o.status == 'Disiapkan').length;
@@ -435,14 +435,14 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: tab == 'Baru' ? NusaConfig.primaryColor : NusaConfig.textSecondary,
+          color: tab == 'Baru' ? NusaConfig.primaryColor : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
         ),
       ),
     );
   }
 
   Widget _orderCard(OnlineOrder order, bool isDark) {
-    final sColor = _statusColor(order.status);
+    final sColor = _statusColor(order.status, isDark);
     final itemCount = _itemCount(order.items);
 
     return NusaCard(
@@ -501,7 +501,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Row(
               children: [
-                const Icon(Icons.person_outline, size: 16, color: NusaConfig.textSecondary),
+                Icon(Icons.person_outline, size: 16, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -522,7 +522,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
                         color: const Color(0xFF25D366).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text('💬 WA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF128C7E))),
+                      child: const Text('ðŸ’¬ WA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF128C7E))),
                     ),
                   ),
               ],
@@ -534,7 +534,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
             child: GestureDetector(
               onTap: order.customerPhone.isNotEmpty ? () => _openWA(order) : null,
               child: Text(
-                order.customerPhone.isNotEmpty ? '📱 ${order.customerPhone}' : 'Tanpa nomor WA',
+                order.customerPhone.isNotEmpty ? 'ðŸ“± ${order.customerPhone}' : 'Tanpa nomor WA',
                 style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, decoration: order.customerPhone.isNotEmpty ? TextDecoration.underline : null),
               ),
             ),
@@ -575,9 +575,9 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                Icon(Icons.payment, size: 14, color: NusaConfig.textTertiary),
+                Icon(Icons.payment, size: 14, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
                 const SizedBox(width: 4),
-                Text(order.paymentMethod, style: const TextStyle(fontSize: 12, color: NusaConfig.textTertiary)),
+                Text(order.paymentMethod, style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
                 const Spacer(),
                 Text(formatRupiah(order.total),
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor, letterSpacing: -0.5)),
@@ -591,9 +591,9 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: Row(
                 children: [
-                  const Icon(Icons.access_time, size: 14, color: NusaConfig.textTertiary),
+                  Icon(Icons.access_time, size: 14, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
                   const SizedBox(width: 4),
-                  Text('Pickup: ${order.pickupTime}', style: const TextStyle(fontSize: 12, color: NusaConfig.textTertiary)),
+                  Text('Pickup: ${order.pickupTime}', style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
                 ],
               ),
             ),
