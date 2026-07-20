@@ -147,7 +147,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       'Keuangan',
       Column(
         children: [
-          // â”€â”€ Summary cards â”€â”€
+          // ── Summary cards ──
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Row(children: [
@@ -174,7 +174,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
             ]),
           ),
           const SizedBox(height: 12),
-          // â”€â”€ Tab chips â”€â”€
+          // ── Tab chips ──
           SizedBox(
             height: 44,
             child: ListView.separated(
@@ -185,7 +185,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
               itemBuilder: (_, i) => _chip(i, isDark),
             ),
           ),
-          // â”€â”€ Period filter (only for Pengeluaran) â”€â”€
+          // ── Period filter (only for Pengeluaran) ──
           if (_tab == 0)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -326,7 +326,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                                 fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                         const SizedBox(height: 4),
                         Text(
-                            'Gaji: ${formatRupiah(p.salary)} â€¢ Bonus: ${formatRupiah(p.bonus)} â€¢ Potong: ${formatRupiah(p.deduction)}',
+                            'Gaji: ${formatRupiah(p.salary)} • Bonus: ${formatRupiah(p.bonus)} • Potong: ${formatRupiah(p.deduction)}',
                             style: TextStyle(
                                 fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                       ],
@@ -351,7 +351,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600)),
                               const SizedBox(height: 4),
-                              Text('${w.qty} pcs â€¢ ${w.type}',
+                              Text('${w.qty} pcs • ${w.type}',
                                   style: TextStyle(
                                       fontSize: 13,
                                       color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),

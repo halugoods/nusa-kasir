@@ -326,7 +326,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
-  // â”€â”€ Share / bagikan dengan preview gambar â”€â”€
+  // ── Share / bagikan dengan preview gambar ──
 
   Future<File?> _captureReceipt(GlobalKey key, Transaction tx) async {
     try {
@@ -506,7 +506,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       color: shareDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                     )),
                 const SizedBox(height: 16),
-                // â”€â”€ Receipt preview image â”€â”€
+                // ── Receipt preview image ──
                 RepaintBoundary(
                   key: receiptKey,
                   child: Container(
@@ -540,7 +540,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           setSt(() => capturing = false);
                           if (file != null && mounted) {
                             Navigator.pop(ctx);
-                            // Kirim via WA â€” share file image
+                            // Kirim via WA — share file image
                             if (custPhone != null &&
                                 custPhone.isNotEmpty) {
                               // Direct WA with text (image not supported via wa.me)
@@ -666,7 +666,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       Column(
         children: [
           const SizedBox(height: 8),
-          // â”€â”€ Search by invoice â”€â”€
+          // ── Search by invoice ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -689,7 +689,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Cari nomor invoiceâ€¦',
+                  hintText: 'Cari nomor invoice…',
                   hintStyle: TextStyle(
                     color: isDark
                         ? NusaConfig.darkTextTertiary
@@ -719,7 +719,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          // â”€â”€ Payment segmented + time dropdown inline â”€â”€
+          // ── Payment segmented + time dropdown inline ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
@@ -766,7 +766,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   },
                   child: Column(
                     children: [
-                      // â”€â”€ Summary â”€â”€
+                      // ── Summary ──
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Container(
@@ -963,7 +963,7 @@ class _TransactionCardState extends State<_TransactionCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // â”€â”€ Header â”€â”€
+                  // ── Header ──
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1009,7 +1009,7 @@ class _TransactionCardState extends State<_TransactionCard> {
                                       ? isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary
                                       : accent),
                               const SizedBox(width: 4),
-                              Text('$relDate â€¢ ${tx.paymentMethod}',
+                              Text('$relDate • ${tx.paymentMethod}',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
@@ -1059,7 +1059,7 @@ class _TransactionCardState extends State<_TransactionCard> {
                               ),
                             ],
                           ),
-                          // â”€â”€ Expanded detail â”€â”€
+                          // ── Expanded detail ──
                           if (_expanded) ...[
                             const SizedBox(height: 12),
                             Divider(

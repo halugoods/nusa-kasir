@@ -236,7 +236,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
       Column(
         children: [
           const SizedBox(height: 8),
-          // â”€â”€ Action chips row â”€â”€
+          // ── Action chips row ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
@@ -246,7 +246,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             ]),
           ),
           const SizedBox(height: 8),
-          // â”€â”€ Search â”€â”€
+          // ── Search ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -270,7 +270,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Cari nama atau teleponâ€¦',
+                  hintText: 'Cari nama atau telepon…',
                   hintStyle: TextStyle(
                     color: isDark
                         ? NusaConfig.darkTextTertiary
@@ -286,7 +286,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          // â”€â”€ Level segmented filter â”€â”€
+          // ── Level segmented filter ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _segmented(
@@ -299,7 +299,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          // â”€â”€ List â”€â”€
+          // ── List ──
           Expanded(
             child: _loading
                 ? const SkeletonList()
@@ -455,9 +455,9 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  Customer tile card
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _CustomerTile extends StatelessWidget {
   final Customer customer;
@@ -576,9 +576,9 @@ class _CustomerTile extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  Customer detail sheet
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _CustomerDetailSheet extends StatelessWidget {
   final Customer customer;
@@ -764,9 +764,9 @@ class _CustomerDetailSheet extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  WA Template Picker Dialog (Step 2)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _WaTemplatePicker extends StatefulWidget {
   final List<Map<String, String>> templates;
@@ -865,7 +865,7 @@ class _WaTemplatePickerState extends State<_WaTemplatePicker> {
             const SizedBox(height: 8),
             TextField(
               decoration: InputDecoration(
-                hintText: 'Atau tulis pesan customâ€¦',
+                hintText: 'Atau tulis pesan custom…',
                 hintStyle: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextTertiary : Colors.grey.shade400),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -910,9 +910,9 @@ class _WaTemplatePickerState extends State<_WaTemplatePicker> {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  WA Template Management Sheet (Step 1)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _WaTemplateSheet extends StatefulWidget {
   final SettingsRepository repo;
@@ -1178,9 +1178,9 @@ class _WaTemplateSheetState extends State<_WaTemplateSheet> {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  Point Settings Sheet (Step 3)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _PointSettingsSheet extends StatefulWidget {
   final SettingsRepository repo;

@@ -7,7 +7,7 @@ import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
 
-/// Kategori grid screen â€” navigated to from ProductsScreen "Kategori" segment.
+/// Kategori grid screen — navigated to from ProductsScreen "Kategori" segment.
 /// Route: /produk/kategori
 class KategoriListScreen extends ConsumerStatefulWidget {
   const KategoriListScreen({super.key});

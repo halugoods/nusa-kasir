@@ -2,7 +2,7 @@
 import 'package:flutter/services.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 
-/// PIN login dialog â€” used when an employee needs to authenticate.
+/// PIN login dialog — used when an employee needs to authenticate.
 ///
 /// Shows the employee name and role, a PIN input (4-6 digits, obscured),
 /// a "Remember PIN for 8 hours" checkbox, and Masuk/Batal buttons.
@@ -143,7 +143,7 @@ class _PinDialogState extends State<PinDialog>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header â€” avatar + name + role
+              // Header — avatar + name + role
               Container(
                 width: 64,
                 height: 64,

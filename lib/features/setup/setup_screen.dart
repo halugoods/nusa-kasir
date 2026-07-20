@@ -12,7 +12,7 @@ import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 
 /// Post-activation setup: store name, owner name, owner PIN.
 ///
-/// Polished onboarding UI â€” not a plain form.
+/// Polished onboarding UI — not a plain form.
 class SetupScreen extends ConsumerStatefulWidget {
   const SetupScreen({super.key});
   @override
@@ -44,7 +44,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       return;
     }
     if (pin.length < 4 || pin.length > 6) {
-      setState(() => _error = 'PIN harus 4â€“6 digit');
+      setState(() => _error = 'PIN harus 4–6 digit');
       return;
     }
     if (int.tryParse(pin) == null) {
@@ -198,7 +198,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                         const SizedBox(height: 20),
 
                         // PIN Owner
-                        _sectionLabel('PIN Owner (4â€“6 digit)', isDark),
+                        _sectionLabel('PIN Owner (4–6 digit)', isDark),
                         const SizedBox(height: 8),
                         _buildInput(
                           controller: _pinCtrl,

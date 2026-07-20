@@ -577,7 +577,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Aplikasi sudah versi terbaru âœ¨'),
+            content: const Text('Aplikasi sudah versi terbaru ✨'),
             backgroundColor: Colors.green.shade700,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -715,7 +715,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  // â”€â”€ Kelola Role / Jabatan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Kelola Role / Jabatan ─────────────────────────────────
 
   Future<void> _showManageRoles() async {
     final roleRepo = RoleRepository();
@@ -944,7 +944,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  // â”€â”€ Pengaturan Struk â”€â”€
+  // ── Pengaturan Struk ──
 
   Future<void> _showReceiptSettings() async {
     final repo = ref.read(settingsRepoProvider);

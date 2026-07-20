@@ -163,7 +163,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               title: Text(customers[i].name,
                   style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text(
-                  '${formatRupiah(customers[i].totalSpent)} â€¢ ${customers[i].level}'),
+                  '${formatRupiah(customers[i].totalSpent)} • ${customers[i].level}'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.pop(ctx, customers[i]),
             ),
@@ -227,7 +227,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           : null;
 
       // Wrap all DB writes (stock, transaction, loyalty, promo) in a single transaction.
-      // If any step fails, it all rolls back â€” no partial state.
+      // If any step fails, it all rolls back — no partial state.
       await db.transaction(() async {
         // Deduct stock for each item
         for (final item in cart) {
@@ -337,26 +337,26 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // â”€â”€ Customer Card â”€â”€
+          // ── Customer Card ──
           _buildCustomerCard(isDark),
           const SizedBox(height: 14),
 
-          // â”€â”€ Ringkasan Belanja Card â”€â”€
+          // ── Ringkasan Belanja Card ──
           _buildSummaryCard(isDark, subtotal),
           const SizedBox(height: 14),
 
-          // â”€â”€ Metode Pembayaran Card â”€â”€
+          // ── Metode Pembayaran Card ──
           _buildPaymentMethodCard(isDark),
           const SizedBox(height: 14),
 
-          // â”€â”€ Detail Pembayaran Card â”€â”€
+          // ── Detail Pembayaran Card ──
           if (_paymentMethod == 'Tunai') _buildTunaiCard(isDark),
           if (_paymentMethod == 'QRIS') _buildQrisCard(isDark),
           if (_paymentMethod == 'Transfer') _buildTransferCard(isDark),
 
           const SizedBox(height: 24),
 
-          // â”€â”€ Konfirmasi Button â”€â”€
+          // ── Konfirmasi Button ──
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -395,7 +395,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           Center(
             child: TextButton(
               onPressed: _loading ? null : () => context.pop(),
-              child: Text('â† Kembali ke Kasir',
+              child: Text('← Kembali ke Kasir',
                   style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, fontWeight: FontWeight.w500)),
             ),
           ),
@@ -404,7 +404,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  // â”€â”€ Card Builders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Card Builders ────────────────────────────────────────────────
 
   Widget _buildCustomerCard(bool isDark) {
     return Container(
@@ -430,8 +430,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
               const SizedBox(height: 2),
               Text(_selectedCustomer != null
-                  ? 'Level: ${_selectedCustomer!.level} â€¢ Rp ${formatRupiah(_selectedCustomer!.totalSpent)}'
-                  : 'Opsional â€” dapatkan diskon member',
+                  ? 'Level: ${_selectedCustomer!.level} • Rp ${formatRupiah(_selectedCustomer!.totalSpent)}'
+                  : 'Opsional — dapatkan diskon member',
                   style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
             ]),
           ),
@@ -482,7 +482,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           _summaryRow('Tukar Poin', '-${formatRupiah(_pointsUsed)}', isDark, isDiscount: true),
         ],
 
-        // â”€â”€ Disc / Promo / Points Row â”€â”€
+        // ── Disc / Promo / Points Row ──
         const SizedBox(height: 12),
         Row(children: [
           // Promo code
@@ -838,7 +838,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         const Icon(Icons.stars_rounded, size: 14, color: Colors.amber),
         const SizedBox(width: 4),
         if (_pointsUsed > 0)
-          Text('${_selectedCustomer!.points - _pointsUsed} â†’ ${_pointsUsed} pts',
+          Text('${_selectedCustomer!.points - _pointsUsed} → ${_pointsUsed} pts',
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFB45309)))
         else
           Text('${_selectedCustomer!.points} pts',

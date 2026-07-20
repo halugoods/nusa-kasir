@@ -112,7 +112,7 @@ class _ProductsByCategoryScreenState extends ConsumerState<ProductsByCategoryScr
   }
 }
 
-// â”€â”€ Shared sort enum & labels â”€â”€
+// ── Shared sort enum & labels ──
 
 enum _SortBy { nameAsc, nameDesc, priceHigh, priceLow }
 
@@ -123,7 +123,7 @@ const _sortLabels = <_SortBy, String>{
   _SortBy.priceLow: 'Harga (Terendah)',
 };
 
-// â”€â”€ Product Card â”€â”€
+// ── Product Card ──
 
 class _ProductCard extends StatelessWidget {
   final Product product;

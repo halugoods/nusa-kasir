@@ -39,7 +39,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
   }
 
   /// Convert store name to URL-safe slug.
-  /// Example: "Toko Berkah Jaya 99" â†’ "toko-berkah-jaya-99"
+  /// Example: "Toko Berkah Jaya 99" → "toko-berkah-jaya-99"
   String _slugify(String name) {
     return name
         .trim()
@@ -67,7 +67,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
       return;
     }
 
-    // activation key stays as storeId for internal API â€” never exposed in URL
+    // activation key stays as storeId for internal API — never exposed in URL
 
     // Load store name from local settings as fallback
     final repo = ref.read(settingsRepoProvider);
@@ -93,9 +93,9 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
         final cloudSlug = store['slug'] as String?;
         _storeUrl = 'https://nusa-online.vercel.app/toko/${cloudSlug ?? _slugify(_nameCtrl.text)}';
       }
-      // Note: if store is null (never saved), keep isActive = false â€” that's correct
+      // Note: if store is null (never saved), keep isActive = false — that's correct
     } catch (e) {
-      // Cached state preserved â€” don't reset _isActive on failed fetch
+      // Cached state preserved — don't reset _isActive on failed fetch
     }
 
     if (mounted) setState(() => _loading = false);
@@ -143,7 +143,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
             _storeUrl = 'https://nusa-online.vercel.app/toko/$slug';
           });
           TopToast.success(context, isActive
-              ? 'Toko online diaktifkan! ðŸŽ‰'
+              ? 'Toko online diaktifkan! 🎉'
               : 'Pengaturan disimpan');
         }
       } else {
@@ -251,7 +251,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                     child: Column(
                       children: [
                         Text(
-                          _isActive ? 'ðŸŸ¢ Toko Online Aktif' : 'âšª Toko Online Nonaktif',
+                          _isActive ? 'ðŸŸ¢ Toko Online Aktif' : '⚪ Toko Online Nonaktif',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 17,
@@ -273,7 +273,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
 
                   // Store link (only visible when active)
                   if (_isActive && _storeUrl != null) ...[
-                    // â”€â”€ Link URL card (bottom) â”€â”€
+                    // ── Link URL card (bottom) ──
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
@@ -285,7 +285,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('ðŸ”— Link Toko Online',
+                          const Text('💰 Link Toko Online',
                               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                           const SizedBox(height: 10),
                           Container(
@@ -311,7 +311,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                                 GestureDetector(
                                   onTap: () {
                                     Clipboard.setData(ClipboardData(text: _storeUrl!));
-                                    TopToast.success(context, 'Link disalin! ðŸ“‹');
+                                    TopToast.success(context, 'Link disalin! 📋');
                                   },
                                   child: Container(
                                     width: 36,
@@ -330,7 +330,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                       ),
                     ),
                     const SizedBox(height: 10),
-                    // â”€â”€ "Buka Website" button as its own separate card (above the link) â”€â”€
+                    // ── "Buka Website" button as its own separate card (above the link) ──
                     GestureDetector(
                       onTap: _openPreview,
                       child: Container(
@@ -415,7 +415,8 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                         ),
                         Switch(
                           value: _isActive,
-                          activeColor: NusaConfig.accentGreen,
+                          activeColor: NusaConfig.primaryColor,
+                          activeTrackColor: NusaConfig.primaryColor.withValues(alpha: 0.4),
                           onChanged: (v) {
                             setState(() => _isActive = v);
                             _save(activate: v);
@@ -428,7 +429,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
 
                   // Sync products button
                   if (_isActive) ...[
-                    NusaButton('ðŸ”„ Sinkronkan Produk Sekarang',
+                    NusaButton('🔄 Sinkronkan Produk Sekarang',
                         onPressed: _saving ? null : () async {
                           setState(() => _saving = true);
                           await _syncProducts();

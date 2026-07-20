@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
-/// Empty state placeholder â€” icon + message + optional action button.
+/// Empty state placeholder — icon + message + optional action button.
 class EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;

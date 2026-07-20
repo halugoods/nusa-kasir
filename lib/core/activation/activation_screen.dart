@@ -20,15 +20,15 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// Activation & auth screen with 4 branches:
 ///
-///   1. Welcome Screen â€” user memilih "Masuk dengan Google" secara manual
+///   1. Welcome Screen — user memilih "Masuk dengan Google" secara manual
 ///   2. Setelah Google ID didapat:
-///      a. Belum aktivasi key â†’ minta input key aktivasi
-///         â†’ ada tombol "Belum punya key?" â†’ buka landing page
-///      b. Sudah aktivasi key â†’ minta PIN untuk sign in
-///   3. PIN â†’ cek role â†’ auto check-in attendance â†’ dashboard
+///      a. Belum aktivasi key → minta input key aktivasi
+///         → ada tombol "Belum punya key?" → buka landing page
+///      b. Sudah aktivasi key → minta PIN untuk sign in
+///   3. PIN → cek role → auto check-in attendance → dashboard
 ///   4. Restore prompt for cloud backup
 ///
-/// Tidak ada auto-trigger Google sign-in â€” user memilih sendiri.
+/// Tidak ada auto-trigger Google sign-in — user memilih sendiri.
 class ActivationScreen extends ConsumerStatefulWidget {
   const ActivationScreen({super.key});
   @override
@@ -62,7 +62,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   }
 
   /// Auto-launch Google Sign-In silently if already activated.
-  /// Skips welcome screen â€” user goes directly to PIN input.
+  /// Skips welcome screen — user goes directly to PIN input.
   Future<void> _initAutoSignIn() async {
     final activated = (await SecureStore.getActivation()) != null;
     if (!activated) return;
@@ -93,7 +93,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
       _googleId = googleId;
       await GoogleAuthService.ensureStored(googleId);
 
-      // Show "checking license" state â€” keep spinner active during cloud call
+      // Show "checking license" state — keep spinner active during cloud call
       setState(() => _googleLoading = false);
       if (mounted) await _checkLicenseStatus(googleId);
     } catch (e) {
@@ -119,10 +119,10 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
       final repo = AttendanceRepository(db);
       final emps = await repo.getEmployees();
       if (emps.isEmpty) {
-        // No employees â€” try cloud auto-restore first
+        // No employees — try cloud auto-restore first
         final restored = await _autoRestoreIfNeeded();
         if (restored) return; // app will restart
-        // No backup or restore failed â€” setup from scratch
+        // No backup or restore failed — setup from scratch
         if (mounted) context.go('/setup');
         return;
       }
@@ -131,13 +131,13 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   }
 
   /// Auto-restore cloud backup if cloud is newer than local.
-  /// Uses Google user ID for decryption â€” no activation key needed.
+  /// Uses Google user ID for decryption — no activation key needed.
   Future<bool> _autoRestoreIfNeeded() async {
     final repo = ref.read(activationRepoProvider);
     final hasBak = await repo.hasBackup();
     if (!hasBak) return false;
 
-    // Compare timestamps â€” only restore if cloud is newer
+    // Compare timestamps — only restore if cloud is newer
     final localTime = await SecureStore.getLastBackupTime();
     final cloudTime = await repo.getBackupTimestamp();
     if (cloudTime != null && localTime != null && !cloudTime.isAfter(localTime)) {
@@ -203,7 +203,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
         final isExpired = data!['is_expired'] == true;
         
         if (isExpired) {
-          // Trial expired â†’ redirect to landing page
+          // Trial expired → redirect to landing page
           setState(() {
             _googleLoading = false;
             _googleError = 'Masa trial Anda telah habis.\nBeli lisensi seumur hidup untuk melanjutkan.';
@@ -212,21 +212,21 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
           return;
         }
 
-        // Has valid license â†’ go to PIN or setup (handles auto-restore)
+        // Has valid license → go to PIN or setup (handles auto-restore)
         final key = data['key'] as String;
         await SecureStore.saveActivation(key);
         _goToPinOrSetup();
         return;
       }
     } catch (_) {
-      // Offline â€” just proceed to key input
+      // Offline — just proceed to key input
     }
 
     setState(() => _screen = 'key');
   }
 
 
-  // â”€â”€ Key Activation Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Key Activation Submit ──────────────────────────────────────────
 
   Future<void> _submitKey() async {
     final key = _keyCtrl.text.trim().toUpperCase();
@@ -258,14 +258,14 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
       return;
     }
 
-    // Activation success â†’ go to setup
+    // Activation success → go to setup
     if (mounted) {
-      TopToast.success(context, 'Aktivasi berhasil! ðŸŽ‰');
+      TopToast.success(context, 'Aktivasi berhasil! 🎉');
       context.go('/setup');
     }
   }
 
-  // â”€â”€ PIN Login Submit (returning user) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── PIN Login Submit (returning user) ─────────────────────────────
 
   Future<void> _submitPin() async {
     final pin = _pinCtrl.text.trim();
@@ -324,7 +324,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     }
   }
 
-  // â”€â”€ Scan / NFC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Scan / NFC ─────────────────────────────────────────────────────
 
   Future<void> _scan() async {
     final code = await Navigator.of(context).push<String>(MaterialPageRoute(
@@ -401,7 +401,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     }
   }
 
-  // â”€â”€ Welcome Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Welcome Screen ──────────────────────────────────────────────────
 
   Widget _buildWelcomeScreen(bool isDark) {
     return Scaffold(
@@ -438,7 +438,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                   style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                 const SizedBox(height: 36),
 
-                // â”€â”€ Card â”€â”€
+                // ── Card ──
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(28),
@@ -526,7 +526,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     );
   }
 
-  // â”€â”€ Google Sign-In Loading Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Google Sign-In Loading Screen ─────────────────────────────────────
 
   Widget _buildGoogleLoadingScreen(bool isDark) {
     final statusText = _googleLoading
@@ -594,7 +594,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     );
   }
 
-  // â”€â”€ Trial Expired Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Trial Expired Screen ─────────────────────────────────────────────
 
   Widget _buildTrialExpiredScreen(bool isDark) {
     return Scaffold(
@@ -681,7 +681,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     );
   }
 
-  // â”€â”€ PIN Screen (returning user) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── PIN Screen (returning user) ────────────────────────────────────
 
   Widget _buildPinScreen(bool isDark) {
     return Scaffold(
@@ -747,7 +747,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                       onSubmitted: (_) => _submitPin(),
                       decoration: InputDecoration(
                         counterText: '',
-                        hintText: 'â€¢â€¢â€¢â€¢â€¢â€¢',
+                        hintText: '••••••',
                         hintStyle: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary, fontSize: 24),
                         filled: true,
                         fillColor: isDark ? NusaConfig.darkBackground : const Color(0xFFF9FAFB),
@@ -828,7 +828,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     );
   }
 
-  // â”€â”€ Key Activation Screen (new user) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Key Activation Screen (new user) ───────────────────────────────
 
   Widget _buildKeyScreen(bool isDark) {
     return Scaffold(

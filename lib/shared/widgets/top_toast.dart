@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 
 /// Toast notification that slides in from the top of the screen.
-/// Replaces the bottom SnackBar â€” more visible and matches modern POS UX.
+/// Replaces the bottom SnackBar — more visible and matches modern POS UX.
 ///
 /// Usage:
 ///   TopToast.show(context, 'Pesan sukses', type: ToastType.success);
@@ -45,7 +45,7 @@ class TopToast {
     final hash = _contextHash(context);
     _entries.putIfAbsent(hash, () => []).add(entry);
 
-    // Fallback cleanup â€” remove entry after duration in case onDismiss wasn't called
+    // Fallback cleanup — remove entry after duration in case onDismiss wasn't called
     Future.delayed(duration + const Duration(seconds: 2), () {
       try {
         entry.remove();

@@ -26,7 +26,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     _messages.add(ChatMessage(
       role: 'assistant',
       content:
-          'ðŸ‘‹ Halo! Saya AI Assistant NUSA Kasir. Tanya apa saja â€” stok, laporan, tips bisnis, atau cara pakai fitur. Ada yang bisa saya bantu?',
+          'ðŸ‘‹ Halo! Saya AI Assistant NUSA Kasir. Tanya apa saja — stok, laporan, tips bisnis, atau cara pakai fitur. Ada yang bisa saya bantu?',
     ));
   }
 
@@ -71,7 +71,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       if (mounted) {
         setState(() {
           _messages.add(ChatMessage(
-              role: 'assistant', content: 'âš ï¸ Gagal: $e'));
+              role: 'assistant', content: '⚠ï¸ Gagal: $e'));
           _loading = false;
         });
       }
@@ -109,7 +109,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 Expanded(
                   child: Text(
                     _storeName != null
-                        ? 'AI Assistant â€¢ $_storeName'
+                        ? 'AI Assistant • $_storeName'
                         : 'AI Assistant NUSA Kasir',
                     style: const TextStyle(
                         fontSize: 12,

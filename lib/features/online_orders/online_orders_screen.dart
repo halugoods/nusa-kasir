@@ -175,7 +175,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
     );
     if (ok != true || !mounted) return;
 
-    // Parse items â€” fail early if JSON is corrupt
+    // Parse items — fail early if JSON is corrupt
     final List items;
     try {
       items = (jsonDecode(order.items) as List).cast<Map<String, dynamic>>();
@@ -201,7 +201,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
 
     try {
       // Wrap stock deduction, transaction, loyalty, and status in a single DB transaction.
-      // If any step fails, the entire block rolls back â€” no partial state.
+      // If any step fails, the entire block rolls back — no partial state.
       await db.transaction(() async {
         // Deduct stock for each item
         for (final item in items) {
@@ -244,16 +244,16 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
       return;
     }
 
-    // Update Supabase (outside transaction â€” network call)
+    // Update Supabase (outside transaction — network call)
     try {
       final svc = OnlineOrderService(Supabase.instance.client);
       await svc.updateOrderStatus(orderId: order.id, status: 'Lunas', processedBy: session?.name);
     } catch (_) {
-      // Supabase sync failed but local DB is consistent â€” will sync on next poll
+      // Supabase sync failed but local DB is consistent — will sync on next poll
     }
 
     if (mounted) {
-      TopToast.success(context, 'Pesanan #${order.invoice} selesai! âœ…');
+      TopToast.success(context, 'Pesanan #${order.invoice} selesai! ✅');
       _load();
     }
   }
@@ -350,7 +350,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ScreenScaffold(
-      _tabs[_tabController.index] == 'Semua' ? 'Pesanan Online' : 'Pesanan Online â€” ${_tabs[_tabController.index]}',
+      _tabs[_tabController.index] == 'Semua' ? 'Pesanan Online' : 'Pesanan Online — ${_tabs[_tabController.index]}',
       Column(
         children: [
           // Tab bar

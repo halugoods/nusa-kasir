@@ -53,7 +53,7 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
     setState(() => _loading = true);
     try {
       await ref.read(settingsRepoProvider).setQris(_qrisCtrl.text.trim());
-      if (mounted) TopToast.success(context, 'QRIS disimpan âœ…');
+      if (mounted) TopToast.success(context, 'QRIS disimpan ✅');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -67,7 +67,7 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
         account: _bankAccountCtrl.text.trim(),
         holder: _bankHolderCtrl.text.trim(),
       );
-      if (mounted) TopToast.success(context, 'Info rekening disimpan âœ…');
+      if (mounted) TopToast.success(context, 'Info rekening disimpan ✅');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -85,7 +85,7 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // â”€â”€ QRIS Section â”€â”€
+            // ── QRIS Section ──
             _sectionHeader('QRIS', Icons.qr_code_2, const Color(0xFF6366F1), isDark),
             NusaCard(
               Column(
@@ -119,7 +119,7 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // â”€â”€ Bank Transfer Section â”€â”€
+            // ── Bank Transfer Section ──
             _sectionHeader('TRANSFER BANK', Icons.account_balance, const Color(0xFF6366F1), isDark),
             NusaCard(
               Column(

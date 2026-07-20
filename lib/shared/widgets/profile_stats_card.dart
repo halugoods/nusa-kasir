@@ -1,14 +1,14 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 
-/// Red gradient profile card â€” DISPLAY ONLY.
+/// Red gradient profile card — DISPLAY ONLY.
 /// Shows who opened the cashier last (no action buttons).
 ///
 /// Fields:
 ///   - initials: avatar initials of last cashier
 ///   - userName: last cashier name
 ///   - role: role + branch
-///   - attendanceStatus: "Kasir terakhir â€¢ [jam]" or "Belum ada sesi kasir"
+///   - attendanceStatus: "Kasir terakhir • [jam]" or "Belum ada sesi kasir"
 class ProfileStatsCard extends StatelessWidget {
   final String initials;
   final String userName;
@@ -30,7 +30,7 @@ class ProfileStatsCard extends StatelessWidget {
     this.salesValue = 'Rp 0',
     this.transactionCount = '0',
     this.avgValue = 'Rp 0',
-    this.topProduct = 'â€”',
+    this.topProduct = '—',
   });
 
   @override
@@ -147,7 +147,7 @@ class ProfileStatsCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '$role${branch.isNotEmpty ? ' â€¢ $branch' : ''}',
+                '$role${branch.isNotEmpty ? ' • $branch' : ''}',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.white.withValues(alpha: 0.9),

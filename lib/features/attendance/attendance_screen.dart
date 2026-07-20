@@ -44,7 +44,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     }
   }
 
-  /// Absen Masuk: PIN â†’ input kas awal (mandatory) â†’ checkInWithCash.
+  /// Absen Masuk: PIN → input kas awal (mandatory) → checkInWithCash.
   Future<void> _checkIn(Employee e) async {
     final result = await PinDialog.show(
       context: context,
@@ -63,7 +63,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     _load();
   }
 
-  /// Absen Pulang: PIN â†’ input kas akhir (mandatory) â†’ checkOutWithCash.
+  /// Absen Pulang: PIN → input kas akhir (mandatory) → checkOutWithCash.
   Future<void> _checkOut(Employee e) async {
     final result = await PinDialog.show(
       context: context,
@@ -287,7 +287,7 @@ class _EmployeeCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          // Times row â€” wraps on narrow screens
+          // Times row — wraps on narrow screens
           Wrap(
             spacing: 8,
             runSpacing: 8,

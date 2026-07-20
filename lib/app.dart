@@ -183,7 +183,7 @@ class _NusaAppState extends ConsumerState<NusaApp> with WidgetsBindingObserver {
   }
 
   /// Schedule a cloud backup with 30s debounce.
-  /// Backups use Google user ID for encryption â€” activation key not needed.
+  /// Backups use Google user ID for encryption — activation key not needed.
   void _scheduleBackup() {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(seconds: 30), () async {
@@ -200,7 +200,7 @@ class _NusaAppState extends ConsumerState<NusaApp> with WidgetsBindingObserver {
       } catch (_) {
         return; // offline
       }
-      // Don't spam â€” max once per 5 minutes
+      // Don't spam — max once per 5 minutes
       if (_lastUploadTime != null &&
           DateTime.now().difference(_lastUploadTime!) < const Duration(minutes: 5)) {
         return;

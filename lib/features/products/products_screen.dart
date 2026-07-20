@@ -105,7 +105,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     return list;
   }
 
-  // â”€â”€ Export / Import bottom sheet â”€â”€
+  // ── Export / Import bottom sheet ──
 
   void _showExportImportSheet() {
     showModalBottomSheet(
@@ -226,7 +226,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     }
   }
 
-  // â”€â”€ Barcode scan â”€â”€
+  // ── Barcode scan ──
 
   Future<void> _scanBarcode() async {
     final controller = MobileScannerController();
@@ -278,7 +278,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     if (mounted) { TopToast.success(context, 'Produk dihapus'); _load(); }
   }
 
-  // â”€â”€ Build â”€â”€
+  // ── Build ──
 
   @override
   Widget build(BuildContext context) {
@@ -482,7 +482,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   }
 }
 
-// â”€â”€ Segment Tab â”€â”€
+// ── Segment Tab ──
 
 class _SegmentTab extends StatelessWidget {
   final String label;
@@ -510,7 +510,7 @@ class _SegmentTab extends StatelessWidget {
   }
 }
 
-// â”€â”€ Grid Toggle Button â”€â”€
+// ── Grid Toggle Button ──
 
 class _GridToggleBtn extends StatelessWidget {
   final IconData icon;
@@ -536,7 +536,7 @@ class _GridToggleBtn extends StatelessWidget {
   }
 }
 
-// â”€â”€ Kategori View (inline) â”€â”€
+// ── Kategori View (inline) ──
 
 class _KategoriView extends ConsumerStatefulWidget {
   @override
@@ -606,7 +606,7 @@ class _KategoriViewState extends ConsumerState<_KategoriView> {
   }
 }
 
-// â”€â”€ Product Grid Card (2-column) â”€â”€
+// ── Product Grid Card (2-column) ──
 
 class _ProductGridCard extends StatelessWidget {
   final Product product;
@@ -644,7 +644,7 @@ class _ProductGridCard extends StatelessWidget {
           ),
           padding: const EdgeInsets.all(10),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // â”€â”€ Image (inset) â”€â”€
+            // ── Image (inset) ──
             ClipRRect(
               borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
               child: AspectRatio(
@@ -677,19 +677,19 @@ class _ProductGridCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            // â”€â”€ Name â”€â”€
+            // ── Name ──
             Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, height: 1.25,
                 color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
             const SizedBox(height: 2),
-            // â”€â”€ Category â”€â”€
+            // ── Category ──
             Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
             const SizedBox(height: 6),
-            // â”€â”€ Price â”€â”€
+            // ── Price ──
             Text(formatRupiah(product.sellPrice),
               style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
             const Spacer(),
-            // â”€â”€ Actions â”€â”€
+            // ── Actions ──
             Row(mainAxisAlignment: MainAxisAlignment.end, children: [
               _ActionButton(icon: Icons.edit_outlined, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, onTap: onEdit),
               const SizedBox(width: 6),
@@ -702,7 +702,7 @@ class _ProductGridCard extends StatelessWidget {
   }
 }
 
-// â”€â”€ Product List Card (1-column, thin horizontal) â”€â”€
+// ── Product List Card (1-column, thin horizontal) ──
 
 class _ProductListCard extends StatelessWidget {
   final Product product;

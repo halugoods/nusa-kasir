@@ -5,12 +5,12 @@ import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 
-/// Bottom sheet modal for "Buka Kasir" â€” asks for starting cash balance.
+/// Bottom sheet modal for "Buka Kasir" — asks for starting cash balance.
 ///
 /// Flow:
 ///   1. PIN is collected BEFORE this sheet (in dashboard) to authenticate cashier
 ///   2. This sheet collects the starting cash balance (saldo awal)
-///   3. On confirm â†’ creates a CashierSession row, returns (sessionId, saldo)
+///   3. On confirm → creates a CashierSession row, returns (sessionId, saldo)
 ///
 /// Call `show(context, storeName, employeeId, employeeName, employeeRole, onConfirm)`.
 class BukaKasirSheet extends StatefulWidget {
@@ -161,7 +161,7 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Kasir: ${widget.employeeName} â€¢ ${widget.employeeRole}',
+                        'Kasir: ${widget.employeeName} • ${widget.employeeRole}',
                         style: TextStyle(
                           fontSize: 13,
                           color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,

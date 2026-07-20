@@ -378,7 +378,7 @@ class _PromoTile extends StatelessWidget {
                               color: NusaConfig.primaryColor)),
                       const SizedBox(height: 4),
                       Text(
-                          'Min. belanja ${formatRupiah(promo.minBelanja)} â€¢ Aktif: ${_fmtDate(promo.startDate)}â€“${_fmtDate(promo.endDate)}',
+                          'Min. belanja ${formatRupiah(promo.minBelanja)} • Aktif: ${_fmtDate(promo.startDate)}–${_fmtDate(promo.endDate)}',
                           style: TextStyle(
                               fontSize: 13,
                               color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),

@@ -167,7 +167,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â• NARROW LAYOUT (phone) â•â•â•â•â•â•â•â•â•â•â•
+  // =========== NARROW LAYOUT (phone) ===========
 
   Widget _buildNarrowLayout(bool isDark, List<CartItem> cart, int totalItems, int totalPrice) {
     return Stack(children: [
@@ -182,7 +182,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     ]);
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â• WIDE LAYOUT (tablet) â•â•â•â•â•â•â•â•â•â•â•
+  // =========== WIDE LAYOUT (tablet) ===========
 
   Widget _buildWideLayout(bool isDark, List<CartItem> cart, int totalItems, int totalPrice) {
     return Column(children: [
@@ -198,7 +198,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     ]);
   }
 
-  // â•â•â•â•â•â•â•â•â•â•â• COMPONENTS â•â•â•â•â•â•â•â•â•â•â•
+  // =========== COMPONENTS ===========
 
   Widget _buildTopBar(bool isDark) {
     return Container(
@@ -361,8 +361,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
 
     final cross = _gridColumns;
     final colW = (MediaQuery.of(context).size.width - 32 - 10 * (cross - 1)) / cross;
-    // Image is inset (10px all sides) â†’ â‰ˆsquare of (colW-20).
-    // Footer (name+cat+price+action) â‰ˆ110px. Ratio = colW/(colW+110).
+    // Image is inset (10px all sides) → ≈square of (colW-20).
+    // Footer (name+cat+price+action) ≈110px. Ratio = colW/(colW+110).
     final ratio = (colW / (colW + 110)).clamp(0.4, 0.85);
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -382,7 +382,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  // â”€â”€ Cart Bar (collapsed, narrow only) â”€â”€
+  // ── Cart Bar (collapsed, narrow only) ──
 
   Widget _buildCartBar(bool isDark, int totalItems, int totalPrice) {
     return GestureDetector(
@@ -420,7 +420,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  // â”€â”€ Unified Cart Panel (sheet for narrow, sidebar for wide) â”€â”€
+  // ── Unified Cart Panel (sheet for narrow, sidebar for wide) ──
 
   Widget _buildCartPanel(bool isDark, List<CartItem> cart, int totalItems, int totalPrice, {required bool isSheet}) {
     final hasMember = _memberName != null;
@@ -657,7 +657,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   }
 }
 
-// â”€â”€ Product Card â”€â”€
+// ── Product Card ──
 
 class _ProductCard extends StatelessWidget {
   final Product product;
@@ -700,7 +700,7 @@ class _ProductCard extends StatelessWidget {
           ),
           padding: const EdgeInsets.all(10),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // â”€â”€ Image (inset, square with own rounded corners) â”€â”€
+            // ── Image (inset, square with own rounded corners) ──
             ClipRRect(
               borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
               child: AspectRatio(
@@ -734,19 +734,19 @@ class _ProductCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            // â”€â”€ Name â”€â”€
+            // ── Name ──
             Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, height: 1.25,
                 color: outOfStock ? isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
             const SizedBox(height: 2),
-            // â”€â”€ Category â”€â”€
+            // ── Category ──
             Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
             const SizedBox(height: 6),
-            // â”€â”€ Price â”€â”€
+            // ── Price ──
             Text(formatRupiah(product.sellPrice),
               style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
             const SizedBox(height: 8),
-            // â”€â”€ Action â”€â”€
+            // ── Action ──
             outOfStock
                 ? Container(
                     height: 36,
@@ -806,7 +806,7 @@ class _CartItemTile extends StatelessWidget {
   }
 }
 
-// â”€â”€ Product List Card (1-column thin horizontal) â”€â”€
+// ── Product List Card (1-column thin horizontal) ──
 
 class _ProductListCard extends StatelessWidget {
   final Product product;

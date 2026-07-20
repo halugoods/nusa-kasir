@@ -94,7 +94,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
     }
   }
 
-  // â”€â”€ Product initials helper â”€â”€
+  // ── Product initials helper ──
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.length >= 2) {
@@ -196,11 +196,11 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
     
     // 2. Send WhatsApp notification (existing flow)
     final itemsText = _cart.map((c) =>
-      'â€¢ ${c.product.name} x${c.qty} â€” ${formatRupiah(c.subtotal)}'
+      '• ${c.product.name} x${c.qty} — ${formatRupiah(c.subtotal)}'
     ).join('\n');
     final msg = Uri.encodeComponent(
-      'ðŸ›’ *Pesanan Baru*\n\n'
-      'ðŸ‘¤ $name\nðŸ“± $phone\nðŸª $_branch\nðŸ’³ $_paymentMethod\n\n'
+      '🛒 *Pesanan Baru*\n\n'
+      '👤 $name\nðŸ“± $phone\n🏪 $_branch\n💳 $_paymentMethod\n\n'
       '*Item:*\n$itemsText\n\n'
       '*Total: ${formatRupiah(_totalPrice)}*');
     final targetPhone = _storePhone ?? '';
@@ -227,7 +227,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            // â”€â”€ Header â”€â”€
+            // ── Header ──
             Container(
               decoration: BoxDecoration(
                 color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
@@ -255,7 +255,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
                         Row(children: [
                           Container(width: 6, height: 6, decoration: const BoxDecoration(color: NusaConfig.success, shape: BoxShape.circle)),
                           const SizedBox(width: 4),
-                          Text('Buka â€¢ Online Order', style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                          Text('Buka • Online Order', style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
                         ]),
                       ]),
                     ),
@@ -339,7 +339,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
                 ),
               ]),
             ),
-            // â”€â”€ Product Grid â”€â”€
+            // ── Product Grid ──
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator(color: NusaConfig.primaryColor))
@@ -375,7 +375,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
             ),
           ]),
 
-          // â”€â”€ Cart popup â”€â”€
+          // ── Cart popup ──
           if (_showCartPopup && _totalItems > 0)
             Positioned(
               bottom: 16, left: 16, right: 16,
@@ -425,7 +425,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(children: [
-                Text('ðŸ›’  Keranjang', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+                Text('🛒  Keranjang', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                 const Spacer(),
                 TextButton(onPressed: () { _cart.clear(); setState(() => _showCart = false); },
                   child: const Text('Kosongkan', style: TextStyle(color: NusaConfig.primaryColor, fontWeight: FontWeight.w600))),
@@ -607,7 +607,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
   }
 }
 
-// â”€â”€ Product Card (storefront) â”€â”€
+// ── Product Card (storefront) ──
 
 class _ProductCard extends StatelessWidget {
   final Product product;
@@ -643,7 +643,7 @@ class _ProductCard extends StatelessWidget {
         ),
         padding: const EdgeInsets.all(10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // â”€â”€ Image (inset, square with own rounded corners) â”€â”€
+          // ── Image (inset, square with own rounded corners) ──
           ClipRRect(
             borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
             child: AspectRatio(
@@ -691,19 +691,19 @@ class _ProductCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // â”€â”€ Name â”€â”€
+          // ── Name ──
           Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, height: 1.25,
               color: outOfStock ? isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
           const SizedBox(height: 2),
-          // â”€â”€ Category â”€â”€
+          // ── Category ──
           Text(product.category, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
           const SizedBox(height: 6),
-          // â”€â”€ Price â”€â”€
+          // ── Price ──
           Text(formatRupiah(product.sellPrice),
             style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor)),
           const SizedBox(height: 8),
-          // â”€â”€ Action â”€â”€
+          // ── Action ──
           outOfStock
               ? Container(
                   height: 36,

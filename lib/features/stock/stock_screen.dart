@@ -89,7 +89,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
     return list;
   }
 
-  // â”€â”€ Stock adjustment (Masuk / Keluar) â”€â”€
+  // ── Stock adjustment (Masuk / Keluar) ──
   Future<void> _submitAdjust(String mode, int productId, int qty) async {
     final db = ref.read(databaseProvider);
     final repo = ProductRepository(db);
@@ -135,7 +135,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
     );
   }
 
-  // â”€â”€ helpers â”€â”€
+  // ── helpers ──
   static String _initials(String name) {
     if (name.isEmpty) return '??';
     final parts = name.split(' ');
@@ -169,7 +169,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // â”€â”€ Summary tiles â”€â”€
+          // ── Summary tiles ──
           Row(children: [
             Expanded(
               child: _StatTile(
@@ -197,7 +197,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
           ]),
           const SizedBox(height: 16),
 
-          // â”€â”€ Quick actions â”€â”€
+          // ── Quick actions ──
           Row(children: [
             Expanded(
               child: _QuickAction(
@@ -219,7 +219,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
           ]),
           const SizedBox(height: 24),
 
-          // â”€â”€ Stok Menipis section â”€â”€
+          // ── Stok Menipis section ──
           _SectionHeader(
             title: 'Stok Menipis',
             subtitle: _lowStock.isEmpty
@@ -244,7 +244,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
                     )),
           const SizedBox(height: 24),
 
-          // â”€â”€ Aktivitas section â”€â”€
+          // ── Aktivitas section ──
           _SectionHeader(
             title: 'Aktivitas Stok',
             icon: Icons.history_rounded,
@@ -280,7 +280,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   Widget _buildFilterBar(bool isDark) {
     return Row(
       children: [
-        // â”€â”€ Type switch (Masuk | Keluar) bagi rata â”€â”€
+        // ── Type switch (Masuk | Keluar) bagi rata ──
         Expanded(
           child: Container(
             height: 36,
@@ -301,7 +301,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
           ),
         ),
         const SizedBox(width: 10),
-        // â”€â”€ Time dropdown â”€â”€
+        // ── Time dropdown ──
         _timeDropdown(isDark),
       ],
     );
@@ -431,9 +431,9 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  Summary tile
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _StatTile extends StatelessWidget {
   final String label;
@@ -497,9 +497,9 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  Quick action
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _QuickAction extends StatelessWidget {
   final IconData icon;
@@ -559,9 +559,9 @@ class _QuickAction extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  Section header
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _SectionHeader extends StatelessWidget {
   final String title;
@@ -616,9 +616,9 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  Filter chip
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _Segmented extends StatelessWidget {
   final List<String> options;
@@ -682,9 +682,9 @@ class _Segmented extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  Low stock card
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _LowStockCard extends StatelessWidget {
   final Product product;
@@ -736,7 +736,7 @@ class _LowStockCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // â”€â”€ Thumbnail â”€â”€
+              // ── Thumbnail ──
               ClipRRect(
                 borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
                 child: SizedBox(
@@ -795,7 +795,7 @@ class _LowStockCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              // â”€â”€ Info â”€â”€
+              // ── Info ──
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -853,9 +853,9 @@ class _LowStockCard extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  History card
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _HistoryCard extends StatelessWidget {
   final StockMovement movement;
@@ -905,7 +905,7 @@ class _HistoryCard extends StatelessWidget {
         ),
         child: IntrinsicHeight(
           child: Row(children: [
-            // â”€â”€ Left accent bar â”€â”€
+            // ── Left accent bar ──
             Container(
               width: 4,
               decoration: BoxDecoration(
@@ -914,7 +914,7 @@ class _HistoryCard extends StatelessWidget {
                     left: Radius.circular(NusaConfig.radiusMD)),
               ),
             ),
-            // â”€â”€ Content â”€â”€
+            // ── Content ──
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
@@ -935,7 +935,7 @@ class _HistoryCard extends StatelessWidget {
                                     : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                         const SizedBox(height: 3),
                         Text(
-                          '${isIn ? 'Masuk' : 'Keluar'}  â€¢  $dateStr',
+                          '${isIn ? 'Masuk' : 'Keluar'}  •  $dateStr',
                           style: TextStyle(
                               fontSize: 12,
                               color: isDark
@@ -971,9 +971,9 @@ class _HistoryCard extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  Product thumbnail (reused in sheet)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _ProductThumb extends StatelessWidget {
   final Product product;
@@ -1018,9 +1018,9 @@ class _ProductThumb extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 //  Product result row
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
 
 class _ProductResultRow extends StatelessWidget {
   final Product product;
@@ -1062,7 +1062,7 @@ class _ProductResultRow extends StatelessWidget {
                             : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                       )),
                   const SizedBox(height: 2),
-                  Text('${product.category}  â€¢  Stok ${product.stock}',
+                  Text('${product.category}  •  Stok ${product.stock}',
                       style: TextStyle(
                         fontSize: 11,
                         color: isDark
@@ -1080,9 +1080,9 @@ class _ProductResultRow extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  Adjust sheet (Stok Masuk / Keluar) â€” search + scan barcode
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ===========================================
+//  Adjust sheet (Stok Masuk / Keluar) — search + scan barcode
+// ===========================================
 
 class _AdjustSheet extends StatefulWidget {
   final String mode; // in | out
@@ -1271,7 +1271,7 @@ class _AdjustSheetState extends State<_AdjustSheet> {
             ]),
             const SizedBox(height: 18),
             if (selected == null) ...[
-              // â”€â”€ Search + scan â”€â”€
+              // ── Search + scan ──
               Container(
                 decoration: BoxDecoration(
                   color: isDark
@@ -1294,7 +1294,7 @@ class _AdjustSheetState extends State<_AdjustSheet> {
                         : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'Cari nama atau barcodeâ€¦',
+                    hintText: 'Cari nama atau barcode…',
                     hintStyle: TextStyle(
                       color: isDark
                           ? NusaConfig.darkTextTertiary
@@ -1342,7 +1342,7 @@ class _AdjustSheetState extends State<_AdjustSheet> {
                       ),
               ),
             ] else ...[
-              // â”€â”€ Selected product â”€â”€
+              // ── Selected product ──
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
