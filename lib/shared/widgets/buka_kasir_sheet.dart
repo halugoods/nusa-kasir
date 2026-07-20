@@ -41,7 +41,7 @@ class BukaKasirSheet extends StatefulWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: NusaConfig.surfaceColor,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -116,6 +116,7 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -135,7 +136,7 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                 height: 4,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(2),
-                  color: NusaConfig.dividerColor,
+                  color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
                 ),
               ),
             ),
@@ -150,20 +151,20 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
+                      Text(
                         'Kasir',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: NusaConfig.textPrimary,
+                          color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         'Kasir: ${widget.employeeName} • ${widget.employeeRole}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
-                          color: NusaConfig.textSecondary,
+                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                         ),
                       ),
                     ],
@@ -175,8 +176,8 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                     width: 36,
                     height: 36,
                     decoration: const BoxDecoration(shape: BoxShape.circle),
-                    child: const Icon(Icons.close,
-                        size: 20, color: NusaConfig.textSecondary),
+                  child: Icon(Icons.close,
+                      size: 20, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                   ),
                 ),
               ],
@@ -199,9 +200,9 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                   Expanded(
                     child: Text(
                       widget.storeName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: NusaConfig.textPrimary,
+                        color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                       ),
                     ),
                   ),
@@ -211,12 +212,12 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
             const SizedBox(height: 20),
 
             // Label
-            const Text(
+            Text(
               'Saldo Awal Kas',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: NusaConfig.textPrimary,
+                color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -225,8 +226,8 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: NusaConfig.dividerColor),
-                color: Colors.white,
+                border: Border.all(color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor),
+                color: isDark ? NusaConfig.darkInputFill : Colors.white,
               ),
               child: Row(
                 children: [
@@ -237,7 +238,7 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: NusaConfig.textSecondary,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                       ),
                     ),
                   ),
@@ -248,14 +249,14 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.right,
                       enabled: !_loading,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: NusaConfig.textPrimary,
+                        color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: '0',
-                        hintStyle: TextStyle(color: NusaConfig.textTertiary),
+                        hintStyle: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
                         border: InputBorder.none,
                         contentPadding:
                             EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -266,9 +267,9 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Masukkan jumlah uang tunai yang ada di laci kasir saat ini.',
-              style: TextStyle(fontSize: 12, color: NusaConfig.textSecondary),
+              style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
             ),
             const SizedBox(height: 16),
 
@@ -284,14 +285,14 @@ class _BukaKasirSheetState extends State<BukaKasirSheet> {
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: NusaConfig.dividerColor),
+                      border: Border.all(color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor),
                     ),
                     child: Text(
                       'Rp ${formatRupiah(v)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: NusaConfig.textSecondary,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                       ),
                     ),
                   ),

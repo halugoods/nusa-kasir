@@ -78,28 +78,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  Widget _sectionHeader(String title) => Padding(
+  Widget _sectionHeader(String title, {bool isDark = false}) => Padding(
         padding: const EdgeInsets.only(top: 8, bottom: 8),
         child: Text(
           title,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: NusaConfig.textSecondary,
+            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
             letterSpacing: 1.2,
           ),
         ),
       );
 
   @override
-  Widget build(BuildContext context) => ScreenScaffold(
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ScreenScaffold(
         'Pengaturan',
         SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _sectionHeader('TOKO'),
+              _sectionHeader('TOKO', isDark: isDark),
               NusaCard(
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -208,7 +210,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              _sectionHeader('SISTEM'),
+              _sectionHeader('SISTEM', isDark: isDark),
               NusaCard(
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -263,7 +265,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: 6),
                     Text(
                       'Data otomatis disinkronkan ke cloud dengan akun Google Anda.',
-                      style: TextStyle(fontSize: 11, color: NusaConfig.textTertiary.withValues(alpha: 0.8)),
+                      style: TextStyle(fontSize: 11, color: (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary).withValues(alpha: 0.8)),
                     ),
                   ],
                 ),
@@ -392,7 +394,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              _sectionHeader('DATA'),
+              _sectionHeader('DATA', isDark: isDark),
               // Kelola Role/Jabatan
               NusaCard(
                 InkWell(
@@ -457,7 +459,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: 32),
               // Tentang Aplikasi
-              _sectionHeader('TENTANG APLIKASI'),
+              _sectionHeader('TENTANG APLIKASI', isDark: isDark),
               NusaCard(
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -527,6 +529,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
       );
+  }
 
   Widget _aboutLink(BuildContext context, String label, String url) {
     return GestureDetector(
@@ -839,6 +842,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _showRoleForm(RoleRepository roleRepo, {Map<String, dynamic>? existing}) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isEdit = existing != null;
     final nameCtrl = TextEditingController(text: existing?['name'] as String?);
     var selectedColor = existing != null ? (existing['color'] as int) : 0xFF3B82F6;
@@ -881,7 +885,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             color: Color(c),
                             borderRadius: BorderRadius.circular(10),
                             border: selectedColor == c
-                                ? Border.all(color: Colors.black, width: 3)
+                                ? Border.all(color: isDark ? Colors.white : Colors.black, width: 3)
                                 : null,
                           ),
                         ),
@@ -976,7 +980,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     width: 40, height: 4,
                     decoration: BoxDecoration(
-                      color: NusaConfig.dividerColor,
+                      color: setDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),

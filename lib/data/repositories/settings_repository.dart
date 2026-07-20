@@ -17,6 +17,11 @@ class SettingsRepository {
     }
   }
 
+  Future<String> getStorePhone() async {
+    final row = await db.select(db.settings).getSingleOrNull();
+    return row?.storePhone ?? '';
+  }
+
   Future<void> setStoreName(String name) async {
     await ensureRow();
     await (db.update(db.settings)..where((t) => t.id.equals(1)))

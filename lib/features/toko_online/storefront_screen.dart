@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,8 +11,12 @@ import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/data/repositories/category_repository.dart';
+import 'package:nusa_kasir/data/repositories/online_order_repository.dart';
+import 'package:nusa_kasir/data/repositories/branch_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_cart_controls.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
+import 'package:drift/drift.dart' hide Column;
 
 /// Customer-facing online store screen.
 /// Route: /toko
@@ -36,6 +41,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
   final List<_StoreItem> _cart = [];
   bool _showCart = false;
   List<String> _allCats = [];
+  List<String> _branches = ['Pusat'];
 
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
@@ -69,15 +75,21 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
     final all = await repo.getProducts();
     final settingsRepo = SettingsRepository(db);
     final storeName = await settingsRepo.getStoreName();
+    final storePhone = await settingsRepo.getStorePhone();
     if (mounted) {
       final catRepo = CategoryRepository(db);
       final cats = await catRepo.getAll();
+      // Load branches from DB
+      final branchRepo = BranchRepository(db);
+      final branchList = await branchRepo.getAll();
+      final branches = branchList.map((b) => b.name).toList();
       setState(() {
         _allProducts = all;
         _allCats = cats;
+        _branches = branches.isNotEmpty ? branches : ['Pusat'];
         _loading = false;
         _storeName = storeName.isNotEmpty ? storeName : 'NUSA Toko';
-        _storePhone = '';
+        _storePhone = storePhone.isNotEmpty ? storePhone : null;
       });
     }
   }
@@ -150,6 +162,39 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
         const SnackBar(content: Text('Nama dan WhatsApp wajib diisi')));
       return;
     }
+    
+    // 1. Save to OnlineOrders local DB first
+    final db = ref.read(databaseProvider);
+    final onlineRepo = OnlineOrderRepository(db);
+    final invoice = 'INV-ONL-${DateTime.now().millisecondsSinceEpoch}';
+    final itemsJson = jsonEncode(_cart.map((c) => {
+      'product_id': c.product.id,
+      'name': c.product.name,
+      'qty': c.qty,
+      'price': c.product.sellPrice,
+      'subtotal': c.subtotal,
+    }).toList());
+    
+    try {
+      await onlineRepo.upsert(OnlineOrdersCompanion.insert(
+        invoice: invoice,
+        customerName: name,
+        customerPhone: phone,
+        items: itemsJson,
+        subtotal: Value(_totalPrice),
+        total: _totalPrice,
+        paymentMethod: Value(_paymentMethod),
+        branch: Value(_branch),
+        notes: Value('Pesanan dari Storefront'),
+        status: Value('Online Baru'),
+      ));
+      TopToast.success(context, 'Pesanan berhasil disimpan!');
+    } catch (e) {
+      TopToast.error(context, 'Gagal menyimpan pesanan');
+      // Continue to WA anyway
+    }
+    
+    // 2. Send WhatsApp notification (existing flow)
     final itemsText = _cart.map((c) =>
       '• ${c.product.name} x${c.qty} — ${formatRupiah(c.subtotal)}'
     ).join('\n');
@@ -163,6 +208,12 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
     if (await canLaunchUrl(waUrl)) {
       await launchUrl(waUrl, mode: LaunchMode.externalApplication);
     }
+    
+    // 3. Clear cart after successful order
+    _cart.clear();
+    _nameCtrl.clear();
+    _phoneCtrl.clear();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -294,9 +345,9 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
                   ? const Center(child: CircularProgressIndicator(color: NusaConfig.primaryColor))
                   : products.isEmpty
                       ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.inventory_2_outlined, size: 56, color: NusaConfig.textTertiary.withValues(alpha: 0.5)),
+                          Icon(Icons.inventory_2_outlined, size: 56, color: (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary).withValues(alpha: 0.5)),
                           const SizedBox(height: 12),
-                          const Text('Belum ada produk', style: TextStyle(color: NusaConfig.textSecondary, fontSize: 15)),
+                          Text('Belum ada produk', style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, fontSize: 15)),
                         ]))
                       : RefreshIndicator(
                           onRefresh: _load,
@@ -370,11 +421,11 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Center(child: Container(margin: const EdgeInsets.symmetric(vertical: 10), width: 40, height: 4,
-              decoration: BoxDecoration(color: NusaConfig.dividerColor, borderRadius: BorderRadius.circular(2)))),
+              decoration: BoxDecoration(color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor, borderRadius: BorderRadius.circular(2)))),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(children: [
-                const Text('🛒  Keranjang', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+                Text('🛒  Keranjang', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                 const Spacer(),
                 TextButton(onPressed: () { _cart.clear(); setState(() => _showCart = false); },
                   child: const Text('Kosongkan', style: TextStyle(color: NusaConfig.primaryColor, fontWeight: FontWeight.w600))),
@@ -456,36 +507,36 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
           child: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Center(child: Container(margin: const EdgeInsets.symmetric(vertical: 10), width: 40, height: 4,
-                decoration: BoxDecoration(color: NusaConfig.dividerColor, borderRadius: BorderRadius.circular(2)))),
+                decoration: BoxDecoration(color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor, borderRadius: BorderRadius.circular(2)))),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Selesaikan Pembayaran', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
+                  Text('Selesaikan Pembayaran', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                   const SizedBox(height: 6),
                   Text(formatRupiah(_totalPrice), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: NusaConfig.primaryColor, letterSpacing: -1)),
                   const SizedBox(height: 20),
-                  const Text('DATA PEMESAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5)),
+                  Text('DATA PEMESAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, letterSpacing: 0.5)),
                   const SizedBox(height: 8),
                   _checkoutField('Nama', _nameCtrl, 'Nama Anda', Icons.person_outline),
                   const SizedBox(height: 8),
                   _checkoutField('WhatsApp', _phoneCtrl, '0812-3456-7890', Icons.phone_outlined, keyboard: TextInputType.phone),
                   const SizedBox(height: 16),
-                  const Text('CABANG', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5)),
+                  Text('CABANG', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, letterSpacing: 0.5)),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(color: NusaConfig.inputFill, borderRadius: BorderRadius.circular(NusaConfig.radiusMD), border: Border.all(color: NusaConfig.dividerColor)),
+                    decoration: BoxDecoration(color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill, borderRadius: BorderRadius.circular(NusaConfig.radiusMD), border: Border.all(color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor)),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _branch, isExpanded: true,
-                        style: const TextStyle(fontSize: 14, color: NusaConfig.textPrimary),
-                        items: ['Pusat', 'Cabang 1', 'Cabang 2'].map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
+                        style: TextStyle(fontSize: 14, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+                        items: _branches.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
                         onChanged: (v) { if (v == null) return; _branch = v; setSheetState(() {}); },
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('METODE PEMBAYARAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: NusaConfig.textSecondary, letterSpacing: 0.5)),
+                  Text('METODE PEMBAYARAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, letterSpacing: 0.5)),
                   const SizedBox(height: 8),
                   Row(children: [
                     _paymentOption('Tunai', Icons.money, setSheetState: setSheetState),
@@ -515,16 +566,17 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
   }
 
   Widget _checkoutField(String label, TextEditingController ctrl, String hint, IconData icon, {TextInputType keyboard = TextInputType.text}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(color: NusaConfig.inputFill, borderRadius: BorderRadius.circular(NusaConfig.radiusMD), border: Border.all(color: NusaConfig.dividerColor)),
+      decoration: BoxDecoration(color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill, borderRadius: BorderRadius.circular(NusaConfig.radiusMD), border: Border.all(color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor)),
       child: TextField(
         controller: ctrl, keyboardType: keyboard,
-        style: const TextStyle(fontSize: 14, color: NusaConfig.textPrimary),
+        style: TextStyle(fontSize: 14, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
         decoration: InputDecoration(
-          labelText: label, labelStyle: const TextStyle(fontSize: 12, color: NusaConfig.textSecondary),
-          hintText: hint, hintStyle: const TextStyle(fontSize: 13, color: NusaConfig.textTertiary),
-          prefixIcon: Icon(icon, size: 18, color: NusaConfig.textSecondary),
+          labelText: label, labelStyle: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+          hintText: hint, hintStyle: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+          prefixIcon: Icon(icon, size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
           border: InputBorder.none,
         ),
       ),

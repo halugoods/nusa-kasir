@@ -40,10 +40,10 @@ class NusaFormField extends StatelessWidget {
       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(
+        labelStyle: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: NusaConfig.textSecondary,
+          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
           letterSpacing: 0.5,
         ),
         hintText: hintText,
@@ -93,17 +93,17 @@ class NusaDropdownField<T> extends StatelessWidget {
 
     return DropdownButtonFormField<T>(
       value: value,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
-        color: NusaConfig.textPrimary,
+        color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
       ),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(
+        labelStyle: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: NusaConfig.textSecondary,
+          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
           letterSpacing: 0.5,
         ),
         filled: true,

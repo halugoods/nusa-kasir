@@ -9,6 +9,7 @@ import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
 import 'package:nusa_kasir/data/repositories/report_repository.dart';
 import 'package:nusa_kasir/data/repositories/branch_repository.dart';
+import 'package:nusa_kasir/data/repositories/online_order_repository.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/features/auth/rbac.dart';
@@ -48,6 +49,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _lastCashierRole = '';
   String _lastCashierTime = '';
   List<Employee> _employees = [];
+  int _onlinePending = 0;
 
   final List<Map<String, dynamic>> _items = const [
     {'id': 'produk', 'label': 'Produk', 'icon': 'product'},
@@ -138,6 +140,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // (we'll use this to show badge on employee picker)
     // For now just reload the list
 
+    // Load online pending count
+    final onlineRepo = OnlineOrderRepository(ref.read(databaseProvider));
+    final onlinePending = await onlineRepo.countPending();
+
     if (mounted) {
       setState(() {
         _storeName = name.isNotEmpty ? name : 'NUSA';
@@ -150,6 +156,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _trxCount = '${sum['count']}';
         _avg = formatRupiah(sum['avg'] as int);
         _employees = emps;
+        _onlinePending = onlinePending;
         _lastCashierName = lastCashierName;
         _lastCashierRole = lastCashierRole;
         _lastCashierTime = lastCashierTime;
@@ -696,6 +703,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       icon: item['icon'] as String,
                       access: item['access'] as String,
                       onTap: () => _handleMenuTap(item['id'] as String),
+                      badgeCount: item['id'] == 'pesanan_online' ? _onlinePending : null,
                     );
                   }).toList(),
                 ),
@@ -722,12 +730,14 @@ class _MenuItem extends StatelessWidget {
   final String icon;
   final String access;
   final VoidCallback? onTap;
+  final int? badgeCount;
 
   const _MenuItem({
     required this.label,
     required this.icon,
     required this.access,
     this.onTap,
+    this.badgeCount,
   });
 
   static const _iconColors = {
@@ -808,6 +818,25 @@ class _MenuItem extends StatelessWidget {
                       ),
                       alignment: Alignment.center,
                       child: const Text('🔒', style: TextStyle(fontSize: 7)),
+                    ),
+                  ),
+                // Online badge (pending count)
+                if (badgeCount != null && badgeCount! > 0)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(
+                        color: NusaConfig.primaryColor,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '$badgeCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                      ),
                     ),
                   ),
               ],

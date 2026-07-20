@@ -42,15 +42,15 @@ class NusaToggleCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 18, color: NusaConfig.textSecondary),
+                    Icon(icon, size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                     const SizedBox(width: 8),
                   ],
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: NusaConfig.textSecondary,
+                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
                     ),
                   ),
                 ],
@@ -63,7 +63,7 @@ class NusaToggleCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: value ? NusaConfig.accentGreen : NusaConfig.textTertiary,
+                      color: value ? NusaConfig.accentGreen : (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
                     ),
                   ),
                   const SizedBox(width: 4),

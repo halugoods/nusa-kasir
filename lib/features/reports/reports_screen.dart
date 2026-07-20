@@ -89,6 +89,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   // ── PENJUALAN TAB ─────────────────────────────────────────────
 
   Widget _penjualanTab() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final (from, to) = _range();
     final repo = ReportRepository(ref.read(databaseProvider));
     return RefreshIndicator(
@@ -103,7 +104,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               height: 220,
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFF3F4F6))),
+              decoration: BoxDecoration(color: isDark ? NusaConfig.darkSurface : Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF3F4F6))),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Tren Pendapatan 7 Hari', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: NusaConfig.textPrimary)),
                 const SizedBox(height: 16),

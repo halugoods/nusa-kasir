@@ -95,124 +95,183 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
       }
     }
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          title: Text(isEdit ? 'Edit Promo' : 'Tambah Promo'),
-          content: SingleChildScrollView(
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return StatefulBuilder(
+          builder: (ctx, setSt) => Container(
+            decoration: BoxDecoration(
+              color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: EdgeInsets.fromLTRB(
+              20, 10, 20,
+              MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                NusaInput('Nama Promo', controller: nameC),
-                const SizedBox(height: 12),
-                NusaInput('Kode', controller: codeC),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: type,
-                  decoration: const InputDecoration(
-                    labelText: 'Tipe Diskon',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(14))),
+                // Drag handle
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: NusaConfig.dividerColor,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'persen', child: Text('Persen (%)')),
-                    DropdownMenuItem(value: 'nominal', child: Text('Nominal (Rp)')),
-                  ],
-                  onChanged: (v) => setSt(() => type = v!),
                 ),
-                const SizedBox(height: 12),
-                NusaInput(type == 'persen' ? 'Nilai (%)' : 'Nilai (Rp)',
-                    controller: valueC, type: TextInputType.number),
-                const SizedBox(height: 12),
-                NusaInput('Min. Belanja (Rp)',
-                    controller: minC, type: TextInputType.number),
-                const SizedBox(height: 12),
-                NusaInput('Kuota (kosong = tanpa batas)',
-                    controller: maxC, type: TextInputType.number),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => pickDate(setSt, true),
-                        child: Text('Mulai: ${_fmtDate(start)}'),
-                      ),
+                // Header with icon
+                Row(children: [
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      color: NusaConfig.primaryColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => pickDate(setSt, false),
-                        child: Text('Selesai: ${_fmtDate(end)}'),
+                    child: const Icon(Icons.local_offer_outlined,
+                        color: NusaConfig.primaryColor, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(isEdit ? 'Edit Promo' : 'Tambah Promo',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                      )),
+                ]),
+                const SizedBox(height: 16),
+                // Form content
+                SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      NusaInput('Nama Promo', controller: nameC),
+                      const SizedBox(height: 12),
+                      NusaInput('Kode', controller: codeC),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: type,
+                        decoration: const InputDecoration(
+                          labelText: 'Tipe Diskon',
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.all(Radius.circular(14))),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'persen', child: Text('Persen (%)')),
+                          DropdownMenuItem(value: 'nominal', child: Text('Nominal (Rp)')),
+                        ],
+                        onChanged: (v) => setSt(() => type = v!),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      NusaInput(type == 'persen' ? 'Nilai (%)' : 'Nilai (Rp)',
+                          controller: valueC, type: TextInputType.number),
+                      const SizedBox(height: 12),
+                      NusaInput('Min. Belanja (Rp)',
+                          controller: minC, type: TextInputType.number),
+                      const SizedBox(height: 12),
+                      NusaInput('Kuota (kosong = tanpa batas)',
+                          controller: maxC, type: TextInputType.number),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => pickDate(setSt, true),
+                              child: Text('Mulai: ${_fmtDate(start)}'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => pickDate(setSt, false),
+                              child: Text('Selesai: ${_fmtDate(end)}'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      // Bottom actions
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Batal'),
+                            ),
+                          ),
+                          if (isEdit)
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(ctx).pop();
+                                _confirmDelete(existing);
+                              },
+                              child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+                            ),
+                          Expanded(
+                            child: NusaButton(
+                              isEdit ? 'Simpan' : 'Tambah',
+                              fullWidth: false,
+                              onPressed: () async {
+                                final name = nameC.text.trim();
+                                final code = codeC.text.trim();
+                                final value = int.tryParse(valueC.text.trim());
+                                if (name.isEmpty) {
+                                  TopToast.error(context, 'Nama promo wajib diisi');
+                                  return;
+                                }
+                                if (code.isEmpty) {
+                                  TopToast.error(context, 'Kode promo wajib diisi');
+                                  return;
+                                }
+                                if (value == null) {
+                                  TopToast.error(context, 'Nilai diskon wajib diisi');
+                                  return;
+                                }
+                                final repo = PromoRepository(ref.read(databaseProvider));
+                                final min = int.tryParse(minC.text.trim()) ?? 0;
+                                final max = maxC.text.trim().isEmpty
+                                    ? null
+                                    : int.tryParse(maxC.text.trim());
+                                if (isEdit) {
+                                  await repo.updatePromo(existing.id,
+                                      name: name,
+                                      code: code,
+                                      type: type,
+                                      value: value,
+                                      minBelanja: min,
+                                      startDate: start,
+                                      endDate: end,
+                                      maxUses: max);
+                                } else {
+                                  await repo.addPromo(
+                                    name: name,
+                                    code: code,
+                                    type: type,
+                                    value: value,
+                                    minBelanja: min,
+                                    startDate: start,
+                                    endDate: end,
+                                    maxUses: max,
+                                  );
+                                }
+                                if (mounted) Navigator.of(ctx).pop();
+                                _load();
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Batal')),
-            if (isEdit)
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _confirmDelete(existing);
-                },
-                child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-              ),
-            NusaButton(isEdit ? 'Simpan' : 'Tambah', fullWidth: false,
-                onPressed: () async {
-              final name = nameC.text.trim();
-              final code = codeC.text.trim();
-              final value = int.tryParse(valueC.text.trim());
-              if (name.isEmpty) {
-                TopToast.error(context, 'Nama promo wajib diisi');
-                return;
-              }
-              if (code.isEmpty) {
-                TopToast.error(context, 'Kode promo wajib diisi');
-                return;
-              }
-              if (value == null) {
-                TopToast.error(context, 'Nilai diskon wajib diisi');
-                return;
-              }
-              final repo = PromoRepository(ref.read(databaseProvider));
-              final min = int.tryParse(minC.text.trim()) ?? 0;
-              final max = maxC.text.trim().isEmpty
-                  ? null
-                  : int.tryParse(maxC.text.trim());
-              if (isEdit) {
-                await repo.updatePromo(existing.id,
-                    name: name,
-                    code: code,
-                    type: type,
-                    value: value,
-                    minBelanja: min,
-                    startDate: start,
-                    endDate: end,
-                    maxUses: max);
-              } else {
-                await repo.addPromo(
-                  name: name,
-                  code: code,
-                  type: type,
-                  value: value,
-                  minBelanja: min,
-                  startDate: start,
-                  endDate: end,
-                  maxUses: max,
-                );
-              }
-              if (mounted) Navigator.of(context).pop();
-              _load();
-            }),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 

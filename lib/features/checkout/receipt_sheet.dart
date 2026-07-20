@@ -294,8 +294,8 @@ class ReceiptSheet extends ConsumerWidget {
 
   /// Builds the thermal-style receipt content.
   Widget _buildReceipt(BuildContext context, String storeName, bool isDark) {
-    final textColor = isDark ? NusaConfig.darkTextPrimary : Colors.black;
-    final subtleColor = isDark ? NusaConfig.darkTextSecondary : const Color(0xFF555555);
+    final textColor = isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
+    final subtleColor = isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
     final mono = TextStyle(
       fontFamily: 'monospace',
       fontSize: 11,

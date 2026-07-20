@@ -104,9 +104,14 @@ Future<void> _checkOnlineOrders(AppDatabase db) async {
     if (key == null) return;
 
     if (NusaConfig.supabaseUrl.isNotEmpty && NusaConfig.supabaseAnon.isNotEmpty) {
-      await Supabase.initialize(
-        url: NusaConfig.supabaseUrl, publishableKey: NusaConfig.supabaseAnon,
-      );
+      try {
+        // Check if already initialized
+        Supabase.instance.client;
+      } catch (_) {
+        await Supabase.initialize(
+          url: NusaConfig.supabaseUrl, publishableKey: NusaConfig.supabaseAnon,
+        );
+      }
     }
 
     final supabase = Supabase.instance.client;

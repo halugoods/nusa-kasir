@@ -43,7 +43,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final repo = AttendanceRepository(db);
       final emps = await repo.getEmployees();
 
-      // Find employee with matching PIN
       final emp = emps.cast<Employee?>().firstWhere(
             (e) => e!.pin == pin,
             orElse: () => null,
@@ -59,7 +58,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
 
-      // Create session (only remembered if checkbox is checked)
       final session = EmployeeSession(
         employeeId: emp.id,
         name: emp.name,
@@ -88,62 +86,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => ScreenScaffold(
-        'Masuk',
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 32),
-              const Text(
-                'Masuk sebagai',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: NusaConfig.textPrimary,
-                ),
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ScreenScaffold(
+      'Masuk',
+      Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 32),
+            Text(
+              'Masuk sebagai',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'Masukkan PIN karyawan kamu',
-                style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary),
-              ),
-              const SizedBox(height: 24),
-              NusaInput('PIN',
-                  controller: _ctrl,
-                  type: TextInputType.number,
-                  obscure: true),
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(_error!,
-                    style: const TextStyle(color: NusaConfig.error, fontWeight: FontWeight.w600)),
-              ],
-              const SizedBox(height: 16),
-              // Remember checkbox
-              GestureDetector(
-                onTap: () => setState(() => _remember = !_remember),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 22, height: 22,
-                      child: Checkbox(
-                        value: _remember,
-                        onChanged: (v) => setState(() => _remember = v ?? false),
-                        activeColor: NusaConfig.primaryColor,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text('Ingat PIN selama 8 jam', style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              NusaButton(_loading ? 'Memeriksa...' : 'Masuk',
-                  onPressed: _loading ? null : _submit),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Masukkan PIN karyawan kamu',
+              style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            NusaInput('PIN',
+                controller: _ctrl,
+                type: TextInputType.number,
+                obscure: true),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!,
+                  style: const TextStyle(color: NusaConfig.error, fontWeight: FontWeight.w600)),
             ],
-          ),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => setState(() => _remember = !_remember),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 22, height: 22,
+                    child: Checkbox(
+                      value: _remember,
+                      onChanged: (v) => setState(() => _remember = v ?? false),
+                      activeColor: NusaConfig.primaryColor,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('Ingat PIN selama 8 jam', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            NusaButton(_loading ? 'Memeriksa...' : 'Masuk',
+                onPressed: _loading ? null : _submit),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }

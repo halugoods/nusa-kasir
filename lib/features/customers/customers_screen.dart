@@ -881,8 +881,8 @@ class _WaTemplatePickerState extends State<_WaTemplatePicker> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Batal'),
         ),
-        ElevatedButton.icon(
-          onPressed: () {
+        ElevatedButton(
+          onPressed: () async {
             final msg = _body != null ? _fill(_body!) : '';
             final digits = widget.phone.replaceAll(RegExp(r'\D'), '');
             final normalized = digits.startsWith('0')
@@ -892,12 +892,13 @@ class _WaTemplatePickerState extends State<_WaTemplatePicker> {
                     : '62$digits';
             final uri = Uri.parse('https://wa.me/$normalized${msg.isNotEmpty ? '?text=${Uri.encodeComponent(msg)}' : ''}');
             Navigator.pop(context);
-            canLaunchUrl(uri).then((ok) {
-              if (ok) launchUrl(uri);
-            });
+            try {
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            } catch (_) {}
           },
-          icon: const Icon(Icons.send_rounded, size: 16),
-          label: const Text('Kirim WA'),
+          child: const Text('Kirim'),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF25D366),
             foregroundColor: Colors.white,
@@ -1072,7 +1073,7 @@ class _WaTemplateSheetState extends State<_WaTemplateSheet> {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Container(
                     width: 40, height: 4,
-                    decoration: BoxDecoration(color: NusaConfig.dividerColor, borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor, borderRadius: BorderRadius.circular(2)),
                   ),
                 ),
                 // Header
@@ -1095,7 +1096,7 @@ class _WaTemplateSheetState extends State<_WaTemplateSheet> {
                         )),
                     const Spacer(),
                     Text('${_templates.length}',
-                        style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+                        style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                   ]),
                 ),
                 const Divider(height: 1),

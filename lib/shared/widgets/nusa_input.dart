@@ -39,10 +39,10 @@ class NusaInput extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: NusaConfig.textSecondary,
+            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
           ),
         ),
         const SizedBox(height: 6),

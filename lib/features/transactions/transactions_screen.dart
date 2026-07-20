@@ -349,8 +349,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   Widget _buildReceiptPreview(Transaction tx,
       List<Map<String, dynamic>> rawItems, String dateStr, String? custName,
       {bool isDark = false}) {
-    final textColor = isDark ? NusaConfig.darkTextPrimary : Colors.black87;
-    final subtleColor = isDark ? NusaConfig.darkTextSecondary : const Color(0xFF555555);
+    final textColor = isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
+    final subtleColor = isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
     final mono = TextStyle(
         fontFamily: 'monospace', fontSize: 10, height: 1.4, color: textColor);
     final monoBold = TextStyle(

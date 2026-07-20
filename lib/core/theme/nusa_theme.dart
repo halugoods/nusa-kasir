@@ -44,8 +44,9 @@ class NusaTheme {
             letterSpacing: -0.3,
             color: textPri),
         titleMedium: GoogleFonts.inter(
-            fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.2),
-        bodyMedium: GoogleFonts.inter(fontSize: 15),
+            fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.2,
+            color: textPri),
+        bodyMedium: GoogleFonts.inter(fontSize: 15, color: textPri),
         bodySmall: GoogleFonts.inter(fontSize: 13, color: textSec),
         labelSmall: GoogleFonts.inter(
             fontSize: 11,

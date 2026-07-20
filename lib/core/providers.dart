@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/customer_repository.dart';
+import 'package:nusa_kasir/data/repositories/online_order_repository.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/data/repositories/transaction_repository.dart';
@@ -38,3 +39,6 @@ final activationRepoProvider = Provider<ActivationRepository>((ref) {
     return ActivationRepository(null);
   }
 });
+
+final onlineOrderRepoProvider =
+    Provider((ref) => OnlineOrderRepository(ref.watch(databaseProvider)));

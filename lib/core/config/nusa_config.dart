@@ -69,9 +69,9 @@ abstract class NusaConfig {
   static const Color darkBackground = Color(0xFF0F0F1A);
   static const Color darkSurface = Color(0xFF1A1A2E);
   static const Color darkSurface2 = Color(0xFF252540);
-  static const Color darkTextPrimary = Color(0xFFF1F5F9);
-  static const Color darkTextSecondary = Color(0xFF94A3B8);
-  static const Color darkTextTertiary = Color(0xFF64748B);
+  static const Color darkTextPrimary = Color(0xFFFFFFFF);
+  static const Color darkTextSecondary = Color(0xFFE2E8F0);
+  static const Color darkTextTertiary = Color(0xFFCBD5E1);
   static const Color darkDivider = Color(0xFF2D2D44);
   static const Color darkBorder = Color(0xFF3A3A52);
   static const Color darkCardShadow = Color(0x1A000000);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nusa_kasir/core/config/nusa_config.dart';
 
 /// Clean screen shell — custom header + body, dark/light adaptive.
 class ScreenScaffold extends StatelessWidget {
@@ -22,8 +23,8 @@ class ScreenScaffold extends StatelessWidget {
     final canPop = ModalRoute.of(context)?.canPop == true;
     final textColor = theme.textTheme.titleLarge?.color ?? theme.colorScheme.onSurface;
     final surface = theme.colorScheme.surface;
-    final borderColor = isDark ? const Color(0xFF3A3A52) : const Color(0xFFF3F4F6);
-    final dividerColor = isDark ? const Color(0xFF2D2D44) : const Color(0xFFE5E7EB);
+    final borderColor = isDark ? NusaConfig.darkBorder : const Color(0xFFF3F4F6);
+    final dividerColor = isDark ? NusaConfig.darkDivider : const Color(0xFFE5E7EB);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
