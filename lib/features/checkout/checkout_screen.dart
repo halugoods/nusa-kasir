@@ -10,6 +10,7 @@ import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/customer_repository.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/data/repositories/promo_repository.dart';
+import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/features/pos/cart.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
@@ -248,7 +249,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
         // Update customer loyalty
         if (_selectedCustomer != null) {
-          await CustomerRepository(db).addSpent(_selectedCustomer!.id, _total);
+          final pointConfig = await SettingsRepository(db).getPointConfig();
+          await CustomerRepository(db).addSpent(
+            _selectedCustomer!.id, _total,
+            pointsPerRupiah: pointConfig['pointsPerRupiah']!,
+            goldThreshold: pointConfig['goldThreshold']!,
+            platinumThreshold: pointConfig['platinumThreshold']!,
+          );
         }
 
         // Increment promo usage
@@ -291,6 +298,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             customerPhone: _selectedCustomer?.phone,
             invoice: invoice,
             dateStr: dateStr,
+            pointsUsed: _pointsUsed,
           ),
           onDismiss: () {
             // Return to POS screen after receipt is dismissed
@@ -542,15 +550,25 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           const Spacer(),
           // Poin tukar
           if (_selectedCustomer != null && _selectedCustomer!.points > 0) ...[
+            _buildPointsBadge(isDark),
+            const SizedBox(width: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.stars_rounded, size: 14, color: Colors.amber),
-                const SizedBox(width: 4),
-                Text('${_selectedCustomer!.points} pts',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFB45309))),
-              ]),
+              height: 32,
+              child: ElevatedButton(
+                onPressed: _pointsUsed > 0 ? () => setState(() => _pointsUsed = 0) : _showRedeemPoints,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _pointsUsed > 0 ? const Color(0xFFEF4444) : Colors.amber,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                  minimumSize: Size.zero,
+                ),
+                child: Text(
+                  _pointsUsed > 0 ? 'Batal' : 'Tukar',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                ),
+              ),
             ),
           ],
         ]),
@@ -809,6 +827,76 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               style: TextStyle(color: Colors.grey, fontSize: 15)),
         ],
       ]),
+    );
+  }
+
+  Widget _buildPointsBadge(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.stars_rounded, size: 14, color: Colors.amber),
+        const SizedBox(width: 4),
+        if (_pointsUsed > 0)
+          Text('${_selectedCustomer!.points - _pointsUsed} → ${_pointsUsed} pts',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFB45309)))
+        else
+          Text('${_selectedCustomer!.points} pts',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFB45309))),
+      ]),
+    );
+  }
+
+  void _showRedeemPoints() {
+    final maxPts = _selectedCustomer?.points ?? 0;
+    final maxRp = maxPts; // 1 poin = Rp 1
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tukar Poin'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Kamu punya ${_selectedCustomer?.points ?? 0} poin.',
+                style: const TextStyle(fontSize: 13)),
+            const SizedBox(height: 4),
+            Text('1 poin = Rp 1',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Jumlah poin',
+                hintText: 'Maksimal $maxRp',
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (v) {
+                final val = int.tryParse(v) ?? 0;
+                if (val > maxPts) ctrl.text = maxPts.toString();
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final pts = int.tryParse(ctrl.text) ?? 0;
+              if (pts <= 0 || pts > maxPts) return;
+              setState(() => _pointsUsed = pts);
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, foregroundColor: Colors.white),
+            child: const Text('Tukar'),
+          ),
+        ],
+      ),
     );
   }
 }

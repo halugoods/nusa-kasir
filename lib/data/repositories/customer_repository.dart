@@ -17,12 +17,12 @@ class CustomerRepository {
   Future<Customer?> byPhone(String phone) =>
       (db.select(db.customers)..where((t) => t.phone.equals(phone))).getSingleOrNull();
 
-  Future<void> addSpent(int id, int amount) async {
+  Future<void> addSpent(int id, int amount, {int pointsPerRupiah = 100, int goldThreshold = 1000, int platinumThreshold = 5000}) async {
     final c = await byId(id);
     if (c == null) return;
     final total = c.totalSpent + amount;
-    final points = total ~/ 100;
-    final level = points >= 5000 ? 'Platinum' : points >= 1000 ? 'Gold' : 'Silver';
+    final points = total ~/ pointsPerRupiah;
+    final level = points >= platinumThreshold ? 'Platinum' : points >= goldThreshold ? 'Gold' : 'Silver';
     await (db.update(db.customers)..where((t) => t.id.equals(id))).write(
       CustomersCompanion(totalSpent: Value(total), points: Value(points), level: Value(level)));
   }

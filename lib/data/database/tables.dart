@@ -153,6 +153,13 @@ class Settings extends Table {
   TextColumn get bankHolder => text().nullable()();
   TextColumn get receiptFooter => text().nullable()();
   TextColumn get storeLogoPath => text().nullable()();
+  // ── WA Templates (JSON array of {name, body}) ──
+  TextColumn get waTemplates => text().nullable()();
+  // ── Point system config ──
+  IntColumn get pointsPerRupiah => integer().withDefault(const Constant(100))();
+  IntColumn get silverThreshold => integer().withDefault(const Constant(0))();
+  IntColumn get goldThreshold => integer().withDefault(const Constant(1000))();
+  IntColumn get platinumThreshold => integer().withDefault(const Constant(5000))();
   @override
   Set<Column> get primaryKey => {id};
 }

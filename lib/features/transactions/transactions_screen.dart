@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -348,21 +347,24 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Widget _buildReceiptPreview(Transaction tx,
-      List<Map<String, dynamic>> rawItems, String dateStr, String? custName) {
-    const mono = TextStyle(
-        fontFamily: 'monospace', fontSize: 10, height: 1.4, color: Colors.black87);
-    const monoBold = TextStyle(
+      List<Map<String, dynamic>> rawItems, String dateStr, String? custName,
+      {bool isDark = false}) {
+    final textColor = isDark ? NusaConfig.darkTextPrimary : Colors.black87;
+    final subtleColor = isDark ? NusaConfig.darkTextSecondary : const Color(0xFF555555);
+    final mono = TextStyle(
+        fontFamily: 'monospace', fontSize: 10, height: 1.4, color: textColor);
+    final monoBold = TextStyle(
         fontFamily: 'monospace', fontSize: 10, height: 1.4,
-        fontWeight: FontWeight.bold, color: Colors.black87);
-    const monoBig = TextStyle(
+        fontWeight: FontWeight.bold, color: textColor);
+    final monoBig = TextStyle(
         fontFamily: 'monospace', fontSize: 13, height: 1.4,
-        fontWeight: FontWeight.bold, color: Colors.black87);
-    const monoHeader = TextStyle(
+        fontWeight: FontWeight.bold, color: textColor);
+    final monoHeader = TextStyle(
         fontFamily: 'monospace', fontSize: 14, height: 1.3,
-        fontWeight: FontWeight.bold, color: Colors.black87);
-    const monoGrey = TextStyle(
+        fontWeight: FontWeight.bold, color: textColor);
+    final monoGrey = TextStyle(
         fontFamily: 'monospace', fontSize: 10, height: 1.4,
-        color: Color(0xFF555555));
+        color: subtleColor);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -374,7 +376,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           Center(child: Text(tx.invoice, style: mono)),
         ],
         const SizedBox(height: 6),
-        _buildRDash(),
+        _buildRDash(isDark: isDark),
         const SizedBox(height: 6),
         _buildRRow('ID  : ', tx.invoice, mono, mono),
         _buildRRow('Tgl : ', dateStr, mono, mono),
@@ -382,7 +384,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         if (tx.cashierName != null && tx.cashierName!.isNotEmpty)
           _buildRRow('Kasir:', tx.cashierName!, mono, mono),
         const SizedBox(height: 6),
-        _buildRDash(),
+        _buildRDash(isDark: isDark),
         const SizedBox(height: 6),
         ...rawItems.map((it) {
           final name = '${it['name']}';
@@ -403,7 +405,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           );
         }),
         const SizedBox(height: 6),
-        _buildRDash(),
+        _buildRDash(isDark: isDark),
         const SizedBox(height: 6),
         if (tx.discount > 0)
           Padding(
@@ -443,9 +445,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
-  Widget _buildRDash() => SizedBox(
+  Widget _buildRDash({bool isDark = false}) => SizedBox(
         height: 2,
-        child: CustomPaint(painter: _DashPainter2()),
+        child: CustomPaint(
+            painter: _DashPainter2(
+                color: isDark ? Colors.grey.shade600 : Colors.grey.shade300)),
       );
 
   Widget _buildRRow(String label, String value, TextStyle mono, TextStyle monoGrey) =>
@@ -473,47 +477,48 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSt) => Container(
-          decoration: BoxDecoration(
-            color: Theme.of(ctx).brightness == Brightness.dark
-                ? NusaConfig.darkSurface
-                : NusaConfig.surfaceColor,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: NusaConfig.dividerColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text('Bagikan Struk ${tx.invoice}',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  )),
-              const SizedBox(height: 16),
-              // ── Receipt preview image ──
-              RepaintBoundary(
-                key: receiptKey,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
+      builder: (ctx) {
+        final shareDark = Theme.of(ctx).brightness == Brightness.dark;
+        return StatefulBuilder(
+          builder: (ctx, setSt) => Container(
+            decoration: BoxDecoration(
+              color: shareDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
+                    color: NusaConfig.dividerColor,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: _buildReceiptPreview(
-                      tx, rawItems, dateStr, custName),
+                ),
+                const SizedBox(height: 12),
+                Text('Bagikan Struk ${tx.invoice}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: shareDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                    )),
+                const SizedBox(height: 16),
+                // ── Receipt preview image ──
+                RepaintBoundary(
+                  key: receiptKey,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: shareDark ? NusaConfig.darkSurface2 : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: shareDark ? NusaConfig.darkBorder : Colors.grey.shade200),
+                    ),
+                    child: _buildReceiptPreview(
+                        tx, rawItems, dateStr, custName, isDark: shareDark),
                 ),
               ),
               const SizedBox(height: 20),
@@ -592,9 +597,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             if (custPhone != null &&
                                 custPhone.isNotEmpty)
                               Text(custPhone,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 10,
-                                      color: Colors.grey)),
+                                      color: shareDark
+                                          ? NusaConfig.darkTextTertiary
+                                          : Colors.grey)),
                           ]),
                         ),
                       ),
@@ -634,8 +641,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             Text('Gambar',
                                 style: TextStyle(
                                     fontSize: 10,
-                                    color:
-                                        NusaConfig.textTertiary)),
+                                    color: shareDark
+                                        ? NusaConfig.darkTextTertiary
+                                        : NusaConfig.textTertiary)),
                           ]),
                         ),
                       ),
@@ -645,7 +653,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ],
           ),
         ),
-      ),
+      );
+    },
     );
   }
 
@@ -1095,13 +1104,13 @@ class _TransactionCardState extends State<_TransactionCard> {
                                     ? NusaConfig.darkDivider
                                     : NusaConfig.dividerColor),
                             const SizedBox(height: 8),
-                            _row('Subtotal', formatRupiah(tx.total + tx.discount)),
-                            _row('Diskon', formatRupiah(tx.discount)),
-                            _row('Total', formatRupiah(tx.total)),
+                            _row('Subtotal', formatRupiah(tx.total + tx.discount), isDark: isDark),
+                            _row('Diskon', formatRupiah(tx.discount), isDark: isDark),
+                            _row('Total', formatRupiah(tx.total), isDark: isDark),
                             _row('Bayar',
-                                tx.cashGiven != null ? formatRupiah(tx.cashGiven!) : '-'),
+                                tx.cashGiven != null ? formatRupiah(tx.cashGiven!) : '-', isDark: isDark),
                             _row('Kembali',
-                                tx.cashReturn != null ? formatRupiah(tx.cashReturn!) : '-'),
+                                tx.cashReturn != null ? formatRupiah(tx.cashReturn!) : '-', isDark: isDark),
                             if (isVoided && tx.voidReason != null) ...[
                               const SizedBox(height: 8),
                               Text(
@@ -1136,30 +1145,35 @@ class _TransactionCardState extends State<_TransactionCard> {
                                   ),
                                 ),
                               ),
-                            ],
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+                            ], // close if(!isVoided)
+                          ], // close if(_expanded)
+                        ], // close Column children
+                      ), // close Column
+                    ), // close Padding
+                  ), // close Container
+                ), // close InkWell
+              ), // close Material
+              ); // close Opacity
   }
 
-  Widget _row(String label, String value) => Padding(
+  Widget _row(String label, String value, {bool isDark = false}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label,
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, color: NusaConfig.textSecondary)),
+                    fontSize: 13,
+                    color: isDark
+                        ? NusaConfig.darkTextSecondary
+                        : NusaConfig.textSecondary)),
             Text(value,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: NusaConfig.textPrimary,
+                  color: isDark
+                      ? NusaConfig.darkTextPrimary
+                      : NusaConfig.textPrimary,
                 )),
           ],
         ),
@@ -1179,10 +1193,13 @@ List<Map<String, dynamic>> _parseItems(String json) {
 }
 
 class _DashPainter2 extends CustomPainter {
+  final Color color;
+  const _DashPainter2({this.color = const Color(0xFFD1D5DB)});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.grey.shade300
+      ..color = color
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
     const dashW = 3.0;

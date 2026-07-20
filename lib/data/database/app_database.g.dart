@@ -6847,6 +6847,65 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _waTemplatesMeta = const VerificationMeta(
+    'waTemplates',
+  );
+  @override
+  late final GeneratedColumn<String> waTemplates = GeneratedColumn<String>(
+    'wa_templates',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pointsPerRupiahMeta = const VerificationMeta(
+    'pointsPerRupiah',
+  );
+  @override
+  late final GeneratedColumn<int> pointsPerRupiah = GeneratedColumn<int>(
+    'points_per_rupiah',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(100),
+  );
+  static const VerificationMeta _silverThresholdMeta = const VerificationMeta(
+    'silverThreshold',
+  );
+  @override
+  late final GeneratedColumn<int> silverThreshold = GeneratedColumn<int>(
+    'silver_threshold',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _goldThresholdMeta = const VerificationMeta(
+    'goldThreshold',
+  );
+  @override
+  late final GeneratedColumn<int> goldThreshold = GeneratedColumn<int>(
+    'gold_threshold',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1000),
+  );
+  static const VerificationMeta _platinumThresholdMeta = const VerificationMeta(
+    'platinumThreshold',
+  );
+  @override
+  late final GeneratedColumn<int> platinumThreshold = GeneratedColumn<int>(
+    'platinum_threshold',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(5000),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6864,6 +6923,11 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     bankHolder,
     receiptFooter,
     storeLogoPath,
+    waTemplates,
+    pointsPerRupiah,
+    silverThreshold,
+    goldThreshold,
+    platinumThreshold,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6982,6 +7046,51 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
       );
     }
+    if (data.containsKey('wa_templates')) {
+      context.handle(
+        _waTemplatesMeta,
+        waTemplates.isAcceptableOrUnknown(
+          data['wa_templates']!,
+          _waTemplatesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('points_per_rupiah')) {
+      context.handle(
+        _pointsPerRupiahMeta,
+        pointsPerRupiah.isAcceptableOrUnknown(
+          data['points_per_rupiah']!,
+          _pointsPerRupiahMeta,
+        ),
+      );
+    }
+    if (data.containsKey('silver_threshold')) {
+      context.handle(
+        _silverThresholdMeta,
+        silverThreshold.isAcceptableOrUnknown(
+          data['silver_threshold']!,
+          _silverThresholdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('gold_threshold')) {
+      context.handle(
+        _goldThresholdMeta,
+        goldThreshold.isAcceptableOrUnknown(
+          data['gold_threshold']!,
+          _goldThresholdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('platinum_threshold')) {
+      context.handle(
+        _platinumThresholdMeta,
+        platinumThreshold.isAcceptableOrUnknown(
+          data['platinum_threshold']!,
+          _platinumThresholdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7051,6 +7160,26 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.string,
         data['${effectivePrefix}store_logo_path'],
       ),
+      waTemplates: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wa_templates'],
+      ),
+      pointsPerRupiah: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}points_per_rupiah'],
+      )!,
+      silverThreshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}silver_threshold'],
+      )!,
+      goldThreshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}gold_threshold'],
+      )!,
+      platinumThreshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}platinum_threshold'],
+      )!,
     );
   }
 
@@ -7076,6 +7205,11 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String? bankHolder;
   final String? receiptFooter;
   final String? storeLogoPath;
+  final String? waTemplates;
+  final int pointsPerRupiah;
+  final int silverThreshold;
+  final int goldThreshold;
+  final int platinumThreshold;
   const Setting({
     required this.id,
     required this.storeName,
@@ -7092,6 +7226,11 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.bankHolder,
     this.receiptFooter,
     this.storeLogoPath,
+    this.waTemplates,
+    required this.pointsPerRupiah,
+    required this.silverThreshold,
+    required this.goldThreshold,
+    required this.platinumThreshold,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7131,6 +7270,13 @@ class Setting extends DataClass implements Insertable<Setting> {
     if (!nullToAbsent || storeLogoPath != null) {
       map['store_logo_path'] = Variable<String>(storeLogoPath);
     }
+    if (!nullToAbsent || waTemplates != null) {
+      map['wa_templates'] = Variable<String>(waTemplates);
+    }
+    map['points_per_rupiah'] = Variable<int>(pointsPerRupiah);
+    map['silver_threshold'] = Variable<int>(silverThreshold);
+    map['gold_threshold'] = Variable<int>(goldThreshold);
+    map['platinum_threshold'] = Variable<int>(platinumThreshold);
     return map;
   }
 
@@ -7171,6 +7317,13 @@ class Setting extends DataClass implements Insertable<Setting> {
       storeLogoPath: storeLogoPath == null && nullToAbsent
           ? const Value.absent()
           : Value(storeLogoPath),
+      waTemplates: waTemplates == null && nullToAbsent
+          ? const Value.absent()
+          : Value(waTemplates),
+      pointsPerRupiah: Value(pointsPerRupiah),
+      silverThreshold: Value(silverThreshold),
+      goldThreshold: Value(goldThreshold),
+      platinumThreshold: Value(platinumThreshold),
     );
   }
 
@@ -7195,6 +7348,11 @@ class Setting extends DataClass implements Insertable<Setting> {
       bankHolder: serializer.fromJson<String?>(json['bankHolder']),
       receiptFooter: serializer.fromJson<String?>(json['receiptFooter']),
       storeLogoPath: serializer.fromJson<String?>(json['storeLogoPath']),
+      waTemplates: serializer.fromJson<String?>(json['waTemplates']),
+      pointsPerRupiah: serializer.fromJson<int>(json['pointsPerRupiah']),
+      silverThreshold: serializer.fromJson<int>(json['silverThreshold']),
+      goldThreshold: serializer.fromJson<int>(json['goldThreshold']),
+      platinumThreshold: serializer.fromJson<int>(json['platinumThreshold']),
     );
   }
   @override
@@ -7216,6 +7374,11 @@ class Setting extends DataClass implements Insertable<Setting> {
       'bankHolder': serializer.toJson<String?>(bankHolder),
       'receiptFooter': serializer.toJson<String?>(receiptFooter),
       'storeLogoPath': serializer.toJson<String?>(storeLogoPath),
+      'waTemplates': serializer.toJson<String?>(waTemplates),
+      'pointsPerRupiah': serializer.toJson<int>(pointsPerRupiah),
+      'silverThreshold': serializer.toJson<int>(silverThreshold),
+      'goldThreshold': serializer.toJson<int>(goldThreshold),
+      'platinumThreshold': serializer.toJson<int>(platinumThreshold),
     };
   }
 
@@ -7235,6 +7398,11 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<String?> bankHolder = const Value.absent(),
     Value<String?> receiptFooter = const Value.absent(),
     Value<String?> storeLogoPath = const Value.absent(),
+    Value<String?> waTemplates = const Value.absent(),
+    int? pointsPerRupiah,
+    int? silverThreshold,
+    int? goldThreshold,
+    int? platinumThreshold,
   }) => Setting(
     id: id ?? this.id,
     storeName: storeName ?? this.storeName,
@@ -7255,6 +7423,11 @@ class Setting extends DataClass implements Insertable<Setting> {
     storeLogoPath: storeLogoPath.present
         ? storeLogoPath.value
         : this.storeLogoPath,
+    waTemplates: waTemplates.present ? waTemplates.value : this.waTemplates,
+    pointsPerRupiah: pointsPerRupiah ?? this.pointsPerRupiah,
+    silverThreshold: silverThreshold ?? this.silverThreshold,
+    goldThreshold: goldThreshold ?? this.goldThreshold,
+    platinumThreshold: platinumThreshold ?? this.platinumThreshold,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -7293,6 +7466,21 @@ class Setting extends DataClass implements Insertable<Setting> {
       storeLogoPath: data.storeLogoPath.present
           ? data.storeLogoPath.value
           : this.storeLogoPath,
+      waTemplates: data.waTemplates.present
+          ? data.waTemplates.value
+          : this.waTemplates,
+      pointsPerRupiah: data.pointsPerRupiah.present
+          ? data.pointsPerRupiah.value
+          : this.pointsPerRupiah,
+      silverThreshold: data.silverThreshold.present
+          ? data.silverThreshold.value
+          : this.silverThreshold,
+      goldThreshold: data.goldThreshold.present
+          ? data.goldThreshold.value
+          : this.goldThreshold,
+      platinumThreshold: data.platinumThreshold.present
+          ? data.platinumThreshold.value
+          : this.platinumThreshold,
     );
   }
 
@@ -7313,7 +7501,12 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('bankAccount: $bankAccount, ')
           ..write('bankHolder: $bankHolder, ')
           ..write('receiptFooter: $receiptFooter, ')
-          ..write('storeLogoPath: $storeLogoPath')
+          ..write('storeLogoPath: $storeLogoPath, ')
+          ..write('waTemplates: $waTemplates, ')
+          ..write('pointsPerRupiah: $pointsPerRupiah, ')
+          ..write('silverThreshold: $silverThreshold, ')
+          ..write('goldThreshold: $goldThreshold, ')
+          ..write('platinumThreshold: $platinumThreshold')
           ..write(')'))
         .toString();
   }
@@ -7335,6 +7528,11 @@ class Setting extends DataClass implements Insertable<Setting> {
     bankHolder,
     receiptFooter,
     storeLogoPath,
+    waTemplates,
+    pointsPerRupiah,
+    silverThreshold,
+    goldThreshold,
+    platinumThreshold,
   );
   @override
   bool operator ==(Object other) =>
@@ -7354,7 +7552,12 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.bankAccount == this.bankAccount &&
           other.bankHolder == this.bankHolder &&
           other.receiptFooter == this.receiptFooter &&
-          other.storeLogoPath == this.storeLogoPath);
+          other.storeLogoPath == this.storeLogoPath &&
+          other.waTemplates == this.waTemplates &&
+          other.pointsPerRupiah == this.pointsPerRupiah &&
+          other.silverThreshold == this.silverThreshold &&
+          other.goldThreshold == this.goldThreshold &&
+          other.platinumThreshold == this.platinumThreshold);
 }
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
@@ -7373,6 +7576,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String?> bankHolder;
   final Value<String?> receiptFooter;
   final Value<String?> storeLogoPath;
+  final Value<String?> waTemplates;
+  final Value<int> pointsPerRupiah;
+  final Value<int> silverThreshold;
+  final Value<int> goldThreshold;
+  final Value<int> platinumThreshold;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.storeName = const Value.absent(),
@@ -7389,6 +7597,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.bankHolder = const Value.absent(),
     this.receiptFooter = const Value.absent(),
     this.storeLogoPath = const Value.absent(),
+    this.waTemplates = const Value.absent(),
+    this.pointsPerRupiah = const Value.absent(),
+    this.silverThreshold = const Value.absent(),
+    this.goldThreshold = const Value.absent(),
+    this.platinumThreshold = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -7406,6 +7619,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.bankHolder = const Value.absent(),
     this.receiptFooter = const Value.absent(),
     this.storeLogoPath = const Value.absent(),
+    this.waTemplates = const Value.absent(),
+    this.pointsPerRupiah = const Value.absent(),
+    this.silverThreshold = const Value.absent(),
+    this.goldThreshold = const Value.absent(),
+    this.platinumThreshold = const Value.absent(),
   });
   static Insertable<Setting> custom({
     Expression<int>? id,
@@ -7423,6 +7641,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<String>? bankHolder,
     Expression<String>? receiptFooter,
     Expression<String>? storeLogoPath,
+    Expression<String>? waTemplates,
+    Expression<int>? pointsPerRupiah,
+    Expression<int>? silverThreshold,
+    Expression<int>? goldThreshold,
+    Expression<int>? platinumThreshold,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7440,6 +7663,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (bankHolder != null) 'bank_holder': bankHolder,
       if (receiptFooter != null) 'receipt_footer': receiptFooter,
       if (storeLogoPath != null) 'store_logo_path': storeLogoPath,
+      if (waTemplates != null) 'wa_templates': waTemplates,
+      if (pointsPerRupiah != null) 'points_per_rupiah': pointsPerRupiah,
+      if (silverThreshold != null) 'silver_threshold': silverThreshold,
+      if (goldThreshold != null) 'gold_threshold': goldThreshold,
+      if (platinumThreshold != null) 'platinum_threshold': platinumThreshold,
     });
   }
 
@@ -7459,6 +7687,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String?>? bankHolder,
     Value<String?>? receiptFooter,
     Value<String?>? storeLogoPath,
+    Value<String?>? waTemplates,
+    Value<int>? pointsPerRupiah,
+    Value<int>? silverThreshold,
+    Value<int>? goldThreshold,
+    Value<int>? platinumThreshold,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -7476,6 +7709,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       bankHolder: bankHolder ?? this.bankHolder,
       receiptFooter: receiptFooter ?? this.receiptFooter,
       storeLogoPath: storeLogoPath ?? this.storeLogoPath,
+      waTemplates: waTemplates ?? this.waTemplates,
+      pointsPerRupiah: pointsPerRupiah ?? this.pointsPerRupiah,
+      silverThreshold: silverThreshold ?? this.silverThreshold,
+      goldThreshold: goldThreshold ?? this.goldThreshold,
+      platinumThreshold: platinumThreshold ?? this.platinumThreshold,
     );
   }
 
@@ -7527,6 +7765,21 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (storeLogoPath.present) {
       map['store_logo_path'] = Variable<String>(storeLogoPath.value);
     }
+    if (waTemplates.present) {
+      map['wa_templates'] = Variable<String>(waTemplates.value);
+    }
+    if (pointsPerRupiah.present) {
+      map['points_per_rupiah'] = Variable<int>(pointsPerRupiah.value);
+    }
+    if (silverThreshold.present) {
+      map['silver_threshold'] = Variable<int>(silverThreshold.value);
+    }
+    if (goldThreshold.present) {
+      map['gold_threshold'] = Variable<int>(goldThreshold.value);
+    }
+    if (platinumThreshold.present) {
+      map['platinum_threshold'] = Variable<int>(platinumThreshold.value);
+    }
     return map;
   }
 
@@ -7547,7 +7800,12 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('bankAccount: $bankAccount, ')
           ..write('bankHolder: $bankHolder, ')
           ..write('receiptFooter: $receiptFooter, ')
-          ..write('storeLogoPath: $storeLogoPath')
+          ..write('storeLogoPath: $storeLogoPath, ')
+          ..write('waTemplates: $waTemplates, ')
+          ..write('pointsPerRupiah: $pointsPerRupiah, ')
+          ..write('silverThreshold: $silverThreshold, ')
+          ..write('goldThreshold: $goldThreshold, ')
+          ..write('platinumThreshold: $platinumThreshold')
           ..write(')'))
         .toString();
   }
@@ -13110,6 +13368,11 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> bankHolder,
       Value<String?> receiptFooter,
       Value<String?> storeLogoPath,
+      Value<String?> waTemplates,
+      Value<int> pointsPerRupiah,
+      Value<int> silverThreshold,
+      Value<int> goldThreshold,
+      Value<int> platinumThreshold,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -13128,6 +13391,11 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> bankHolder,
       Value<String?> receiptFooter,
       Value<String?> storeLogoPath,
+      Value<String?> waTemplates,
+      Value<int> pointsPerRupiah,
+      Value<int> silverThreshold,
+      Value<int> goldThreshold,
+      Value<int> platinumThreshold,
     });
 
 class $$SettingsTableFilterComposer
@@ -13211,6 +13479,31 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<String> get storeLogoPath => $composableBuilder(
     column: $table.storeLogoPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get waTemplates => $composableBuilder(
+    column: $table.waTemplates,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pointsPerRupiah => $composableBuilder(
+    column: $table.pointsPerRupiah,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get silverThreshold => $composableBuilder(
+    column: $table.silverThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get goldThreshold => $composableBuilder(
+    column: $table.goldThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get platinumThreshold => $composableBuilder(
+    column: $table.platinumThreshold,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -13298,6 +13591,31 @@ class $$SettingsTableOrderingComposer
     column: $table.storeLogoPath,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get waTemplates => $composableBuilder(
+    column: $table.waTemplates,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get pointsPerRupiah => $composableBuilder(
+    column: $table.pointsPerRupiah,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get silverThreshold => $composableBuilder(
+    column: $table.silverThreshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get goldThreshold => $composableBuilder(
+    column: $table.goldThreshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get platinumThreshold => $composableBuilder(
+    column: $table.platinumThreshold,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsTableAnnotationComposer
@@ -13373,6 +13691,31 @@ class $$SettingsTableAnnotationComposer
     column: $table.storeLogoPath,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get waTemplates => $composableBuilder(
+    column: $table.waTemplates,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get pointsPerRupiah => $composableBuilder(
+    column: $table.pointsPerRupiah,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get silverThreshold => $composableBuilder(
+    column: $table.silverThreshold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get goldThreshold => $composableBuilder(
+    column: $table.goldThreshold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get platinumThreshold => $composableBuilder(
+    column: $table.platinumThreshold,
+    builder: (column) => column,
+  );
 }
 
 class $$SettingsTableTableManager
@@ -13418,6 +13761,11 @@ class $$SettingsTableTableManager
                 Value<String?> bankHolder = const Value.absent(),
                 Value<String?> receiptFooter = const Value.absent(),
                 Value<String?> storeLogoPath = const Value.absent(),
+                Value<String?> waTemplates = const Value.absent(),
+                Value<int> pointsPerRupiah = const Value.absent(),
+                Value<int> silverThreshold = const Value.absent(),
+                Value<int> goldThreshold = const Value.absent(),
+                Value<int> platinumThreshold = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 storeName: storeName,
@@ -13434,6 +13782,11 @@ class $$SettingsTableTableManager
                 bankHolder: bankHolder,
                 receiptFooter: receiptFooter,
                 storeLogoPath: storeLogoPath,
+                waTemplates: waTemplates,
+                pointsPerRupiah: pointsPerRupiah,
+                silverThreshold: silverThreshold,
+                goldThreshold: goldThreshold,
+                platinumThreshold: platinumThreshold,
               ),
           createCompanionCallback:
               ({
@@ -13452,6 +13805,11 @@ class $$SettingsTableTableManager
                 Value<String?> bankHolder = const Value.absent(),
                 Value<String?> receiptFooter = const Value.absent(),
                 Value<String?> storeLogoPath = const Value.absent(),
+                Value<String?> waTemplates = const Value.absent(),
+                Value<int> pointsPerRupiah = const Value.absent(),
+                Value<int> silverThreshold = const Value.absent(),
+                Value<int> goldThreshold = const Value.absent(),
+                Value<int> platinumThreshold = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 storeName: storeName,
@@ -13468,6 +13826,11 @@ class $$SettingsTableTableManager
                 bankHolder: bankHolder,
                 receiptFooter: receiptFooter,
                 storeLogoPath: storeLogoPath,
+                waTemplates: waTemplates,
+                pointsPerRupiah: pointsPerRupiah,
+                silverThreshold: silverThreshold,
+                goldThreshold: goldThreshold,
+                platinumThreshold: platinumThreshold,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

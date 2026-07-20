@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart' as launcher;
 
+import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/core/utils/receipt_printer.dart';
@@ -36,6 +36,7 @@ class ReceiptSheet extends ConsumerWidget {
   final String? customerPhone;
   final String? invoice;
   final String? dateStr;
+  final int pointsUsed;
 
   const ReceiptSheet({
     required this.items,
@@ -49,6 +50,7 @@ class ReceiptSheet extends ConsumerWidget {
     this.customerPhone,
     this.invoice,
     this.dateStr,
+    this.pointsUsed = 0,
     super.key,
   });
 
@@ -65,6 +67,7 @@ class ReceiptSheet extends ConsumerWidget {
     String? customerPhone,
     String? invoice,
     String? dateStr,
+    int pointsUsed = 0,
   }) {
     final items = cartItems
         .map((c) => _ReceiptItem(name: c.name, qty: c.qty, price: c.price))
@@ -81,6 +84,7 @@ class ReceiptSheet extends ConsumerWidget {
       customerPhone: customerPhone,
       invoice: invoice,
       dateStr: dateStr,
+      pointsUsed: pointsUsed,
     );
   }
 
@@ -97,6 +101,7 @@ class ReceiptSheet extends ConsumerWidget {
     String? customerPhone,
     String? invoice,
     String? dateStr,
+    int pointsUsed = 0,
   }) {
     final items = rawItems.map((m) => _ReceiptItem(
       name: '${m['name'] ?? ''}',
@@ -136,6 +141,7 @@ class ReceiptSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final db = ref.read(databaseProvider);
     return FutureBuilder<String>(
       future: SettingsRepository(db).getStoreName(),
@@ -144,6 +150,7 @@ class ReceiptSheet extends ConsumerWidget {
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: isDark ? NusaConfig.darkSurface : Colors.white,
           child: Container(
             constraints: const BoxConstraints(maxWidth: 400),
             child: Column(
@@ -153,9 +160,10 @@ class ReceiptSheet extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: isDark ? NusaConfig.darkSurface2 : Colors.grey.shade50,
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                    border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                    border: Border(bottom: BorderSide(
+                        color: isDark ? NusaConfig.darkBorder : Colors.grey.shade200)),
                   ),
                   child: Row(
                     children: [
@@ -167,7 +175,7 @@ class ReceiptSheet extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
-                            color: Colors.grey.shade800,
+                            color: isDark ? NusaConfig.darkTextPrimary : Colors.grey.shade800,
                           ),
                         ),
                       ),
@@ -176,10 +184,11 @@ class ReceiptSheet extends ConsumerWidget {
                         child: Container(
                           width: 32, height: 32,
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
+                            color: isDark ? NusaConfig.darkDivider : Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(Icons.close, size: 18, color: Colors.grey.shade600),
+                          child: Icon(Icons.close, size: 18,
+                              color: isDark ? NusaConfig.darkTextSecondary : Colors.grey.shade600),
                         ),
                       ),
                     ],
@@ -196,50 +205,64 @@ class ReceiptSheet extends ConsumerWidget {
                         constraints: const BoxConstraints(maxWidth: 260),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? NusaConfig.darkSurface2 : Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
+                              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                        child: _buildReceipt(context, storeName),
+                        child: _buildReceipt(context, storeName, isDark),
                       ),
                     ),
                   ),
                 ),
 
-                // ── Action buttons (like GAS) ──
+                // ── Action buttons ──
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? NusaConfig.darkSurface : Colors.white,
                     borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-                    border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                    border: Border(top: BorderSide(
+                        color: isDark ? NusaConfig.darkBorder : Colors.grey.shade200)),
                   ),
                   child: Column(
                     children: [
-                      // "Selesai & Tutup" — full width, grey (matching GAS)
+                      // "Selesai & Tutup" — full width
                       SizedBox(
                         width: double.infinity,
                         height: 48,
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade100,
-                            foregroundColor: Colors.grey.shade800,
-                            side: BorderSide(color: Colors.grey.shade300),
+                            backgroundColor: isDark
+                                ? NusaConfig.darkSurface2
+                                : Colors.grey.shade100,
+                            foregroundColor: isDark
+                                ? NusaConfig.darkTextPrimary
+                                : Colors.grey.shade800,
+                            side: BorderSide(
+                                color: isDark
+                                    ? NusaConfig.darkBorder
+                                    : Colors.grey.shade300),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          child: const Text('Selesai & Tutup',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                          child: Text('Selesai & Tutup',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark
+                                      ? NusaConfig.darkTextPrimary
+                                      : Colors.grey.shade800)),
                         ),
                       ),
+                      const SizedBox(height: 12),
                       // Cetak Printer — full width
                       SizedBox(
                         width: double.infinity,
@@ -269,62 +292,42 @@ class ReceiptSheet extends ConsumerWidget {
     );
   }
 
-  Widget _actionBtn({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return SizedBox(
-      height: 48,
-      child: ElevatedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 18),
-        label: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          elevation: 0,
-        ),
-      ),
-    );
-  }
-
   /// Builds the thermal-style receipt content.
-  Widget _buildReceipt(BuildContext context, String storeName) {
-    const mono = TextStyle(
+  Widget _buildReceipt(BuildContext context, String storeName, bool isDark) {
+    final textColor = isDark ? NusaConfig.darkTextPrimary : Colors.black;
+    final subtleColor = isDark ? NusaConfig.darkTextSecondary : const Color(0xFF555555);
+    final mono = TextStyle(
       fontFamily: 'monospace',
       fontSize: 11,
       height: 1.5,
-      color: Colors.black,
+      color: textColor,
     );
-    const monoBold = TextStyle(
+    final monoBold = TextStyle(
       fontFamily: 'monospace',
       fontSize: 11,
       height: 1.5,
       fontWeight: FontWeight.bold,
-      color: Colors.black,
+      color: textColor,
     );
-    const monoBig = TextStyle(
+    final monoBig = TextStyle(
       fontFamily: 'monospace',
       fontSize: 14,
       height: 1.5,
       fontWeight: FontWeight.bold,
-      color: Colors.black,
+      color: textColor,
     );
-    const monoHeader = TextStyle(
+    final monoHeader = TextStyle(
       fontFamily: 'monospace',
       fontSize: 15,
       height: 1.4,
       fontWeight: FontWeight.bold,
-      color: Colors.black,
+      color: textColor,
     );
-    const monoGrey = TextStyle(
+    final monoGrey = TextStyle(
       fontFamily: 'monospace',
       fontSize: 11,
       height: 1.5,
-      color: Color(0xFF555555),
+      color: subtleColor,
     );
 
     return Column(
@@ -337,7 +340,7 @@ class ReceiptSheet extends ConsumerWidget {
           Center(child: Text(invoice!, style: mono, textAlign: TextAlign.center)),
         ],
         const SizedBox(height: 6),
-        _dashedLine(),
+        _dashedLine(isDark: isDark),
         const SizedBox(height: 6),
 
         // ── Transaction info ──
@@ -350,17 +353,17 @@ class ReceiptSheet extends ConsumerWidget {
         if (customerName != null && customerName!.isNotEmpty)
           _monoRow('Pel  : ', customerName!, mono, mono),
         const SizedBox(height: 6),
-        _dashedLine(),
+        _dashedLine(isDark: isDark),
         const SizedBox(height: 6),
 
         // ── Items ──
         ...items.map((item) => _buildItemRow(item, mono, monoGrey)),
 
         const SizedBox(height: 6),
-        _dashedLine(),
+        _dashedLine(isDark: isDark),
         const SizedBox(height: 6),
 
-        // ── Discount ──
+        // ── Discount & Points ──
         if (discount > 0)
           Padding(
             padding: const EdgeInsets.only(bottom: 2),
@@ -369,6 +372,17 @@ class ReceiptSheet extends ConsumerWidget {
               children: [
                 Text('Diskon/Potongan', style: monoGrey),
                 Text('-${formatRupiah(discount)}', style: monoGrey),
+              ],
+            ),
+          ),
+        if (pointsUsed > 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Tukar Poin', style: monoGrey),
+                Text('-${formatRupiah(pointsUsed)}', style: monoGrey),
               ],
             ),
           ),
@@ -409,7 +423,7 @@ class ReceiptSheet extends ConsumerWidget {
           ),
 
         const SizedBox(height: 6),
-        _dashedLine(),
+        _dashedLine(isDark: isDark),
         const SizedBox(height: 8),
 
         // ── Footer ──
@@ -452,10 +466,11 @@ class ReceiptSheet extends ConsumerWidget {
     );
   }
 
-  Widget _dashedLine() {
+  Widget _dashedLine({bool isDark = false}) {
     return CustomPaint(
       size: const Size(double.infinity, 1),
-      painter: _DashPainter(),
+      painter: _DashPainter(
+          color: isDark ? const Color(0xFF555555) : const Color(0xFF999999)),
     );
   }
 
@@ -507,68 +522,17 @@ class ReceiptSheet extends ConsumerWidget {
     }
   }
 
-  // ── WhatsApp Share ──
-  Future<void> _sendWhatsApp(BuildContext context, String storeName) async {
-    final buf = StringBuffer();
-
-    // Bold header
-    buf.writeln('*STRUK PESANAN $storeName*');
-    buf.writeln('--------------------------------');
-
-    if (invoice != null) buf.writeln('ID    : $invoice');
-    if (dateStr != null) buf.writeln('Waktu : $dateStr');
-    if (cashierName != null && cashierName!.isNotEmpty) {
-      buf.writeln('Kasir : $cashierName');
-    }
-    if (customerName != null && customerName!.isNotEmpty) {
-      buf.writeln('Nama  : $customerName');
-    }
-    buf.writeln('--------------------------------');
-
-    for (final item in items) {
-      buf.writeln('▪ ${item.name}');
-      buf.writeln('   ${item.qty} x ${formatRupiah(item.price)} = ${formatRupiah(item.subtotal)}');
-    }
-
-    buf.writeln('--------------------------------');
-    if (discount > 0) {
-      buf.writeln('Diskon/Potongan: -${formatRupiah(discount)}');
-    }
-    buf.writeln('*TOTAL BAYAR: ${formatRupiah(total)}*');
-    buf.writeln('Metode: $paymentMethod');
-    buf.writeln('--------------------------------');
-    buf.writeln('Terima kasih, ditunggu pesanan selanjutnya! 🥟✨');
-
-    // If customer phone exists, send to them; otherwise generic
-    String waUrl;
-    if (customerPhone != null && customerPhone!.trim().isNotEmpty) {
-      String phone = customerPhone!.replaceAll(RegExp(r'[^0-9]'), '');
-      if (phone.startsWith('0')) {
-        phone = '62${phone.substring(1)}';
-      } else if (phone.startsWith('8')) {
-        phone = '62$phone';
-      }
-      waUrl = 'https://wa.me/$phone?text=${Uri.encodeComponent(buf.toString())}';
-    } else {
-      waUrl = 'https://wa.me/?text=${Uri.encodeComponent(buf.toString())}';
-    }
-
-    final uri = Uri.parse(waUrl);
-    final canLaunch = await launcher.canLaunchUrl(uri);
-    if (canLaunch) {
-      await launcher.launchUrl(uri, mode: launcher.LaunchMode.externalApplication);
-    } else if (context.mounted) {
-      TopToast.error(context, 'Tidak dapat membuka WhatsApp');
-    }
-  }
 }
 
 /// Custom painter for dashed horizontal line (mimics GAS border-top: dashed).
 class _DashPainter extends CustomPainter {
+  final Color color;
+  const _DashPainter({this.color = const Color(0xFF999999)});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF999999)
+      ..color = color
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
     const dashW = 4.0;

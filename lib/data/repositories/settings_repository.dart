@@ -1,3 +1,4 @@
+import 'dart:convert' as dart_convert;
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:drift/drift.dart';
 
@@ -113,5 +114,62 @@ class SettingsRepository {
     await ensureRow();
     await (db.update(db.settings)..where((t) => t.id.equals(1)))
         .write(SettingsCompanion(storeLogoPath: Value(path)));
+  }
+
+  // ── WA Templates ──
+  Future<List<Map<String, String>>> getWaTemplates() async {
+    final row = await db.select(db.settings).getSingleOrNull();
+    final json = row?.waTemplates;
+    if (json == null || json.isEmpty) return _defaultTemplates();
+    try {
+      final list = (dart_convert.jsonDecode(json) as List)
+          .cast<Map<String, dynamic>>();
+      return list.map((m) => {
+        'name': '${m['name'] ?? ''}',
+        'body': '${m['body'] ?? ''}',
+      }).toList();
+    } catch (_) {
+      return _defaultTemplates();
+    }
+  }
+
+  List<Map<String, String>> _defaultTemplates() => [
+    {'name': 'Pesanan Siap', 'body': 'Halo {nama}, pesanan Anda dengan invoice {invoice} sudah siap! Total: {total}. Terima kasih sudah berbelanja di {toko} 🥟'},
+    {'name': 'Info Toko', 'body': 'Halo {nama}, terima kasih sudah berkunjung ke {toko}. Ada promo terbaru nih, jangan sampai kelewatan! 🎉'},
+    {'name': 'Promo', 'body': 'Halo {nama}, dapatkan promo spesial di {toko}! Buruan check out sebelum kehabisan 🏃'},
+  ];
+
+  Future<void> saveWaTemplates(List<Map<String, String>> templates) async {
+    await ensureRow();
+    final json = dart_convert.jsonEncode(templates);
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(waTemplates: Value(json)));
+  }
+
+  // ── Point system config ──
+  Future<Map<String, int>> getPointConfig() async {
+    final row = await db.select(db.settings).getSingleOrNull();
+    return {
+      'pointsPerRupiah': row?.pointsPerRupiah ?? 100,
+      'silverThreshold': row?.silverThreshold ?? 0,
+      'goldThreshold': row?.goldThreshold ?? 1000,
+      'platinumThreshold': row?.platinumThreshold ?? 5000,
+    };
+  }
+
+  Future<void> savePointConfig({
+    required int pointsPerRupiah,
+    required int silverThreshold,
+    required int goldThreshold,
+    required int platinumThreshold,
+  }) async {
+    await ensureRow();
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(
+      pointsPerRupiah: Value(pointsPerRupiah),
+      silverThreshold: Value(silverThreshold),
+      goldThreshold: Value(goldThreshold),
+      platinumThreshold: Value(platinumThreshold),
+    ));
   }
 }

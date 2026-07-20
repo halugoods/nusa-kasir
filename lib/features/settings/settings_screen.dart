@@ -953,44 +953,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSt) {
-          String? logoPath = currentLogo;
-          return Container(
-            decoration: BoxDecoration(
-              color: Theme.of(ctx).brightness == Brightness.dark
-                  ? NusaConfig.darkSurface
-                  : NusaConfig.surfaceColor,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            padding: EdgeInsets.only(
-              left: 24, right: 24, top: 16,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 40,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                    color: NusaConfig.dividerColor,
-                    borderRadius: BorderRadius.circular(2),
+      builder: (ctx) {
+        final setDark = Theme.of(ctx).brightness == Brightness.dark;
+        return StatefulBuilder(
+          builder: (ctx, setSt) {
+            String? logoPath = currentLogo;
+            return Container(
+              decoration: BoxDecoration(
+                color: setDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                left: 24, right: 24, top: 16,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 40,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: NusaConfig.dividerColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text('Pengaturan Struk',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                    )),
-                const SizedBox(height: 20),
-                // Logo toko
-                const Text('Logo Toko',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  const SizedBox(height: 12),
+                  Text('Pengaturan Struk',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: setDark
+                            ? NusaConfig.darkTextPrimary
+                            : NusaConfig.textPrimary,
+                      )),
+                  const SizedBox(height: 20),
+                  // Logo toko
+                  Text('Logo Toko',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: setDark
+                              ? NusaConfig.darkTextPrimary
+                              : NusaConfig.textPrimary)),
                 const SizedBox(height: 8),
                 if (logoPath != null && logoPath.isNotEmpty)
                   Padding(
@@ -1013,7 +1020,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     }
                   },
                   icon: const Icon(Icons.image_outlined, size: 18),
-                  label: Text(logoPath != null && logoPath!.isNotEmpty
+                  label: Text(logoPath != null && logoPath.isNotEmpty
                       ? 'Ganti Logo'
                       : 'Pilih Logo'),
                   style: OutlinedButton.styleFrom(
@@ -1037,9 +1044,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
                 const SizedBox(height: 20),
                 // Footer teks
-                const Text('Footer Struk',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                Text('Footer Struk',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: setDark
+                            ? NusaConfig.darkTextPrimary
+                            : NusaConfig.textPrimary)),
                 const SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
@@ -1056,10 +1067,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: TextField(
                     controller: footerCtrl,
                     maxLines: 3,
-                    decoration: const InputDecoration(
+                    style: TextStyle(
+                      color: setDark
+                          ? NusaConfig.darkTextPrimary
+                          : NusaConfig.textPrimary,
+                    ),
+                    decoration: InputDecoration(
                       hintText: 'Terima kasih, ditunggu pesanan selanjutnya!',
+                      hintStyle: TextStyle(
+                        color: setDark
+                            ? NusaConfig.darkTextTertiary
+                            : NusaConfig.textTertiary,
+                      ),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(14),
+                      contentPadding: const EdgeInsets.all(14),
                     ),
                   ),
                 ),
@@ -1072,7 +1093,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           );
         },
-      ),
+      );
+    },
     );
   }
 
