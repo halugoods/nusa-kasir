@@ -124,6 +124,152 @@ class ReportRepository {
     };
   }
 
+  /// Top-selling products (by quantity) for a period.
+  /// Returns list of {id, name, category, qty, revenue}.
+  Future<List<Map<String, dynamic>>> topProducts({
+    DateTime? from,
+    DateTime? to,
+    int limit = 5,
+  }) async {
+    final agg = await _aggregateByProduct(from: from, to: to);
+    final list = agg.entries.map((e) {
+      final p = e.value;
+      return {
+        'id': e.key,
+        'name': p['name'] as String,
+        'category': p['category'] as String,
+        'qty': p['qty'] as int,
+        'revenue': p['revenue'] as int,
+      };
+    }).toList();
+    list.sort((a, b) => (b['qty'] as int).compareTo(a['qty'] as int));
+    return list.take(limit).toList();
+  }
+
+  /// Sales grouped by category for a period.
+  /// Returns list of {category, qty, revenue} sorted by revenue desc.
+  Future<List<Map<String, dynamic>>> salesByCategory({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final agg = await _aggregateByProduct(from: from, to: to);
+    final qtyByCat = <String, int>{};
+    final revByCat = <String, int>{};
+    for (final p in agg.values) {
+      final cat = p['category'] as String;
+      qtyByCat[cat] = (qtyByCat[cat] ?? 0) + (p['qty'] as int);
+      revByCat[cat] = (revByCat[cat] ?? 0) + (p['revenue'] as int);
+    }
+    final cats = qtyByCat.keys.toList()
+      ..sort((a, b) => (revByCat[b] ?? 0).compareTo(revByCat[a] ?? 0));
+    return cats
+        .map((c) => {
+              'category': c,
+              'qty': qtyByCat[c] ?? 0,
+              'revenue': revByCat[c] ?? 0,
+            })
+        .toList();
+  }
+
+  /// Totals per payment method (Tunai / QRIS / Transfer / Lainnya).
+  Future<Map<String, int>> salesByPaymentMethod({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final txs = await getTransactions(from: from, to: to);
+    final totals = <String, int>{};
+    for (final t in txs) {
+      final m = _normalizeMethod(t.paymentMethod);
+      totals[m] = (totals[m] ?? 0) + t.total;
+    }
+    return totals;
+  }
+
+  /// Current summary vs the immediately-preceding equal-length period.
+  /// Keys: omzet, count, avg, hasPrevious, prevOmzet, prevCount,
+  ///       omzetGrowth (%), countGrowth (%).
+  Future<Map<String, dynamic>> summaryWithPrevious(
+      DateTime? from, DateTime? to) async {
+    final cur = await summary(from: from, to: to);
+    Map<String, dynamic>? prev;
+    var hasPrev = false;
+    if (from != null && to != null) {
+      final dur = to.difference(from);
+      final prevTo = from.subtract(const Duration(days: 1));
+      final prevFrom = prevTo.subtract(dur);
+      prev = await summary(from: prevFrom, to: prevTo);
+      hasPrev = true;
+    }
+    final omzet = cur['omzet'] as int? ?? 0;
+    final count = cur['count'] as int? ?? 0;
+    final prevOmzet = prev?['omzet'] as int? ?? 0;
+    final prevCount = prev?['count'] as int? ?? 0;
+    final omzetGrowth = hasPrev && prevOmzet > 0
+        ? (omzet - prevOmzet) / prevOmzet * 100
+        : 0.0;
+    final countGrowth = hasPrev && prevCount > 0
+        ? (count - prevCount) / prevCount * 100
+        : 0.0;
+    return {
+      'omzet': omzet,
+      'count': count,
+      'avg': cur['avg'],
+      'hasPrevious': hasPrev,
+      'prevOmzet': prevOmzet,
+      'prevCount': prevCount,
+      'omzetGrowth': omzetGrowth,
+      'countGrowth': countGrowth,
+    };
+  }
+
+  /// Aggregate quantity & revenue per product id, resolving name/category
+  /// from the products table.
+  Future<Map<int, Map<String, dynamic>>> _aggregateByProduct({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final txs = await getTransactions(from: from, to: to);
+    final qtyById = <int, int>{};
+    final revById = <int, int>{};
+    final ids = <int>{};
+    for (final t in txs) {
+      for (final it in _parseItems(t.items)) {
+        final pid = it['productId'] as int?;
+        final qty = (it['qty'] as int?) ?? 0;
+        final price = (it['price'] as num?)?.toInt() ?? 0;
+        if (pid == null) continue;
+        ids.add(pid);
+        qtyById[pid] = (qtyById[pid] ?? 0) + qty;
+        revById[pid] = (revById[pid] ?? 0) + qty * price;
+      }
+    }
+    final products = ids.isEmpty
+        ? <Product>[]
+        : await (db.select(db.products)
+              ..where((p) => p.id.isIn(ids)))
+            .get();
+    final pmap = {for (final p in products) p.id: p};
+    final out = <int, Map<String, dynamic>>{};
+    for (final id in ids) {
+      final p = pmap[id];
+      out[id] = {
+        'name': p?.name ?? 'Produk #$id',
+        'category': p?.category ?? 'Lainnya',
+        'qty': qtyById[id] ?? 0,
+        'revenue': revById[id] ?? 0,
+      };
+    }
+    return out;
+  }
+
+  String _normalizeMethod(String? m) {
+    final s = (m ?? '').toLowerCase();
+    if (s.contains('qris')) return 'QRIS';
+    if (s.contains('transfer')) return 'Transfer';
+    if (s.contains('cash') || s.contains('tunai')) return 'Tunai';
+    return m?.isNotEmpty == true ? m! : 'Lainnya';
+  }
+
   List<Map<String, dynamic>> _parseItems(String json) {
     try {
       final decoded = jsonDecode(json);
