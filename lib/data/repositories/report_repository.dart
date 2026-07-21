@@ -146,6 +146,21 @@ class ReportRepository {
     return list.take(limit).toList();
   }
 
+  /// Daily revenue for bar chart.
+  /// Returns Map where key is "YYYY-MM-DD" and value is total revenue.
+  Future<Map<String, int>> dailyRevenue({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final txs = await getTransactions(from: from, to: to);
+    final byDay = <String, int>{};
+    for (final t in txs) {
+      final key = '${t.date.year}-${t.date.month.toString().padLeft(2, '0')}-${t.date.day.toString().padLeft(2, '0')}';
+      byDay[key] = (byDay[key] ?? 0) + t.total;
+    }
+    return byDay;
+  }
+
   /// Sales grouped by category for a period.
   /// Returns list of {category, qty, revenue} sorted by revenue desc.
   Future<List<Map<String, dynamic>>> salesByCategory({

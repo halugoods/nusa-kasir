@@ -31,7 +31,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   String _period = 'Hari Ini';
   DateTime? _customFrom;
   DateTime? _customTo;
-  static const _periods = ['Hari Ini', '7 Hari', '30 Hari', 'Custom', 'Semua'];
+  static const _periodOptions = ['Hari Ini', '7 Hari', '30 Hari', 'Bulan Ini', 'Custom', 'Semua'];
 
   (DateTime?, DateTime?) _range() {
     if (_period == 'Custom') return (_customFrom, _customTo);
@@ -43,6 +43,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         return (now.subtract(const Duration(days: 7)), now);
       case '30 Hari':
         return (now.subtract(const Duration(days: 30)), now);
+      case 'Bulan Ini':
+        return (DateTime(now.year, now.month, 1), now);
       default:
         return (null, null);
     }
@@ -50,13 +52,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   String _periodLabel() {
     if (_period == 'Custom' && _customFrom != null && _customTo != null) {
-      return '${_fmtDate(_customFrom)} – ${_fmtDate(_customTo)}';
+      return '${_customFrom!.day}/${_customFrom!.month} – ${_customTo!.day}/${_customTo!.month}/${_customTo!.year}';
     }
     return _period;
   }
-
-  String _fmtDate(DateTime? d) =>
-      d == null ? '-' : '${d.day}/${d.month}/${d.year}';
 
   Future<void> _pickDateRange() async {
     final range = await showDateRangePicker(
@@ -154,7 +153,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary;
     final surf = isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor;
     final border = isDark ? NusaConfig.darkBorder : NusaConfig.borderColor;
-    final bg = isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor;
 
     return RefreshIndicator(
       onRefresh: () async => setState(() => _refreshKey++),
@@ -207,54 +205,70 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ),
           const SizedBox(height: 12),
           // ── Bar Chart ──
-          Container(
-            height: 220,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-                color: surf,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: border)),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Tren Pendapatan 7 Hari',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: labelClr)),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: BarChart(BarChartData(
-                      barGroups: _chartBars(),
-                      gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: false,
-                          horizontalInterval: 50000),
-                      titlesData: FlTitlesData(
-                          show: true,
-                          bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                  showTitles: true,
-                                  getTitlesWidget: (v, meta) => _bottomTitle(
-                                      v, meta, isDark: isDark),
-                                  reservedSize: 28)),
-                          leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 52,
-                                  getTitlesWidget: (v, meta) => Text(
-                                      formatRupiah(v.toInt()),
-                                      style: TextStyle(
-                                          fontSize: 10, color: textTer)))),
-                          topTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false))),
-                      borderData: FlBorderData(show: false),
-                    )),
-                  ),
-                ]),
+          FutureBuilder<Map<String, int>>(
+            key: ValueKey('chart_$_refreshKey'),
+            future: repo.dailyRevenue(from: from, to: to),
+            builder: (ctx, snap) {
+              final daily = snap.data ?? {};
+              if (daily.isEmpty) return const SizedBox.shrink();
+              final entries = daily.entries.toList()
+                ..sort((a, b) => a.key.compareTo(b.key));
+              final maxVal = entries.fold<int>(0, (m, e) => e.value > m ? e.value : m);
+              final show7 = entries.length > 7;
+              final bars = show7 ? _buildDailyBars(entries, maxVal) : _buildDayBars(entries, maxVal);
+              return Container(
+                height: 220,
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                    color: surf,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: border)),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Tren Pendapatan',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: labelClr)),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: BarChart(BarChartData(
+                          barGroups: bars,
+                          gridData: FlGridData(
+                              show: true,
+                              drawVerticalLine: false,
+                              horizontalInterval: maxVal > 0 ? (maxVal / 4).ceilToDouble() : 50000),
+                          titlesData: FlTitlesData(
+                              show: true,
+                              bottomTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                      showTitles: true,
+                                      getTitlesWidget: (v, meta) {
+                                        final idx = v.toInt();
+                                        if (idx < 0 || idx >= entries.length) return const SizedBox.shrink();
+                                        return _barLabel(idx, entries, isDark: isDark);
+                                      },
+                                      reservedSize: 28)),
+                              leftTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                      showTitles: true,
+                                      reservedSize: 52,
+                                      getTitlesWidget: (v, meta) => Text(
+                                          formatRupiah(v.toInt()),
+                                          style: TextStyle(
+                                              fontSize: 10, color: textTer)))),
+                              topTitles: AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false)),
+                              rightTitles: AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false))),
+                          borderData: FlBorderData(show: false),
+                        )),
+                      ),
+                    ]),
+              );
+            },
           ),
           // ── Best-Seller ──
           FutureBuilder<List<Map<String, dynamic>>>(
@@ -599,28 +613,51 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     }
   }
 
-  List<BarChartGroupData> _chartBars() {
-    // 7 days, placeholder values (real aggregation would query daily totals)
-    return List.generate(
-        7,
-        (i) => BarChartGroupData(x: i, barRods: [
-              BarChartRodData(
-                  toY: (i + 1) * 15000 + (i * 5000).toDouble(),
-                  color: NusaConfig.primaryColor,
-                  width: 22,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(6))),
-            ]));
+  List<BarChartGroupData> _buildDailyBars(List<MapEntry<String, int>> entries, int maxVal) {
+    return List.generate(entries.length, (i) {
+      return BarChartGroupData(x: i, barRods: [
+        BarChartRodData(
+            toY: entries[i].value.toDouble(),
+            color: NusaConfig.primaryColor,
+            width: entries.length > 15 ? 8 : 14,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4))),
+      ]);
+    });
   }
 
-  Widget _bottomTitle(double v, TitleMeta meta, {bool isDark = false}) {
-    final days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-    final idx = v.toInt();
-    if (idx < 0 || idx >= 7) return const SizedBox.shrink();
-    return Text(days[idx],
-        style: TextStyle(
-            fontSize: 10,
-            color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary));
+  List<BarChartGroupData> _buildDayBars(List<MapEntry<String, int>> entries, int maxVal) {
+    return List.generate(entries.length, (i) {
+      return BarChartGroupData(x: i, barRods: [
+        BarChartRodData(
+            toY: entries[i].value.toDouble(),
+            color: NusaConfig.primaryColor,
+            width: 22,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(6))),
+      ]);
+    });
+  }
+
+  Widget _barLabel(int idx, List<MapEntry<String, int>> entries, {bool isDark = false}) {
+    final key = entries[idx].key;
+    // Parse "YYYY-MM-DD" → "DD/MM" or day name
+    final parts = key.split('-');
+    if (parts.length == 3) {
+      if (entries.length <= 7) {
+        // Show day names
+        final dt = DateTime.tryParse(key);
+        if (dt != null) {
+          final names = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+          final wd = dt.weekday - 1;
+          if (wd >= 0 && wd < 7) {
+            return Text(names[wd],
+                style: TextStyle(fontSize: 9, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary));
+          }
+        }
+      }
+      return Text('${parts[2]}/${parts[1]}',
+          style: TextStyle(fontSize: 9, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary));
+    }
+    return const SizedBox.shrink();
   }
 
   // ── LABA RUGI TAB ──────────────────────────────────────────────────
@@ -629,8 +666,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final (from, to) = _range();
     final repo = ReportRepository(ref.read(databaseProvider));
-    final textPri =
-        isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
     final textSec =
         isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
     final textTer =
@@ -814,60 +849,23 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final chipBg = isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor;
     return ScreenScaffold(
       'Laporan',
       Column(children: [
-        const SizedBox(height: 8),
-        // Period chips
-        SizedBox(
-          height: 44,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _periods.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (_, i) {
-              final label = _periods[i];
-              final sel = label == 'Custom'
-                  ? _period == 'Custom'
-                  : label == _period;
-              return FilterChip(
-                label: Text(label == 'Custom' && _period == 'Custom'
-                    ? _periodLabel()
-                    : label),
-                selected: sel,
-                showCheckmark: false,
-                selectedColor: NusaConfig.primaryColor,
-                checkmarkColor: Colors.white,
-                labelStyle: TextStyle(
-                  color: sel
-                      ? Colors.white
-                      : (isDark
-                          ? NusaConfig.darkTextPrimary
-                          : NusaConfig.textPrimary),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
-                backgroundColor: chipBg,
-                onSelected: (_) {
-                  if (label == 'Custom') {
-                    _pickDateRange();
-                    return;
-                  }
-                  if (_period == label) return;
-                  setState(() {
-                    _period = label;
-                    _customFrom = null;
-                    _customTo = null;
-                    _refreshKey++;
-                  });
-                },
-              );
-            },
-          ),
-        ),
         const SizedBox(height: 6),
+        // Period dropdown (like produk/stok sort dropdown)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(children: [
+            Icon(Icons.calendar_today_rounded, size: 18,
+                color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _periodDropdown(isDark),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 2),
         // Date label for custom
         if (_period == 'Custom')
           Text(_periodLabel(),
@@ -885,6 +883,43 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         ),
         Expanded(child: _tab == 0 ? _penjualanTab() : _labaRugiTab()),
       ]),
+    );
+  }
+
+  Widget _periodDropdown(bool isDark) {
+    final items = _periodOptions.map((p) => DropdownMenuItem(
+      value: p,
+      child: Text(p, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+          color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+    )).toList();
+
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        value: _periodOptions.contains(_period) ? _period : 'Custom',
+        isExpanded: true,
+        isDense: true,
+        icon: Icon(Icons.expand_more, size: 20,
+            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+            color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+        dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        underline: const SizedBox.shrink(),
+        items: items,
+        onChanged: (v) {
+          if (v == null) return;
+          if (v == 'Custom') {
+            _pickDateRange();
+            return;
+          }
+          setState(() {
+            _period = v;
+            _customFrom = null;
+            _customTo = null;
+            _refreshKey++;
+          });
+        },
+      ),
     );
   }
 

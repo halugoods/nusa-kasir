@@ -9,6 +9,7 @@ import 'package:nusa_kasir/data/repositories/promo_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
+import 'package:nusa_kasir/shared/widgets/nusa_form_field.dart';
 import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
@@ -83,18 +84,6 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
     DateTime? start = existing?.startDate;
     DateTime? end = existing?.endDate;
 
-    Future<void> pickDate(StateSetter setSt, bool isStart) async {
-      final picked = await showDatePicker(
-        context: context,
-        initialDate: (isStart ? start : end) ?? DateTime.now(),
-        firstDate: DateTime(2020),
-        lastDate: DateTime(2035),
-      );
-      if (picked != null) {
-        setSt(() => isStart ? start = picked : end = picked);
-      }
-    }
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -148,17 +137,13 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      NusaInput('Nama Promo', controller: nameC),
+                      NusaInput('Nama Promo', controller: nameC, hint: 'Cth: Diskon Spesial'),
                       const SizedBox(height: 12),
-                      NusaInput('Kode', controller: codeC),
+                      NusaInput('Kode', controller: codeC, hint: 'Cth: HEMAT10'),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
+                      NusaDropdownField<String>(
+                        label: 'Tipe Diskon',
                         value: type,
-                        decoration: const InputDecoration(
-                          labelText: 'Tipe Diskon',
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(14))),
-                        ),
                         items: const [
                           DropdownMenuItem(value: 'persen', child: Text('Persen (%)')),
                           DropdownMenuItem(value: 'nominal', child: Text('Nominal (Rp)')),
@@ -167,30 +152,75 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
                       ),
                       const SizedBox(height: 12),
                       NusaInput(type == 'persen' ? 'Nilai (%)' : 'Nilai (Rp)',
-                          controller: valueC, type: TextInputType.number),
+                          controller: valueC, type: TextInputType.number, hint: 'Cth: 10'),
                       const SizedBox(height: 12),
                       NusaInput('Min. Belanja (Rp)',
-                          controller: minC, type: TextInputType.number),
+                          controller: minC, type: TextInputType.number, hint: 'Cth: 50000'),
                       const SizedBox(height: 12),
                       NusaInput('Kuota (kosong = tanpa batas)',
-                          controller: maxC, type: TextInputType.number),
+                          controller: maxC, type: TextInputType.number, hint: 'Cth: 100'),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => pickDate(setSt, true),
-                              child: Text('Mulai: ${_fmtDate(start)}'),
+                      Text('Periode Promo',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                          )),
+                      const SizedBox(height: 6),
+                      GestureDetector(
+                        onTap: () async {
+                          final picked = await showDateRangePicker(
+                            context: ctx,
+                            initialDateRange: start != null && end != null
+                                ? DateTimeRange(start: start!, end: end!)
+                                : null,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2035),
+                            helpText: 'Pilih Periode Promo',
+                            cancelText: 'BATAL',
+                            confirmText: 'PILIH',
+                          );
+                          if (picked != null) {
+                            setSt(() { start = picked.start; end = picked.end; });
+                          }
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => pickDate(setSt, false),
-                              child: Text('Selesai: ${_fmtDate(end)}'),
-                            ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.calendar_today_rounded, size: 18,
+                                  color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  start != null && end != null
+                                      ? '${_fmtDate(start)} – ${_fmtDate(end)}'
+                                      : 'Pilih tanggal mulai – selesai',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: start != null
+                                        ? (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)
+                                        : (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                                  ),
+                                ),
+                              ),
+                              if (start != null)
+                                GestureDetector(
+                                  onTap: () => setSt(() { start = null; end = null; }),
+                                  child: Icon(Icons.close, size: 18,
+                                      color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                                ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 20),
                       // Bottom actions

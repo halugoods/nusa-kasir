@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
+import 'package:nusa_kasir/core/utils/contact_picker.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/customer_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
@@ -146,8 +147,40 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                   const SizedBox(height: 18),
                   NusaInput('Nama Pelanggan', controller: nameCtrl, hint: 'Cth: Dimas'),
                   const SizedBox(height: 12),
-                  NusaInput('Telepon (opsional)',
-                      controller: phoneCtrl, type: TextInputType.phone, hint: 'Cth: 0812xxxx'),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: NusaInput('Telepon (opsional)',
+                            controller: phoneCtrl, type: TextInputType.phone, hint: 'Cth: 0812xxxx'),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () async {
+                          final contact = await pickContact();
+                          if (contact != null) {
+                            final name = contact['name'] ?? '';
+                            final phone = contact['phone'] ?? '';
+                            if (name.isNotEmpty && nameCtrl.text.trim().isEmpty) {
+                              nameCtrl.text = name;
+                            }
+                            if (phone.isNotEmpty) {
+                              phoneCtrl.text = phone;
+                            }
+                          }
+                        },
+                        child: Container(
+                          width: 48, height: 48,
+                          decoration: BoxDecoration(
+                            color: NusaConfig.primaryColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.contacts_outlined,
+                              color: NusaConfig.primaryColor, size: 22),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   NusaInput('Alamat (opsional)', controller: addressCtrl, hint: 'Cth: Jl. Merdeka No.1'),
                   const SizedBox(height: 20),
