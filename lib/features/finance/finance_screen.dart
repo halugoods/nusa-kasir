@@ -1,17 +1,36 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:csv/csv.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
+import 'package:nusa_kasir/data/repositories/branch_repository.dart';
 import 'package:nusa_kasir/data/repositories/finance_repository.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:path_provider/path_provider.dart';
+
+const _expenseCategories = [
+  'Operasional', 'Listrik', 'Air', 'Internet', 'Belanja',
+  'Sewa', 'Transport', 'Lainnya',
+];
+
+IconData _iconForCategory(String cat) => switch (cat.toLowerCase()) {
+  'operasional' => Icons.settings,
+  'listrik' || 'air' || 'internet' => Icons.electrical_services,
+  'belanja' || 'bahan' => Icons.shopping_cart,
+  'sewa' => Icons.home,
+  'transport' => Icons.local_shipping,
+  _ => Icons.money_off,
+};
 
 class FinanceScreen extends ConsumerStatefulWidget {
   const FinanceScreen({super.key});
@@ -20,20 +39,24 @@ class FinanceScreen extends ConsumerStatefulWidget {
 }
 
 class _FinanceScreenState extends ConsumerState<FinanceScreen> {
-  final _tabs = const ['Pengeluaran', 'Payroll', 'Waste', 'Likuiditas'];
+  final _tabs = ['Pengeluaran', 'Payroll', 'Waste', 'Berulang', 'Likuiditas'];
   int _tab = 0;
   List<Expense> _expenses = [];
   List<PayrollData> _payroll = [];
   List<WasteData> _waste = [];
   List<LiquidityData> _liquidity = [];
+  List<RecurringExpense> _recurring = [];
+  List<ExpenseCategory> _categories = [];
   List<Employee> _employees = [];
   List<Product> _products = [];
+  List<Branche> _branches = [];
 
   int _totalExpenseThisMonth = 0;
   int _totalPayroll = 0;
   int _totalWasteCost = 0;
   int _runningBalance = 0;
-  int _periodFilter = 0; // 0: Bulan Ini, 1: Minggu Ini, 2: Semua
+  int _periodFilter = 0;
+  int? _branchFilter;
 
   @override
   void initState() {
@@ -45,28 +68,32 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     final f = FinanceRepository(ref.read(databaseProvider));
     final empRepo = AttendanceRepository(ref.read(databaseProvider));
     final prodRepo = ProductRepository(ref.read(databaseProvider));
+    final branchRepo = BranchRepository(ref.read(databaseProvider));
+
+    await f.processRecurring();
+
     final results = await Future.wait([
-      f.getExpenses(),
+      f.getExpenses(branchId: _branchFilter),
       f.getPayroll(),
       f.getWaste(),
-      f.getLiquidity(),
+      f.getLiquidity(branchId: _branchFilter),
+      f.getRecurring(),
+      f.getCategories(),
       empRepo.getEmployees(),
       prodRepo.getProducts(),
+      branchRepo.getAll(),
     ]);
     if (mounted) {
       final now = DateTime.now();
-      final expThisMonth = results[0] is List<Expense>
-          ? (results[0] as List<Expense>)
-              .where((e) => e.date.year == now.year && e.date.month == now.month)
-              .fold<int>(0, (sum, e) => sum + e.amount)
-          : 0;
+      final allExpenses = results[0] as List<Expense>;
+      final expThisMonth = allExpenses
+          .where((e) => e.date.year == now.year && e.date.month == now.month)
+          .fold<int>(0, (sum, e) => sum + e.amount);
       final allPayroll = results[1] is List<PayrollData>
           ? (results[1] as List<PayrollData>)
               .fold<int>(0, (sum, p) => sum + p.salary + p.bonus - p.deduction)
           : 0;
-      final allWasteCost = results[2] is List<WasteData>
-          ? (results[2] as List<WasteData>).length // count-based, or sum qty
-          : 0;
+      final allWaste = results[2] as List<WasteData>;
       int balance = 0;
       if (results[3] is List<LiquidityData>) {
         for (final l in results[3] as List<LiquidityData>) {
@@ -74,15 +101,18 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
         }
       }
       setState(() {
-        _expenses = results[0] as List<Expense>;
+        _expenses = allExpenses;
         _payroll = results[1] as List<PayrollData>;
-        _waste = results[2] as List<WasteData>;
+        _waste = allWaste;
         _liquidity = results[3] as List<LiquidityData>;
-        _employees = results[4] as List<Employee>;
-        _products = results[5] as List<Product>;
+        _recurring = results[4] as List<RecurringExpense>;
+        _categories = results[5] as List<ExpenseCategory>;
+        _employees = results[6] as List<Employee>;
+        _products = results[7] as List<Product>;
+        _branches = results[8] as List<Branche>;
         _totalExpenseThisMonth = expThisMonth;
         _totalPayroll = allPayroll;
-        _totalWasteCost = allWasteCost;
+        _totalWasteCost = allWaste.length;
         _runningBalance = balance;
       });
     }
@@ -102,343 +132,598 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     return 'ID $id';
   }
 
-  IconData _iconForCategory(String cat) => switch (cat.toLowerCase()) {
-    'operasional' => Icons.settings,
-    'listrik' || 'air' || 'internet' => Icons.electrical_services,
-    'belanja' || 'bahan' => Icons.shopping_cart,
-    'gaji' || 'payroll' => Icons.people,
-    _ => Icons.money_off,
-  };
+  List<String> get _allCategories {
+    final built = <String>[..._expenseCategories];
+    for (final c in _categories) {
+      if (!built.contains(c.name)) built.add(c.name);
+    }
+    return built;
+  }
 
   List<Expense> get _filteredExpenses {
     final now = DateTime.now();
     if (_periodFilter == 1) {
-      // Minggu ini
       final weekStart = now.subtract(Duration(days: now.weekday - 1));
       return _expenses.where((e) => e.date.isAfter(weekStart.subtract(const Duration(days: 1)))).toList();
     } else if (_periodFilter == 0) {
-      // Bulan ini
       return _expenses.where((e) => e.date.year == now.year && e.date.month == now.month).toList();
     }
-    return _expenses; // Semua
+    return _expenses;
   }
 
-  Widget _chip(int i, bool isDark) {
-    final sel = i == _tab;
-    return FilterChip(
-      label: Text(_tabs[i]),
-      selected: sel,
-      showCheckmark: false,
-      selectedColor: NusaConfig.primaryColor,
-      checkmarkColor: Colors.white,
-      labelStyle: TextStyle(
-        color: sel ? Colors.white : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
-        fontWeight: FontWeight.w600,
-      ),
-      backgroundColor: NusaConfig.surfaceColor,
-      onSelected: (_) => setState(() => _tab = i),
-    );
+  String _date(DateTime d) {
+    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return '${d.day} ${months[d.month]} ${d.year}';
   }
+
+  // ── Build ─────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ScreenScaffold(
       'Keuangan',
-      Column(
-        children: [
-          // ── Summary cards ──
+      Column(children: [
+        // Summary cards
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Row(children: [
+            _SummaryCard(
+              label: 'Pengeluaran Bln Ini',
+              value: formatRupiah(_totalExpenseThisMonth),
+              icon: Icons.money_off,
+              color: NusaConfig.primaryColor,
+            ),
+            const SizedBox(width: 10),
+            _SummaryCard(
+              label: 'Total Payroll',
+              value: formatRupiah(_totalPayroll),
+              icon: Icons.people,
+              color: const Color(0xFF8B5CF6),
+            ),
+            const SizedBox(width: 10),
+            _SummaryCard(
+              label: 'Total Waste',
+              value: '$_totalWasteCost item',
+              icon: Icons.delete_outline,
+              color: const Color(0xFFEF4444),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 10),
+        // Segmented tabs
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            height: 36,
+            decoration: BoxDecoration(
+              color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+            ),
+            child: Row(
+              children: List.generate(_tabs.length, (i) => _segBtn(_tabs[i], i, isDark: isDark)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        // Filters row
+        if (_tab == 0 || _tab == 4)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
-              _SummaryCard(
-                label: 'Pengeluaran Bulan Ini',
-                value: formatRupiah(_totalExpenseThisMonth),
-                icon: Icons.money_off,
-                color: NusaConfig.primaryColor,
-              ),
-              const SizedBox(width: 10),
-              _SummaryCard(
-                label: 'Total Payroll',
-                value: formatRupiah(_totalPayroll),
-                icon: Icons.people,
-                color: const Color(0xFF8B5CF6),
-              ),
-              const SizedBox(width: 10),
-              _SummaryCard(
-                label: 'Total Waste',
-                value: '$_totalWasteCost item',
-                icon: Icons.delete_outline,
-                color: const Color(0xFFEF4444),
+              if (_tab == 0) ...[
+                _periodChip('Bln Ini', 0, isDark),
+                const SizedBox(width: 6),
+                _periodChip('Mgu Ini', 1, isDark),
+                const SizedBox(width: 6),
+                _periodChip('Semua', 2, isDark),
+              ],
+              const Spacer(),
+              if (_branches.length > 1) _branchDropdown(isDark),
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: () => _exportTab(isDark),
+                child: Container(
+                  height: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: NusaConfig.accentGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.download_rounded, size: 16, color: NusaConfig.accentGreen),
+                    SizedBox(width: 4),
+                    Text('Export', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: NusaConfig.accentGreen)),
+                  ]),
+                ),
               ),
             ]),
           ),
-          const SizedBox(height: 12),
-          // ── Tab chips ──
-          SizedBox(
-            height: 44,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _tabs.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) => _chip(i, isDark),
-            ),
-          ),
-          // ── Period filter (only for Pengeluaran) ──
-          if (_tab == 0)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(children: [
-                _PeriodChip('Bulan Ini', 0, isDark),
-                const SizedBox(width: 8),
-                _PeriodChip('Minggu Ini', 1, isDark),
-                const SizedBox(width: 8),
-                _PeriodChip('Semua', 2, isDark),
-              ]),
-            ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: _body(isDark),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
+        const SizedBox(height: 4),
+        Expanded(child: _body(isDark)),
+      ]),
+      floatingActionButton: FloatingActionButton(
         backgroundColor: NusaConfig.primaryColor,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: Text('Tambah ${_tabs[_tab]}'),
+        child: const Icon(Icons.add, color: Colors.white),
         onPressed: _showAdd,
       ),
     );
   }
 
-  Widget _PeriodChip(String label, int idx, bool isDark) {
+  Widget _segBtn(String label, int idx, {bool isDark = false}) {
+    final sel = idx == _tab;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _tab = idx),
+        child: Container(
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: sel ? NusaConfig.primaryColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: sel ? Colors.white : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _periodChip(String label, int idx, bool isDark) {
     final sel = _periodFilter == idx;
-    return FilterChip(
-      label: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: sel ? Colors.white : isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
-      selected: sel,
-      showCheckmark: false,
-      selectedColor: NusaConfig.primaryColor,
-      backgroundColor: NusaConfig.surfaceColor,
-      onSelected: (_) => setState(() => _periodFilter = idx),
+    return GestureDetector(
+      onTap: () => setState(() => _periodFilter = idx),
+      child: Container(
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: sel ? NusaConfig.primaryColor.withValues(alpha: 0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: sel ? NusaConfig.primaryColor.withValues(alpha: 0.3) : (isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+          ),
+        ),
+        child: Text(label,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                color: sel ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))),
+      ),
+    );
+  }
+
+  Widget _branchDropdown(bool isDark) {
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int?>(
+          value: _branchFilter,
+          isDense: true,
+          icon: Icon(Icons.expand_more_rounded, size: 16,
+              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+          dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          underline: const SizedBox.shrink(),
+          items: [
+            DropdownMenuItem<int?>(value: null, child: const Text('Semua', style: TextStyle(fontSize: 11))),
+            ..._branches.map((b) => DropdownMenuItem<int?>(value: b.id, child: Text(b.name, style: const TextStyle(fontSize: 11)))),
+          ],
+          onChanged: (v) {
+            setState(() => _branchFilter = v);
+            _load();
+          },
+        ),
+      ),
     );
   }
 
   Widget _body(bool isDark) {
-    final f = FinanceRepository(ref.read(databaseProvider));
     switch (_tab) {
-      case 0:
-        final filtered = _filteredExpenses;
-        return _listView(
-          filtered.isEmpty,
-          filtered
-              .map((e) => NusaCard(
-                    Row(
-                      children: [
-                        Container(
-                          width: 40, height: 40,
-                          decoration: BoxDecoration(
-                            color: NusaConfig.primaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(_iconForCategory(e.category), size: 20, color: NusaConfig.primaryColor),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(e.category,
-                                  style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 4),
-                              Text(e.description,
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                              const SizedBox(height: 2),
-                              Text(_date(e.date),
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                            ],
-                          ),
-                        ),
-                        Text(formatRupiah(e.amount),
-                            style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.red)),
-                      ],
-                    ),
-                  ))
-              .toList(),
-          onDelete: (i) async { await f.deleteExpense(filtered[i].id); await _load(); },
-        );
-      case 1:
-        return _listView(
-          _payroll.isEmpty,
-          _payroll
-              .map((p) => NusaCard(
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(_empName(p.employeeId),
-                                  style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600)),
-                            ),
-                            GestureDetector(
-                              onTap: () async {
-                                final next = p.status == 'Paid' ? 'Pending' : 'Paid';
-                                await f.updatePayrollStatus(p.id, next);
-                                await _load();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: p.status == 'Paid'
-                                      ? Colors.green.withOpacity(0.15)
-                                      : NusaConfig.primaryColor
-                                          .withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(p.status,
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: p.status == 'Paid'
-                                            ? Colors.green
-                                            : NusaConfig.primaryColor)),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text('Periode: ${p.period}',
-                            style: TextStyle(
-                                fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                        const SizedBox(height: 4),
-                        Text(
-                            'Gaji: ${formatRupiah(p.salary)} • Bonus: ${formatRupiah(p.bonus)} • Potong: ${formatRupiah(p.deduction)}',
-                            style: TextStyle(
-                                fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                      ],
-                    ),
-                  ))
-              .toList(),
-          onDelete: (i) async { await f.deletePayroll(_payroll[i].id); await _load(); },
-        );
-      case 2:
-        return _listView(
-          _waste.isEmpty,
-          _waste
-              .map((w) => NusaCard(
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(_prodName(w.productId),
-                                  style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 4),
-                              Text('${w.qty} pcs • ${w.type}',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                              if (w.reason != null && w.reason!.isNotEmpty)
-                                Text(w.reason!,
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                            ],
-                          ),
-                        ),
-                        Text(_date(w.date),
-                            style: TextStyle(
-                                fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                      ],
-                    ),
-                  ))
-              .toList(),
-          onDelete: (i) async { await f.deleteWaste(_waste[i].id); await _load(); },
-        );
-      default:
-        return Column(
-          children: [
-            // Running balance header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Row(
-                children: [
-                  Text('Saldo Berjalan: ', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                  Text(
-                    formatRupiah(_runningBalance),
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: _runningBalance >= 0 ? Colors.green : Colors.red,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: _listView(
-                _liquidity.isEmpty,
-                _liquidity
-                    .map((l) => NusaCard(
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(l.category,
-                                        style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600)),
-                                    const SizedBox(height: 4),
-                                    Text(l.description,
-                                        style: TextStyle(
-                                            fontSize: 13,
-                                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                                    if (l.method != null)
-                                      Text('Metode: ${l.method}',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                '${l.type == 'in' ? '+ ' : '- '}${formatRupiah(l.amount)}',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: l.type == 'in' ? Colors.green : Colors.red,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ))
-                    .toList(),
-                onDelete: (i) async { await f.deleteLiquidity(_liquidity[i].id); await _load(); },
-              ),
-            ),
-          ],
-        );
+      case 0: return _expensesTab(isDark);
+      case 1: return _payrollTab(isDark);
+      case 2: return _wasteTab(isDark);
+      case 3: return _recurringTab(isDark);
+      default: return _liquidityTab(isDark);
     }
   }
+
+  // ── Tab: Pengeluaran ──────────────────────────────────────────
+
+  Widget _expensesTab(bool isDark) {
+    final filtered = _filteredExpenses;
+    return _listView(
+      filtered.isEmpty,
+      filtered.map((e) => _expenseCard(e, isDark)).toList(),
+      onDelete: (i) async {
+        await FinanceRepository(ref.read(databaseProvider)).deleteExpense(filtered[i].id);
+        _load();
+      },
+    );
+  }
+
+  Widget _expenseCard(Expense e, bool isDark) {
+    return NusaCard(
+      Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: NusaConfig.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(_iconForCategory(e.category), size: 20, color: NusaConfig.primaryColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(e.category, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              if (e.description.isNotEmpty)
+                Text(e.description, style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+              const SizedBox(height: 1),
+              Text(_date(e.date), style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+            ]),
+          ),
+          Text(formatRupiah(e.amount),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.red)),
+        ]),
+      ),
+    );
+  }
+
+  // ── Tab: Payroll ──────────────────────────────────────────────
+
+  Widget _payrollTab(bool isDark) {
+    return _listView(
+      _payroll.isEmpty,
+      _payroll.map((p) => _payrollCard(p, isDark)).toList(),
+      onDelete: (i) async {
+        await FinanceRepository(ref.read(databaseProvider)).deletePayroll(_payroll[i].id);
+        _load();
+      },
+    );
+  }
+
+  Widget _payrollCard(PayrollData p, bool isDark) {
+    return NusaCard(
+      Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(_empName(p.employeeId),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+            GestureDetector(
+              onTap: () async {
+                final f = FinanceRepository(ref.read(databaseProvider));
+                await f.updatePayrollStatus(p.id, p.status == 'Paid' ? 'Pending' : 'Paid');
+                _load();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: p.status == 'Paid' ? Colors.green.withValues(alpha: 0.15) : NusaConfig.primaryColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(p.status,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                        color: p.status == 'Paid' ? Colors.green : NusaConfig.primaryColor)),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 4),
+          Text('Periode: ${p.period}',
+              style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+          const SizedBox(height: 2),
+          Text('Gaji: ${formatRupiah(p.salary)} \u2022 Bonus: ${formatRupiah(p.bonus)} \u2022 Potong: ${formatRupiah(p.deduction)}',
+              style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+        ]),
+      ),
+    );
+  }
+
+  // ── Tab: Waste ────────────────────────────────────────────────
+
+  Widget _wasteTab(bool isDark) {
+    return _listView(
+      _waste.isEmpty,
+      _waste.map((w) => _wasteCard(w, isDark)).toList(),
+      onDelete: (i) async {
+        await FinanceRepository(ref.read(databaseProvider)).deleteWaste(_waste[i].id);
+        _load();
+      },
+    );
+  }
+
+  Widget _wasteCard(WasteData w, bool isDark) {
+    return NusaCard(
+      Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_prodName(w.productId), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text('${w.qty} pcs \u2022 ${w.type}',
+                  style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+              if (w.reason != null && w.reason!.isNotEmpty)
+                Text(w.reason!, style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+            ]),
+          ),
+          Text(_date(w.date), style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+        ]),
+      ),
+    );
+  }
+
+  // ── Tab: Berulang ─────────────────────────────────────────────
+
+  Widget _recurringTab(bool isDark) {
+    return _listView(
+      _recurring.isEmpty,
+      _recurring.map((r) => NusaCard(
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(children: [
+                Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.loop_rounded, size: 20, color: Color(0xFF8B5CF6)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(r.category, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text(r.description, style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                    Text('${r.frequency} \u2022 Next: ${_date(r.nextDate)}',
+                        style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                  ]),
+                ),
+                Column(children: [
+                  Text(formatRupiah(r.amount),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.red)),
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: () async {
+                      final f = FinanceRepository(ref.read(databaseProvider));
+                      await f.toggleRecurring(r.id, !r.active);
+                      await _load();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: r.active ? NusaConfig.accentGreen.withValues(alpha: 0.12) : Colors.grey.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(r.active ? 'Aktif' : 'Nonaktif',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                              color: r.active ? NusaConfig.accentGreen : Colors.grey)),
+                    ),
+                  ),
+                ]),
+              ]),
+            ),
+          ))
+          .toList(),
+      onDelete: (i) async {
+        await FinanceRepository(ref.read(databaseProvider)).deleteRecurring(_recurring[i].id);
+        _load();
+      },
+    );
+  }
+
+  // ── Tab: Likuiditas ───────────────────────────────────────────
+
+  Widget _liquidityTab(bool isDark) {
+    return Column(children: [
+      _buildCashflowChart(isDark),
+      const SizedBox(height: 8),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(children: [
+          Text('Saldo: ', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+          Text(formatRupiah(_runningBalance),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                  color: _runningBalance >= 0 ? NusaConfig.accentGreen : NusaConfig.primaryColor)),
+        ]),
+      ),
+      const SizedBox(height: 4),
+      Expanded(
+        child: _listView(
+          _liquidity.isEmpty,
+          _liquidity.map((l) => NusaCard(
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(children: [
+                    Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: (l.type == 'in' ? NusaConfig.accentGreen : NusaConfig.primaryColor).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(l.type == 'in' ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                          size: 20, color: l.type == 'in' ? NusaConfig.accentGreen : NusaConfig.primaryColor),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(l.category, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Text(l.description,
+                            style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                        if (l.method != null)
+                          Text('Metode: ${l.method}',
+                              style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                      ]),
+                    ),
+                    Text('${l.type == 'in' ? '+ ' : '- '}${formatRupiah(l.amount)}',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                            color: l.type == 'in' ? NusaConfig.accentGreen : NusaConfig.primaryColor)),
+                  ]),
+                ),
+              ))
+              .toList(),
+          onDelete: (i) async {
+            await FinanceRepository(ref.read(databaseProvider)).deleteLiquidity(_liquidity[i].id);
+            _load();
+          },
+        ),
+      ),
+    ]);
+  }
+
+  Widget _buildCashflowChart(bool isDark) {
+    if (_liquidity.isEmpty) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    final bars = <BarChartGroupData>[];
+
+    for (var i = 5; i >= 0; i--) {
+      final d = DateTime(now.year, now.month - i, 1);
+      int inAmt = 0, outAmt = 0;
+      for (final l in _liquidity) {
+        if (l.date.year == d.year && l.date.month == d.month) {
+          if (l.type == 'in') { inAmt += l.amount; } else { outAmt += l.amount; }
+        }
+      }
+      bars.add(BarChartGroupData(
+        x: 5 - i,
+        barRods: [
+          BarChartRodData(
+            toY: inAmt.toDouble(),
+            color: NusaConfig.accentGreen,
+            width: 10,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+          ),
+          BarChartRodData(
+            toY: outAmt.toDouble(),
+            color: NusaConfig.primaryColor,
+            width: 10,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+          ),
+        ],
+      ));
+    }
+
+    final maxY = bars.isEmpty ? 100000.0 : bars
+        .expand((g) => g.barRods.map((r) => r.toY))
+        .reduce((a, b) => a > b ? a : b)
+        .toDouble();
+
+    // Build labels for bottom axis
+    final labels = <String>[];
+    for (var i = 5; i >= 0; i--) {
+      final d = DateTime(now.year, now.month - i, 1);
+      labels.add(months[d.month - 1]);
+    }
+
+    return SizedBox(
+      height: 180,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Cashflow 6 Bulan',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                  color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+          const SizedBox(height: 4),
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            _legendDot(NusaConfig.accentGreen, 'Masuk'),
+            const SizedBox(width: 12),
+            _legendDot(NusaConfig.primaryColor, 'Keluar'),
+          ]),
+          const SizedBox(height: 6),
+          Expanded(
+            child: BarChart(
+              BarChartData(
+                maxY: maxY > 0 ? maxY * 1.2 : 100000,
+                barGroups: bars,
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: maxY > 0 ? (maxY / 4).clamp(1, double.infinity) : 25000,
+                  getDrawingHorizontalLine: (v) => FlLine(
+                    color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
+                    strokeWidth: 1,
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (v, _) {
+                        final idx = v.toInt();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(idx < labels.length ? labels[idx] : '',
+                              style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 55,
+                      getTitlesWidget: (v, _) => Text(
+                        v >= 1000000 ? '${(v / 1000000).toStringAsFixed(1)}M' : v >= 1000 ? '${(v / 1000).toInt()}k' : '0',
+                        style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                      ),
+                    ),
+                  ),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                borderData: FlBorderData(show: false),
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipItem: (group, groupIdx, rod, rodIdx) {
+                      final amt = formatRupiah(rod.toY.toInt());
+                      return BarTooltipItem(
+                        '${rodIdx == 0 ? 'Masuk' : 'Keluar'}: $amt',
+                        const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _legendDot(Color color, String label) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Container(width: 10, height: 10,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+      const SizedBox(width: 4),
+      Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+    ]);
+  }
+
+  // ── Shared list builder ───────────────────────────────────────
 
   Widget _listView(bool empty, List<Widget> children, {Future<void> Function(int)? onDelete}) {
     if (empty) {
@@ -450,13 +735,13 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
         itemCount: children.length,
         itemBuilder: (_, i) {
           final child = children[i];
-          if (onDelete == null) return Padding(padding: const EdgeInsets.only(bottom: 12), child: child);
+          if (onDelete == null) return Padding(padding: const EdgeInsets.only(bottom: 10), child: child);
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: 10),
             child: Dismissible(
               key: ValueKey(i),
               direction: DismissDirection.endToStart,
@@ -468,7 +753,9 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                     content: const Text('Yakin hapus data ini?'),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hapus', style: TextStyle(color: Colors.red))),
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Hapus', style: TextStyle(color: Colors.red))),
                     ],
                   ),
                 ) ?? false;
@@ -491,264 +778,536 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     );
   }
 
-  String _date(DateTime d) => '${d.day}/${d.month}/${d.year}';
+  // ── Export ─────────────────────────────────────────────────────
+
+  Future<void> _exportTab(bool isDark) async {
+    List<List<dynamic>> rows;
+    String name;
+    switch (_tab) {
+      case 0:
+        name = 'pengeluaran';
+        rows = [['Tanggal', 'Kategori', 'Keterangan', 'Jumlah']];
+        for (final e in _filteredExpenses) {
+          rows.add([_date(e.date), e.category, e.description, e.amount]);
+        }
+        break;
+      case 1:
+        name = 'payroll';
+        rows = [['Karyawan', 'Periode', 'Gaji', 'Bonus', 'Potongan', 'Status']];
+        for (final p in _payroll) {
+          rows.add([_empName(p.employeeId), p.period, p.salary, p.bonus, p.deduction, p.status]);
+        }
+        break;
+      case 2:
+        name = 'waste';
+        rows = [['Produk', 'Qty', 'Tipe', 'Alasan', 'Tanggal']];
+        for (final w in _waste) {
+          rows.add([_prodName(w.productId), w.qty, w.type, w.reason ?? '', _date(w.date)]);
+        }
+        break;
+      case 3:
+        name = 'pengeluaran_berulang';
+        rows = [['Kategori', 'Jumlah', 'Keterangan', 'Frekuensi', 'Aktif']];
+        for (final r in _recurring) {
+          rows.add([r.category, r.amount, r.description, r.frequency, r.active ? 'Ya' : 'Tidak']);
+        }
+        break;
+      default:
+        name = 'likuiditas';
+        rows = [['Tanggal', 'Tipe', 'Kategori', 'Keterangan', 'Jumlah', 'Metode']];
+        for (final l in _liquidity) {
+          rows.add([_date(l.date), l.type == 'in' ? 'Masuk' : 'Keluar', l.category, l.description, l.amount, l.method ?? '']);
+        }
+    }
+
+    final csv = const ListToCsvConverter().convert(rows);
+    final dir = await getApplicationDocumentsDirectory();
+    final now = DateTime.now();
+    final stamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    final file = File('${dir.path}/${name}_$stamp.csv');
+    await file.writeAsString(csv);
+
+    if (mounted) {
+      TopToast.success(context, 'Diexport ke ${file.path}');
+    }
+  }
+
+  // ── Add forms ─────────────────────────────────────────────────
 
   void _showAdd() {
     switch (_tab) {
-      case 0:
-        _addExpense();
-        break;
-      case 1:
-        _addPayroll();
-        break;
-      case 2:
-        _addWaste();
-        break;
-      default:
-        _addLiquidity();
+      case 0: _addExpense(); break;
+      case 1: _addPayroll(); break;
+      case 2: _addWaste(); break;
+      case 3: _addRecurring(); break;
+      default: _addLiquidity();
     }
   }
 
   void _addExpense() {
-    final catC = TextEditingController();
-    final descC = TextEditingController();
-    final amtC = TextEditingController();
-    showDialog(
+    final descCtrl = TextEditingController();
+    final amtCtrl = TextEditingController();
+    String category = _allCategories.isNotEmpty ? _allCategories.first : 'Operasional';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Tambah Pengeluaran'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            NusaInput('Kategori', controller: catC),
-            const SizedBox(height: 12),
-            NusaInput('Keterangan', controller: descC),
-            const SizedBox(height: 12),
-            NusaInput('Jumlah (Rp)', controller: amtC, type: TextInputType.number),
-          ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 10, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _sheetHandle(isDark),
+              _sheetHeader(Icons.money_off, NusaConfig.primaryColor, 'Tambah Pengeluaran', isDark),
+              const SizedBox(height: 16),
+              _sheetDropdown(
+                label: 'Kategori', value: category,
+                items: _allCategories,
+                isDark: isDark,
+                trailing: GestureDetector(
+                  onTap: () => _manageCategories(isDark, setSt, (cats) => setState(() => _categories = cats)),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(Icons.edit, size: 18, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                  ),
+                ),
+                onChanged: (v) => setSt(() => category = v!),
+              ),
+              const SizedBox(height: 12),
+              NusaInput('Keterangan', controller: descCtrl),
+              const SizedBox(height: 12),
+              NusaInput('Jumlah (Rp)', controller: amtCtrl, type: TextInputType.number),
+              const SizedBox(height: 20),
+              _sheetActions(ctx, onSave: () async {
+                final cat = category.trim();
+                final desc = descCtrl.text.trim();
+                final amt = int.tryParse(amtCtrl.text.trim()) ?? 0;
+                if (cat.isEmpty || amt <= 0) { TopToast.error(context, 'Kategori dan jumlah wajib diisi'); return; }
+                Navigator.pop(ctx);
+                final f = FinanceRepository(ref.read(databaseProvider));
+                await f.addExpense(category: cat, description: desc, amount: amt, branchId: _branchFilter);
+                final monthly = await f.getExpensesThisMonth(branchId: _branchFilter);
+                final total = monthly.where((e) => e.category == cat).fold<int>(0, (s, e) => s + e.amount);
+                if (total > 5000000 && mounted) TopToast.info(context, '\u26a0 Pengeluaran "$cat" bulan ini sudah Rp${formatRupiah(total)}');
+                _load();
+              }, isDark: isDark),
+            ]),
+          ),
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Batal')),
-          NusaButton('Simpan', fullWidth: false, onPressed: () async {
-            final cat = catC.text.trim();
-            final desc = descC.text.trim();
-            final amt = int.tryParse(amtC.text.trim()) ?? 0;
-            if (cat.isEmpty) return;
-            final f = FinanceRepository(ref.read(databaseProvider));
-            await f.addExpense(category: cat, description: desc, amount: amt);
-            if (mounted) Navigator.of(context).pop();
-            _load();
-          }),
-        ],
+      ),
+    ).then((_) { descCtrl.dispose(); amtCtrl.dispose(); });
+  }
+
+  void _manageCategories(bool isDark, StateSetter setSt, Function(List<ExpenseCategory>) onDone) {
+    final nameCtrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.fromLTRB(20, 10, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          _sheetHandle(isDark),
+          Text('Kelola Kategori', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+              color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+          const SizedBox(height: 12),
+          if (_categories.isNotEmpty) ...[
+            ..._categories.map((c) => ListTile(
+              dense: true,
+              title: Text(c.name, style: TextStyle(fontSize: 15,
+                  color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+              trailing: IconButton(
+                icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                onPressed: () async {
+                  final f = FinanceRepository(ref.read(databaseProvider));
+                  await f.deleteCategory(c.id);
+                  final cats = await f.getCategories();
+                  onDone(cats);
+                  Navigator.pop(ctx);
+                },
+              ),
+            )),
+            const SizedBox(height: 8),
+          ],
+          Row(children: [
+            Expanded(child: NusaInput('Kategori Baru', controller: nameCtrl)),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () async {
+                final name = nameCtrl.text.trim();
+                if (name.isEmpty) return;
+                final f = FinanceRepository(ref.read(databaseProvider));
+                await f.addCategory(name);
+                final cats = await f.getCategories();
+                onDone(cats);
+                Navigator.pop(ctx);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white, elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Tambah'),
+            ),
+          ]),
+        ]),
       ),
     );
   }
 
   void _addPayroll() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final periodC = TextEditingController();
-    final salaryC = TextEditingController();
-    final bonusC = TextEditingController();
-    final dedC = TextEditingController();
+    final periodCtrl = TextEditingController();
+    final salaryCtrl = TextEditingController();
+    final bonusCtrl = TextEditingController();
+    final dedCtrl = TextEditingController();
     int empId = _employees.isNotEmpty ? _employees.first.id : 0;
-    showDialog(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          title: const Text('Tambah Payroll'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_employees.isEmpty)
-                Text('Belum ada karyawan.',
-                    style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : Colors.grey))
-              else
-                DropdownButtonFormField<int>(
-                  value: empId,
-                  decoration: const InputDecoration(
-                    labelText: 'Karyawan',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(14))),
-                  ),
-                  items: _employees
-                      .map((e) =>
-                          DropdownMenuItem(value: e.id, child: Text(e.name)))
-                      .toList(),
-                  onChanged: (v) => setSt(() => empId = v!),
-                ),
-              const SizedBox(height: 12),
-              NusaInput('Periode (cth: Jun 26)', controller: periodC),
-              const SizedBox(height: 12),
-              NusaInput('Gaji (Rp)', controller: salaryC, type: TextInputType.number),
-              const SizedBox(height: 12),
-              NusaInput('Bonus (Rp)', controller: bonusC, type: TextInputType.number),
-              const SizedBox(height: 12),
-              NusaInput('Potongan (Rp)', controller: dedC, type: TextInputType.number),
-            ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Batal')),
-            NusaButton('Simpan', fullWidth: false, onPressed: () async {
-              if (_employees.isEmpty) return;
-              final f = FinanceRepository(ref.read(databaseProvider));
-              await f.addPayroll(
-                employeeId: empId,
-                period: periodC.text.trim(),
-                salary: int.tryParse(salaryC.text.trim()) ?? 0,
-                bonus: int.tryParse(bonusC.text.trim()) ?? 0,
-                deduction: int.tryParse(dedC.text.trim()) ?? 0,
-              );
-              if (mounted) Navigator.of(context).pop();
-              _load();
-            }),
-          ],
+          padding: EdgeInsets.fromLTRB(20, 10, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _sheetHandle(isDark),
+              _sheetHeader(Icons.people, const Color(0xFF8B5CF6), 'Tambah Payroll', isDark),
+              const SizedBox(height: 16),
+              if (_employees.isEmpty)
+                Text('Belum ada karyawan.', style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))
+              else ...[
+                _sheetDropdown<int>(
+                  label: 'Karyawan',
+                  value: _employees.any((e) => e.id == empId) ? empId : _employees.first.id,
+                  items: _employees.map((e) => e.id).toList(),
+                  itemLabel: (id) {
+                    final emp = _employees.firstWhere((e) => e.id == id);
+                    var label = emp.name;
+                    if (emp.baseSalary != null) label += '  (${formatRupiah(emp.baseSalary!)})';
+                    return label;
+                  },
+                  isDark: isDark,
+                  onChanged: (v) {
+                    setSt(() => empId = v!);
+                    final emp = _employees.firstWhere((e) => e.id == v);
+                    if (emp.baseSalary != null) salaryCtrl.text = '${emp.baseSalary}';
+                  },
+                ),
+                const SizedBox(height: 12),
+                NusaInput('Periode (cth: Jul 26)', controller: periodCtrl),
+                const SizedBox(height: 12),
+                NusaInput('Gaji (Rp)', controller: salaryCtrl, type: TextInputType.number),
+                const SizedBox(height: 12),
+                NusaInput('Bonus (Rp)', controller: bonusCtrl, type: TextInputType.number),
+                const SizedBox(height: 12),
+                NusaInput('Potongan (Rp)', controller: dedCtrl, type: TextInputType.number),
+              ],
+              const SizedBox(height: 20),
+              _sheetActions(ctx, onSave: () async {
+                if (_employees.isEmpty) return;
+                Navigator.pop(ctx);
+                final f = FinanceRepository(ref.read(databaseProvider));
+                await f.addPayroll(
+                  employeeId: empId, period: periodCtrl.text.trim(),
+                  salary: int.tryParse(salaryCtrl.text.trim()) ?? 0,
+                  bonus: int.tryParse(bonusCtrl.text.trim()) ?? 0,
+                  deduction: int.tryParse(dedCtrl.text.trim()) ?? 0,
+                );
+                _load();
+              }, isDark: isDark),
+            ]),
+          ),
         ),
       ),
-    );
+    ).then((_) { periodCtrl.dispose(); salaryCtrl.dispose(); bonusCtrl.dispose(); dedCtrl.dispose(); });
   }
 
   void _addWaste() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final qtyC = TextEditingController();
-    final reasonC = TextEditingController();
+    final qtyCtrl = TextEditingController();
+    final reasonCtrl = TextEditingController();
     String type = 'Expired';
     int prodId = _products.isNotEmpty ? _products.first.id : 0;
-    showDialog(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          title: const Text('Tambah Waste'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 10, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _sheetHandle(isDark),
+              _sheetHeader(Icons.delete_outline, const Color(0xFFEF4444), 'Tambah Waste', isDark),
+              const SizedBox(height: 16),
               if (_products.isEmpty)
-                Text('Belum ada produk.',
-                    style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : Colors.grey))
-              else
-                DropdownButtonFormField<int>(
-                  value: prodId,
-                  decoration: const InputDecoration(
-                    labelText: 'Produk',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(14))),
-                  ),
-                  items: _products
-                      .map((p) =>
-                          DropdownMenuItem(value: p.id, child: Text(p.name)))
-                      .toList(),
+                Text('Belum ada produk.', style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))
+              else ...[
+                _sheetDropdown<int>(
+                  label: 'Produk', value: _products.any((p) => p.id == prodId) ? prodId : _products.first.id,
+                  items: _products.map((p) => p.id).toList(),
+                  itemLabel: (id) => _products.firstWhere((p) => p.id == id).name, isDark: isDark,
                   onChanged: (v) => setSt(() => prodId = v!),
                 ),
-              const SizedBox(height: 12),
-              NusaInput('Jumlah (pcs)', controller: qtyC, type: TextInputType.number),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: type,
-                decoration: const InputDecoration(
-                  labelText: 'Tipe',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(14))),
+                const SizedBox(height: 12),
+                NusaInput('Jumlah (pcs)', controller: qtyCtrl, type: TextInputType.number),
+                const SizedBox(height: 12),
+                _sheetDropdown(
+                  label: 'Tipe', value: type,
+                  items: const ['Expired', 'Rusak', 'Lainnya'], isDark: isDark,
+                  onChanged: (v) => setSt(() => type = v!),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'Expired', child: Text('Expired')),
-                  DropdownMenuItem(value: 'Rusak', child: Text('Rusak')),
-                  DropdownMenuItem(value: 'Lainnya', child: Text('Lainnya')),
-                ],
-                onChanged: (v) => setSt(() => type = v!),
-              ),
-              const SizedBox(height: 12),
-              NusaInput('Alasan', controller: reasonC),
-            ],
+                const SizedBox(height: 12),
+                NusaInput('Alasan', controller: reasonCtrl),
+              ],
+              const SizedBox(height: 20),
+              _sheetActions(ctx, onSave: () async {
+                if (_products.isEmpty) return;
+                Navigator.pop(ctx);
+                final qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+                final f = FinanceRepository(ref.read(databaseProvider));
+                await f.addWaste(productId: prodId, qty: qty, reason: reasonCtrl.text.trim(), type: type);
+                if (qty > 0) await ProductRepository(ref.read(databaseProvider)).adjustStock(prodId, -qty);
+                _load();
+              }, isDark: isDark),
+            ]),
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Batal')),
-            NusaButton('Simpan', fullWidth: false, onPressed: () async {
-              if (_products.isEmpty) return;
-              final f = FinanceRepository(ref.read(databaseProvider));
-              final qty = int.tryParse(qtyC.text.trim()) ?? 0;
-              await f.addWaste(
-                productId: prodId,
-                qty: qty,
-                reason: reasonC.text.trim(),
-                type: type,
-              );
-              // Auto-reduce stock
-              if (qty > 0) {
-                await ProductRepository(ref.read(databaseProvider))
-                    .adjustStock(prodId, -qty);
-              }
-              if (mounted) Navigator.of(context).pop();
-              _load();
-            }),
-          ],
         ),
       ),
-    );
+    ).then((_) { qtyCtrl.dispose(); reasonCtrl.dispose(); });
+  }
+
+  void _addRecurring() {
+    final catCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final amtCtrl = TextEditingController();
+    String frequency = 'bulanan';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 10, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _sheetHandle(isDark),
+              _sheetHeader(Icons.loop_rounded, const Color(0xFF8B5CF6), 'Tambah Pengeluaran Berulang', isDark),
+              const SizedBox(height: 16),
+              NusaInput('Kategori', controller: catCtrl, hint: 'Cth: Sewa, Internet'),
+              const SizedBox(height: 12),
+              NusaInput('Jumlah (Rp)', controller: amtCtrl, type: TextInputType.number),
+              const SizedBox(height: 12),
+              NusaInput('Keterangan', controller: descCtrl),
+              const SizedBox(height: 12),
+              _sheetDropdown(
+                label: 'Frekuensi', value: frequency,
+                items: const ['harian', 'mingguan', 'bulanan'], isDark: isDark,
+                onChanged: (v) => setSt(() => frequency = v!),
+              ),
+              const SizedBox(height: 20),
+              _sheetActions(ctx, onSave: () async {
+                final cat = catCtrl.text.trim();
+                final amt = int.tryParse(amtCtrl.text.trim()) ?? 0;
+                if (cat.isEmpty || amt <= 0) { TopToast.error(context, 'Kategori dan jumlah wajib diisi'); return; }
+                Navigator.pop(ctx);
+                final now = DateTime.now();
+                DateTime next;
+                switch (frequency) {
+                  case 'harian': next = now.add(const Duration(days: 1)); break;
+                  case 'mingguan': next = now.add(const Duration(days: 7)); break;
+                  default: next = DateTime(now.year, now.month + 1, now.day);
+                }
+                final f = FinanceRepository(ref.read(databaseProvider));
+                await f.addRecurring(category: cat, amount: amt, description: descCtrl.text.trim(), frequency: frequency, nextDate: next);
+                _load();
+              }, isDark: isDark),
+            ]),
+          ),
+        ),
+      ),
+    ).then((_) { catCtrl.dispose(); descCtrl.dispose(); amtCtrl.dispose(); });
   }
 
   void _addLiquidity() {
-    final catC = TextEditingController();
-    final descC = TextEditingController();
-    final amtC = TextEditingController();
-    final methodC = TextEditingController();
+    final catCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final amtCtrl = TextEditingController();
+    final methodCtrl = TextEditingController();
     String type = 'in';
-    showDialog(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          title: const Text('Tambah Likuiditas'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                value: type,
-                decoration: const InputDecoration(
-                  labelText: 'Tipe',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(14))),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'in', child: Text('Masuk')),
-                  DropdownMenuItem(value: 'out', child: Text('Keluar')),
-                ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 10, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _sheetHandle(isDark),
+              _sheetHeader(Icons.account_balance_wallet, NusaConfig.accentGreen, 'Tambah Likuiditas', isDark),
+              const SizedBox(height: 16),
+              _sheetDropdown(
+                label: 'Tipe', value: type,
+                items: const ['in', 'out'],
+                itemLabel: (s) => s == 'in' ? 'Pemasukan' : 'Pengeluaran',
+                isDark: isDark,
                 onChanged: (v) => setSt(() => type = v!),
               ),
               const SizedBox(height: 12),
-              NusaInput('Kategori', controller: catC),
+              NusaInput('Kategori', controller: catCtrl),
               const SizedBox(height: 12),
-              NusaInput('Keterangan', controller: descC),
+              NusaInput('Keterangan', controller: descCtrl),
               const SizedBox(height: 12),
-              NusaInput('Jumlah (Rp)', controller: amtC, type: TextInputType.number),
+              NusaInput('Jumlah (Rp)', controller: amtCtrl, type: TextInputType.number),
               const SizedBox(height: 12),
-              NusaInput('Metode (opsional)', controller: methodC),
-            ],
+              NusaInput('Metode (opsional)', controller: methodCtrl),
+              const SizedBox(height: 20),
+              _sheetActions(ctx, onSave: () async {
+                Navigator.pop(ctx);
+                final f = FinanceRepository(ref.read(databaseProvider));
+                await f.addLiquidity(
+                  type: type, category: catCtrl.text.trim(), description: descCtrl.text.trim(),
+                  amount: int.tryParse(amtCtrl.text.trim()) ?? 0,
+                  method: methodCtrl.text.trim().isEmpty ? null : methodCtrl.text.trim(),
+                  branchId: _branchFilter,
+                );
+                _load();
+              }, isDark: isDark),
+            ]),
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Batal')),
-            NusaButton('Simpan', fullWidth: false, onPressed: () async {
-              final f = FinanceRepository(ref.read(databaseProvider));
-              await f.addLiquidity(
-                type: type,
-                category: catC.text.trim(),
-                description: descC.text.trim(),
-                amount: int.tryParse(amtC.text.trim()) ?? 0,
-                method: methodC.text.trim().isEmpty ? null : methodC.text.trim(),
-              );
-              if (mounted) Navigator.of(context).pop();
-              _load();
-            }),
-          ],
         ),
       ),
-    );
+    ).then((_) { catCtrl.dispose(); descCtrl.dispose(); amtCtrl.dispose(); methodCtrl.dispose(); });
   }
+
+  // ── Sheet helpers ─────────────────────────────────────────────
+
+  Widget _sheetHandle(bool isDark) => Container(
+    margin: const EdgeInsets.symmetric(vertical: 8),
+    width: 40, height: 4,
+    decoration: BoxDecoration(
+      color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
+      borderRadius: BorderRadius.circular(2),
+    ),
+  );
+
+  Widget _sheetHeader(IconData icon, Color color, String title, bool isDark) => Row(children: [
+    Container(
+      width: 38, height: 38,
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+      child: Icon(icon, color: color, size: 20),
+    ),
+    const SizedBox(width: 12),
+    Expanded(child: Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+        color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
+  ]);
+
+  Widget _sheetDropdown<T>({
+    required String label,
+    required T value,
+    required List<T> items,
+    String Function(T)? itemLabel,
+    required bool isDark,
+    Widget? trailing,
+    required ValueChanged<T?> onChanged,
+  }) => Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+    Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+    const SizedBox(height: 6),
+    Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder),
+      ),
+      child: Row(children: [
+        Expanded(
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T>(
+              value: items.contains(value) ? value : items.first,
+              isExpanded: true,
+              isDense: true,
+              icon: Icon(Icons.expand_more, size: 20,
+                  color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500,
+                  color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+              dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              underline: const SizedBox.shrink(),
+              items: items.map((t) => DropdownMenuItem(
+                value: t,
+                child: Text(itemLabel != null ? itemLabel(t) : t.toString(), overflow: TextOverflow.ellipsis),
+              )).toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+        if (trailing != null) trailing,
+      ]),
+    ),
+  ]);
+
+  Widget _sheetActions(BuildContext ctx, {required VoidCallback onSave, required bool isDark}) => Row(children: [
+    Expanded(
+      child: OutlinedButton(
+        onPressed: () => Navigator.pop(ctx),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: BorderSide(color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder),
+        ),
+        child: Text('Batal', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600,
+            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+      ),
+    ),
+    const SizedBox(width: 12),
+    Expanded(
+      child: ElevatedButton(
+        onPressed: onSave,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white, elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        child: const Text('Simpan', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+      ),
+    ),
+  ]);
 }
 
 class _SummaryCard extends StatelessWidget {
@@ -776,7 +1335,8 @@ class _SummaryCard extends StatelessWidget {
             child: Icon(icon, size: 16, color: color),
           ),
           const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+              color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary), overflow: TextOverflow.ellipsis),
           const SizedBox(height: 2),
           Text(label, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
         ]),

@@ -142,51 +142,85 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     String? error;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(employee == null ? 'Tambah Karyawan' : 'Edit Karyawan',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
-              )),
-          content: SingleChildScrollView(
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20, 10, 20,
+            MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Photo picker
-                GestureDetector(
-                  onTap: () async {
-                    final picked = await _imagePicker.pickImage(
-                        source: ImageSource.gallery, maxWidth: 512, maxHeight: 512);
-                    if (picked != null) {
-                      setSt(() => photoPath = picked.path);
-                    }
-                  },
-                  child: Container(
-                    width: 80, height: 80,
+                // Drag handle
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Header with icon
+                Row(children: [
+                  Container(
+                    width: 38, height: 38,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _avatarColor(nameC.text.isNotEmpty ? nameC.text : '?'),
-                      image: photoPath != null && photoPath!.isNotEmpty
-                          ? DecorationImage(
-                              image: FileImage(File(photoPath!)),
-                              fit: BoxFit.cover,
+                      color: NusaConfig.primaryColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.person_add_outlined,
+                        color: NusaConfig.primaryColor, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(employee == null ? 'Tambah Karyawan' : 'Edit Karyawan',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                      )),
+                ]),
+                const SizedBox(height: 16),
+                // Photo picker
+                Center(
+                  child: GestureDetector(
+                    onTap: () async {
+                      final picked = await _imagePicker.pickImage(
+                          source: ImageSource.gallery, maxWidth: 512, maxHeight: 512);
+                      if (picked != null) {
+                        setSt(() => photoPath = picked.path);
+                      }
+                    },
+                    child: Container(
+                      width: 80, height: 80,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: _avatarColor(nameC.text.isNotEmpty ? nameC.text : '?'),
+                        image: photoPath != null && photoPath!.isNotEmpty
+                            ? DecorationImage(
+                                image: FileImage(File(photoPath!)),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      alignment: Alignment.center,
+                      child: photoPath == null || photoPath!.isEmpty
+                          ? Text(
+                              nameC.text.isNotEmpty ? nameC.text[0].toUpperCase() : '?',
+                              style: const TextStyle(
+                                fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white,
+                              ),
                             )
                           : null,
                     ),
-                    alignment: Alignment.center,
-                    child: photoPath == null || photoPath!.isEmpty
-                        ? Text(
-                            nameC.text.isNotEmpty ? nameC.text[0].toUpperCase() : '?',
-                            style: const TextStyle(
-                              fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white,
-                            ),
-                          )
-                        : null,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -259,7 +293,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                   },
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
                       borderRadius: BorderRadius.circular(12),
@@ -299,66 +333,84 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                       style: const TextStyle(
                           color: NusaConfig.primaryColor, fontSize: 13)),
                 ],
+                const SizedBox(height: 20),
+                // Action buttons
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        side: BorderSide(
+                            color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder),
+                      ),
+                      child: Text('Batal',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600,
+                              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final name = nameC.text.trim();
+                        final pin = pinC.text.trim();
+                        if (name.isEmpty || pin.isEmpty) {
+                          setSt(() => error = 'Nama dan PIN wajib diisi');
+                          return;
+                        }
+                        if (pin.length < 4 || pin.length > 6 || int.tryParse(pin) == null) {
+                          setSt(() => error = 'PIN harus 4-6 digit angka');
+                          return;
+                        }
+                        final phone = phoneC.text.trim();
+                        if (phone.isNotEmpty) {
+                          final clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
+                          if (clean.length < 10 || !clean.startsWith('0')) {
+                            setSt(() => error = 'No. WA harus valid (08xx, min 10 digit)');
+                            return;
+                          }
+                        }
+                        final salary = int.tryParse(salaryC.text.trim());
+                        final repo = AttendanceRepository(ref.read(databaseProvider));
+                        if (employee == null) {
+                          await repo.addEmployee(
+                              name: name, pin: pin, role: role,
+                              phone: phone.isNotEmpty ? phone : null,
+                              photoPath: photoPath,
+                              baseSalary: salary,
+                              startDate: startDate,
+                              status: status);
+                        } else {
+                          await repo.updateEmployee(
+                              id: employee.id, name: name, pin: pin, role: role,
+                              phone: phone.isNotEmpty ? phone : null,
+                              photoPath: photoPath,
+                              baseSalary: salary,
+                              startDate: startDate,
+                              status: status);
+                        }
+                        if (mounted) Navigator.of(context).pop();
+                        _load();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: NusaConfig.primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Simpan',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ]),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('Batal',
-                    style: TextStyle(color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))),
-            ElevatedButton(
-              onPressed: () async {
-                final name = nameC.text.trim();
-                final pin = pinC.text.trim();
-                if (name.isEmpty || pin.isEmpty) {
-                  setSt(() => error = 'Nama dan PIN wajib diisi');
-                  return;
-                }
-                if (pin.length < 4 || pin.length > 6 || int.tryParse(pin) == null) {
-                  setSt(() => error = 'PIN harus 4-6 digit angka');
-                  return;
-                }
-                final phone = phoneC.text.trim();
-                if (phone.isNotEmpty) {
-                  final clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
-                  if (clean.length < 10 || !clean.startsWith('0')) {
-                    setSt(() => error = 'No. WA harus valid (08xx, min 10 digit)');
-                    return;
-                  }
-                }
-                final salary = int.tryParse(salaryC.text.trim());
-                final repo = AttendanceRepository(ref.read(databaseProvider));
-                if (employee == null) {
-                  await repo.addEmployee(
-                      name: name, pin: pin, role: role,
-                      phone: phone.isNotEmpty ? phone : null,
-                      photoPath: photoPath,
-                      baseSalary: salary,
-                      startDate: startDate,
-                      status: status);
-                } else {
-                  await repo.updateEmployee(
-                      id: employee.id, name: name, pin: pin, role: role,
-                      phone: phone.isNotEmpty ? phone : null,
-                      photoPath: photoPath,
-                      baseSalary: salary,
-                      startDate: startDate,
-                      status: status);
-                }
-                if (mounted) Navigator.of(context).pop();
-                _load();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: NusaConfig.primaryColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Simpan'),
-            ),
-          ],
         ),
       ),
     );
@@ -382,7 +434,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
         const SizedBox(height: 6),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
             borderRadius: BorderRadius.circular(12),
@@ -394,6 +446,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
             child: DropdownButton<String>(
               value: items.contains(value) ? value : items.first,
               isExpanded: true,
+              isDense: true,
               icon: Icon(Icons.expand_more, size: 20,
                   color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500,
@@ -528,7 +581,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                         child: ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: employees.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
                           itemBuilder: (_, i) {
                             final e = employees[i];
                             final hasPhoto = e.photoPath != null && e.photoPath!.isNotEmpty;
@@ -545,7 +598,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                                         Container(
                                           width: 52, height: 52,
                                           decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
+                                            borderRadius: BorderRadius.circular(16),
                                             color: _avatarColor(e.name),
                                             image: hasPhoto
                                                 ? DecorationImage(

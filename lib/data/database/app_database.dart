@@ -7,13 +7,14 @@ import 'tables.dart';
 part 'app_database.g.dart';
 
 @DriftDatabase(tables: [Categories, Products, StockMovements, Transactions, Customers, Promos,
-  Employees, Attendance, Expenses, Payroll, Waste, Liquidity, Suppliers, Branches,
-  Settings, ActivationsLocal, SyncQueue, CashierSessions, OnlineOrders])
+  Employees, Attendance, Expenses, ExpenseCategories, RecurringExpenses, Payroll, Waste,
+  Liquidity, Suppliers, Branches, Settings, ActivationsLocal, SyncQueue, CashierSessions,
+  OnlineOrders])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.test() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -69,6 +70,12 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(employees, employees.photoPath);
         await m.addColumn(employees, employees.baseSalary);
         await m.addColumn(employees, employees.startDate);
+      }
+      if (from < 14) {
+        await m.addColumn(expenses, expenses.branchId);
+        await m.addColumn(liquidity, liquidity.branchId);
+        await m.createTable(expenseCategories);
+        await m.createTable(recurringExpenses);
       }
     },
   );

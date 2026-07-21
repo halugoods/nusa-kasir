@@ -10,6 +10,7 @@ import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
 import 'package:nusa_kasir/data/repositories/report_repository.dart';
 import 'package:nusa_kasir/data/repositories/branch_repository.dart';
 import 'package:nusa_kasir/data/repositories/online_order_repository.dart';
+import 'package:nusa_kasir/data/repositories/finance_repository.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/features/auth/rbac.dart';
@@ -50,6 +51,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _lastCashierTime = '';
   List<Employee> _employees = [];
   int _onlinePending = 0;
+
+  // Keuangan summary
+  int _financeExpense = 0;
+  int _financeIncome = 0;
 
   final List<Map<String, dynamic>> _items = const [
     {'id': 'produk', 'label': 'Produk', 'icon': 'product'},
@@ -144,6 +149,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final onlineRepo = OnlineOrderRepository(ref.read(databaseProvider));
     final onlinePending = await onlineRepo.countPending();
 
+    // Load keuangan summary
+    final financeRepo = FinanceRepository(ref.read(databaseProvider));
+    final finSummary = await financeRepo.getDashboardSummary();
+
     if (mounted) {
       setState(() {
         _storeName = name.isNotEmpty ? name : 'NUSA';
@@ -160,6 +169,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _lastCashierName = lastCashierName;
         _lastCashierRole = lastCashierRole;
         _lastCashierTime = lastCashierTime;
+        _financeExpense = finSummary['totalExpense'] ?? 0;
+        _financeIncome = finSummary['totalIncome'] ?? 0;
       });
     }
   }
@@ -691,6 +702,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         topProduct: _topProduct,
                       ),
 
+                      // Keuangan summary card
+                      if (_financeExpense > 0 || _financeIncome > 0) ...[
+                        const SizedBox(height: 12),
+                        _KeuanganSummary(
+                          expense: _financeExpense,
+                          income: _financeIncome,
+                        ),
+                      ],
+
                       const SizedBox(height: 16),
 
                       // Menu grid with lock indicators
@@ -879,6 +899,63 @@ class _MenuItem extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _KeuanganSummary extends StatelessWidget {
+  final int expense;
+  final int income;
+  const _KeuanganSummary({required this.expense, required this.income});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final net = income - expense;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+        ),
+        child: Column(children: [
+          Row(children: [
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: NusaConfig.accentPurple.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.account_balance_wallet, size: 16, color: NusaConfig.accentPurple),
+            ),
+            const SizedBox(width: 10),
+            Text('Keuangan Bulan Ini',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                    color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
+            _finStat('Pengeluaran', expense, NusaConfig.primaryColor, isDark),
+            const SizedBox(width: 12),
+            _finStat('Pemasukan', income, NusaConfig.accentGreen, isDark),
+            const SizedBox(width: 12),
+            _finStat('Selisih', net, net >= 0 ? NusaConfig.accentGreen : NusaConfig.primaryColor, isDark),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _finStat(String label, int amount, Color color, bool isDark) {
+    return Expanded(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(formatRupiah(amount > 0 ? amount : 0),
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+        Text(label, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+      ]),
     );
   }
 }

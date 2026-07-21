@@ -100,6 +100,20 @@ class Expenses extends Table {
   TextColumn get category => text()();
   TextColumn get description => text()();
   IntColumn get amount => integer()();
+  IntColumn get branchId => integer().nullable()();
+}
+class ExpenseCategories extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+}
+class RecurringExpenses extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get category => text()();
+  IntColumn get amount => integer()();
+  TextColumn get description => text()();
+  TextColumn get frequency => text()(); // harian, mingguan, bulanan
+  DateTimeColumn get nextDate => dateTime()();
+  BoolColumn get active => boolean().withDefault(const Constant(true))();
 }
 class Payroll extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -128,6 +142,7 @@ class Liquidity extends Table {
   TextColumn get description => text()();
   IntColumn get amount => integer()();
   TextColumn get method => text().nullable()();
+  IntColumn get branchId => integer().nullable()();
 }
 class Suppliers extends Table {
   IntColumn get id => integer().autoIncrement()();

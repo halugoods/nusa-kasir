@@ -153,7 +153,7 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
                           const SizedBox(height: 6),
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
                               color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
                               borderRadius: BorderRadius.circular(12),
@@ -165,6 +165,7 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
                               child: DropdownButton<String>(
                                 value: type,
                                 isExpanded: true,
+                                isDense: true,
                                 icon: Icon(Icons.expand_more, size: 20,
                                     color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                                 style: TextStyle(
@@ -221,7 +222,7 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
                         },
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
                             color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
                             borderRadius: BorderRadius.circular(12),
