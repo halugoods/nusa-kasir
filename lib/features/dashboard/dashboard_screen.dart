@@ -497,7 +497,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 child: const Text(
                                   'Belum absen',
                                   style: TextStyle(
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                     color: NusaConfig.accentGold,
                                   ),
@@ -581,147 +581,163 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: NusaConfig.primaryColor,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.point_of_sale_rounded),
-        label: const Text('Kasir',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onPressed: () => _bukaKasir(),
-      ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async { await _load(); },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              children: [
-                // Header
-                DashboardHeader(
-                  userName: userName,
-                  role: roleText,
-                  branch: _storeName,
-                  hasNotification: !_hasCheckedIn && _currentName.isNotEmpty,
-                  onBellTap: () {},
-                ),
+        child: Column(
+          children: [
+            // Header (static)
+            DashboardHeader(
+              userName: userName,
+              role: roleText,
+              branch: _storeName,
+              hasNotification: !_hasCheckedIn && _currentName.isNotEmpty,
+              onBellTap: () {},
+            ),
 
-                // Branch selector
-                if (_branches.length > 1)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => context.push('/cabang'),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.store,
-                                  size: 16, color: NusaConfig.primaryColor),
-                              const SizedBox(width: 6),
-                              Text(
-                                _activeBranch?.name ?? 'Semua Cabang',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: NusaConfig.primaryColor,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.keyboard_arrow_down,
-                                  size: 18, color: NusaConfig.primaryColor),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: _branches.map((b) {
-                                final active = _activeBranch?.id == b.id;
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() => _activeBranch = b);
-                                    ref
-                                        .read(activeBranchProvider.notifier)
-                                        .state = b;
-                                  },
-                                  child: Container(
-                                    margin: const EdgeInsets.only(right: 6),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: active
-                                          ? NusaConfig.primarySoft
-                                          : Theme.of(context).colorScheme.surface,
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: active
-                                            ? NusaConfig.primaryColor
-                                            : NusaConfig.dividerColor,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      b.name,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: active
-                                            ? NusaConfig.primaryColor
-                                            : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
+            // Branch selector
+            if (_branches.length > 1)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => context.push('/cabang'),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.store,
+                              size: 16, color: NusaConfig.primaryColor),
+                          const SizedBox(width: 6),
+                          Text(
+                            _activeBranch?.name ?? 'Semua Cabang',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: NusaConfig.primaryColor,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          const Icon(Icons.keyboard_arrow_down,
+                              size: 18, color: NusaConfig.primaryColor),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: _branches.map((b) {
+                            final active = _activeBranch?.id == b.id;
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() => _activeBranch = b);
+                                ref
+                                    .read(activeBranchProvider.notifier)
+                                    .state = b;
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: active
+                                      ? NusaConfig.primarySoft
+                                      : Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: active
+                                        ? NusaConfig.primaryColor
+                                        : NusaConfig.dividerColor,
+                                  ),
+                                ),
+                                child: Text(
+                                  b.name,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: active
+                                        ? NusaConfig.primaryColor
+                                        : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Scrollable content: Profile card + Menu grid
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async { await _load(); },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    children: [
+                      // Profile card
+                      ProfileStatsCard(
+                        initials: initials,
+                        userName: userName,
+                        role: roleText,
+                        branch: _storeName,
+                        attendanceStatus: attendanceText,
+                        salesValue: _omzet,
+                        transactionCount: _trxCount,
+                        avgValue: _avg,
+                        topProduct: _topProduct,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Menu grid with lock indicators
+                      GridView.count(
+                        crossAxisCount: 3,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.85,
+                        children: menuItems.map((item) {
+                          return _MenuItem(
+                            label: item['label'] as String,
+                            icon: item['icon'] as String,
+                            access: item['access'] as String,
+                            onTap: () => _handleMenuTap(item['id'] as String),
+                            badgeCount: item['id'] == 'pesanan_online' ? _onlinePending : null,
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 76), // space for FAB
+                    ],
                   ),
-
-                // Profile card
-                ProfileStatsCard(
-                  initials: initials,
-                  userName: userName,
-                  role: roleText,
-                  branch: _storeName,
-                  attendanceStatus: attendanceText,
-                  salesValue: _omzet,
-                  transactionCount: _trxCount,
-                  avgValue: _avg,
-                  topProduct: _topProduct,
                 ),
-
-                const SizedBox(height: 16),
-
-                // Menu grid with lock indicators
-                GridView.count(
-                  crossAxisCount: 3,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.85,
-                  children: menuItems.map((item) {
-                    return _MenuItem(
-                      label: item['label'] as String,
-                      icon: item['icon'] as String,
-                      access: item['access'] as String,
-                      onTap: () => _handleMenuTap(item['id'] as String),
-                      badgeCount: item['id'] == 'pesanan_online' ? _onlinePending : null,
-                    );
-                  }).toList(),
-                ),
-
-                // Buka Kasir CTA — now handled by floating FAB
-              ],
+              ),
             ),
+          ],
+        ),
+      ),
+      // Big prominent floating Kasir button
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: FloatingActionButton.extended(
+            backgroundColor: NusaConfig.primaryColor,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.point_of_sale_rounded, size: 24),
+            label: const Text('Kasir',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            elevation: 6,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            onPressed: () => _bukaKasir(),
           ),
         ),
       ),
@@ -840,7 +856,7 @@ class _MenuItem extends StatelessWidget {
                       alignment: Alignment.center,
                       child: Text(
                         '$badgeCount',
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
                       ),
                     ),
                   ),

@@ -22,6 +22,10 @@ class AttendanceRepository {
     required String role,
     int? branchId,
     String? phone,
+    String? photoPath,
+    int? baseSalary,
+    DateTime? startDate,
+    String? status,
   }) {
     return db.into(db.employees).insert(EmployeesCompanion.insert(
           name: name,
@@ -29,6 +33,10 @@ class AttendanceRepository {
           role: role,
           branchId: Value(branchId),
           phone: Value(phone),
+          photoPath: Value(photoPath),
+          baseSalary: Value(baseSalary),
+          startDate: Value(startDate),
+          status: Value(status),
         ));
   }
 
@@ -38,6 +46,10 @@ class AttendanceRepository {
     required String pin,
     required String role,
     String? phone,
+    String? photoPath,
+    int? baseSalary,
+    DateTime? startDate,
+    String? status,
   }) =>
       (db.update(db.employees)..where((t) => t.id.equals(id))).write(
         EmployeesCompanion(
@@ -45,12 +57,21 @@ class AttendanceRepository {
           pin: Value(pin),
           role: Value(role),
           phone: Value(phone),
+          photoPath: Value(photoPath),
+          baseSalary: Value(baseSalary),
+          startDate: Value(startDate),
+          status: Value(status),
         ),
       );
 
   Future<void> updateEmployeePhone(int id, String phone) =>
       (db.update(db.employees)..where((t) => t.id.equals(id))).write(
         EmployeesCompanion(phone: Value(phone)),
+      );
+
+  Future<void> updateEmployeeStatus(int id, String status) =>
+      (db.update(db.employees)..where((t) => t.id.equals(id))).write(
+        EmployeesCompanion(status: Value(status)),
       );
 
   Future<void> deleteEmployee(int id) =>

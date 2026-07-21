@@ -79,6 +79,9 @@ class Employees extends Table {
   IntColumn get branchId => integer().nullable()();
   TextColumn get status => text().nullable()();
   TextColumn get phone => text().nullable()();
+  TextColumn get photoPath => text().nullable()();
+  IntColumn get baseSalary => integer().nullable()();
+  DateTimeColumn get startDate => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 class Attendance extends Table {

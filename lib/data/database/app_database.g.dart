@@ -3508,6 +3508,39 @@ class $EmployeesTable extends Employees
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _photoPathMeta = const VerificationMeta(
+    'photoPath',
+  );
+  @override
+  late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
+    'photo_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _baseSalaryMeta = const VerificationMeta(
+    'baseSalary',
+  );
+  @override
+  late final GeneratedColumn<int> baseSalary = GeneratedColumn<int>(
+    'base_salary',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3529,6 +3562,9 @@ class $EmployeesTable extends Employees
     branchId,
     status,
     phone,
+    photoPath,
+    baseSalary,
+    startDate,
     createdAt,
   ];
   @override
@@ -3588,6 +3624,24 @@ class $EmployeesTable extends Employees
         phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
       );
     }
+    if (data.containsKey('photo_path')) {
+      context.handle(
+        _photoPathMeta,
+        photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta),
+      );
+    }
+    if (data.containsKey('base_salary')) {
+      context.handle(
+        _baseSalaryMeta,
+        baseSalary.isAcceptableOrUnknown(data['base_salary']!, _baseSalaryMeta),
+      );
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3631,6 +3685,18 @@ class $EmployeesTable extends Employees
         DriftSqlType.string,
         data['${effectivePrefix}phone'],
       ),
+      photoPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_path'],
+      ),
+      baseSalary: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}base_salary'],
+      ),
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -3652,6 +3718,9 @@ class Employee extends DataClass implements Insertable<Employee> {
   final int? branchId;
   final String? status;
   final String? phone;
+  final String? photoPath;
+  final int? baseSalary;
+  final DateTime? startDate;
   final DateTime createdAt;
   const Employee({
     required this.id,
@@ -3661,6 +3730,9 @@ class Employee extends DataClass implements Insertable<Employee> {
     this.branchId,
     this.status,
     this.phone,
+    this.photoPath,
+    this.baseSalary,
+    this.startDate,
     required this.createdAt,
   });
   @override
@@ -3678,6 +3750,15 @@ class Employee extends DataClass implements Insertable<Employee> {
     }
     if (!nullToAbsent || phone != null) {
       map['phone'] = Variable<String>(phone);
+    }
+    if (!nullToAbsent || photoPath != null) {
+      map['photo_path'] = Variable<String>(photoPath);
+    }
+    if (!nullToAbsent || baseSalary != null) {
+      map['base_salary'] = Variable<int>(baseSalary);
+    }
+    if (!nullToAbsent || startDate != null) {
+      map['start_date'] = Variable<DateTime>(startDate);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -3698,6 +3779,15 @@ class Employee extends DataClass implements Insertable<Employee> {
       phone: phone == null && nullToAbsent
           ? const Value.absent()
           : Value(phone),
+      photoPath: photoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoPath),
+      baseSalary: baseSalary == null && nullToAbsent
+          ? const Value.absent()
+          : Value(baseSalary),
+      startDate: startDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startDate),
       createdAt: Value(createdAt),
     );
   }
@@ -3715,6 +3805,9 @@ class Employee extends DataClass implements Insertable<Employee> {
       branchId: serializer.fromJson<int?>(json['branchId']),
       status: serializer.fromJson<String?>(json['status']),
       phone: serializer.fromJson<String?>(json['phone']),
+      photoPath: serializer.fromJson<String?>(json['photoPath']),
+      baseSalary: serializer.fromJson<int?>(json['baseSalary']),
+      startDate: serializer.fromJson<DateTime?>(json['startDate']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -3729,6 +3822,9 @@ class Employee extends DataClass implements Insertable<Employee> {
       'branchId': serializer.toJson<int?>(branchId),
       'status': serializer.toJson<String?>(status),
       'phone': serializer.toJson<String?>(phone),
+      'photoPath': serializer.toJson<String?>(photoPath),
+      'baseSalary': serializer.toJson<int?>(baseSalary),
+      'startDate': serializer.toJson<DateTime?>(startDate),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -3741,6 +3837,9 @@ class Employee extends DataClass implements Insertable<Employee> {
     Value<int?> branchId = const Value.absent(),
     Value<String?> status = const Value.absent(),
     Value<String?> phone = const Value.absent(),
+    Value<String?> photoPath = const Value.absent(),
+    Value<int?> baseSalary = const Value.absent(),
+    Value<DateTime?> startDate = const Value.absent(),
     DateTime? createdAt,
   }) => Employee(
     id: id ?? this.id,
@@ -3750,6 +3849,9 @@ class Employee extends DataClass implements Insertable<Employee> {
     branchId: branchId.present ? branchId.value : this.branchId,
     status: status.present ? status.value : this.status,
     phone: phone.present ? phone.value : this.phone,
+    photoPath: photoPath.present ? photoPath.value : this.photoPath,
+    baseSalary: baseSalary.present ? baseSalary.value : this.baseSalary,
+    startDate: startDate.present ? startDate.value : this.startDate,
     createdAt: createdAt ?? this.createdAt,
   );
   Employee copyWithCompanion(EmployeesCompanion data) {
@@ -3761,6 +3863,11 @@ class Employee extends DataClass implements Insertable<Employee> {
       branchId: data.branchId.present ? data.branchId.value : this.branchId,
       status: data.status.present ? data.status.value : this.status,
       phone: data.phone.present ? data.phone.value : this.phone,
+      photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
+      baseSalary: data.baseSalary.present
+          ? data.baseSalary.value
+          : this.baseSalary,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -3775,14 +3882,28 @@ class Employee extends DataClass implements Insertable<Employee> {
           ..write('branchId: $branchId, ')
           ..write('status: $status, ')
           ..write('phone: $phone, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('baseSalary: $baseSalary, ')
+          ..write('startDate: $startDate, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, pin, role, branchId, status, phone, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    pin,
+    role,
+    branchId,
+    status,
+    phone,
+    photoPath,
+    baseSalary,
+    startDate,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3794,6 +3915,9 @@ class Employee extends DataClass implements Insertable<Employee> {
           other.branchId == this.branchId &&
           other.status == this.status &&
           other.phone == this.phone &&
+          other.photoPath == this.photoPath &&
+          other.baseSalary == this.baseSalary &&
+          other.startDate == this.startDate &&
           other.createdAt == this.createdAt);
 }
 
@@ -3805,6 +3929,9 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
   final Value<int?> branchId;
   final Value<String?> status;
   final Value<String?> phone;
+  final Value<String?> photoPath;
+  final Value<int?> baseSalary;
+  final Value<DateTime?> startDate;
   final Value<DateTime> createdAt;
   const EmployeesCompanion({
     this.id = const Value.absent(),
@@ -3814,6 +3941,9 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     this.branchId = const Value.absent(),
     this.status = const Value.absent(),
     this.phone = const Value.absent(),
+    this.photoPath = const Value.absent(),
+    this.baseSalary = const Value.absent(),
+    this.startDate = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   EmployeesCompanion.insert({
@@ -3824,6 +3954,9 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     this.branchId = const Value.absent(),
     this.status = const Value.absent(),
     this.phone = const Value.absent(),
+    this.photoPath = const Value.absent(),
+    this.baseSalary = const Value.absent(),
+    this.startDate = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        pin = Value(pin),
@@ -3836,6 +3969,9 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     Expression<int>? branchId,
     Expression<String>? status,
     Expression<String>? phone,
+    Expression<String>? photoPath,
+    Expression<int>? baseSalary,
+    Expression<DateTime>? startDate,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -3846,6 +3982,9 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
       if (branchId != null) 'branch_id': branchId,
       if (status != null) 'status': status,
       if (phone != null) 'phone': phone,
+      if (photoPath != null) 'photo_path': photoPath,
+      if (baseSalary != null) 'base_salary': baseSalary,
+      if (startDate != null) 'start_date': startDate,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -3858,6 +3997,9 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     Value<int?>? branchId,
     Value<String?>? status,
     Value<String?>? phone,
+    Value<String?>? photoPath,
+    Value<int?>? baseSalary,
+    Value<DateTime?>? startDate,
     Value<DateTime>? createdAt,
   }) {
     return EmployeesCompanion(
@@ -3868,6 +4010,9 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
       branchId: branchId ?? this.branchId,
       status: status ?? this.status,
       phone: phone ?? this.phone,
+      photoPath: photoPath ?? this.photoPath,
+      baseSalary: baseSalary ?? this.baseSalary,
+      startDate: startDate ?? this.startDate,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -3896,6 +4041,15 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     if (phone.present) {
       map['phone'] = Variable<String>(phone.value);
     }
+    if (photoPath.present) {
+      map['photo_path'] = Variable<String>(photoPath.value);
+    }
+    if (baseSalary.present) {
+      map['base_salary'] = Variable<int>(baseSalary.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -3912,6 +4066,9 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
           ..write('branchId: $branchId, ')
           ..write('status: $status, ')
           ..write('phone: $phone, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('baseSalary: $baseSalary, ')
+          ..write('startDate: $startDate, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -11749,6 +11906,9 @@ typedef $$EmployeesTableCreateCompanionBuilder =
       Value<int?> branchId,
       Value<String?> status,
       Value<String?> phone,
+      Value<String?> photoPath,
+      Value<int?> baseSalary,
+      Value<DateTime?> startDate,
       Value<DateTime> createdAt,
     });
 typedef $$EmployeesTableUpdateCompanionBuilder =
@@ -11760,6 +11920,9 @@ typedef $$EmployeesTableUpdateCompanionBuilder =
       Value<int?> branchId,
       Value<String?> status,
       Value<String?> phone,
+      Value<String?> photoPath,
+      Value<int?> baseSalary,
+      Value<DateTime?> startDate,
       Value<DateTime> createdAt,
     });
 
@@ -11804,6 +11967,21 @@ class $$EmployeesTableFilterComposer
 
   ColumnFilters<String> get phone => $composableBuilder(
     column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get baseSalary => $composableBuilder(
+    column: $table.baseSalary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11857,6 +12035,21 @@ class $$EmployeesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get baseSalary => $composableBuilder(
+    column: $table.baseSalary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -11892,6 +12085,17 @@ class $$EmployeesTableAnnotationComposer
 
   GeneratedColumn<String> get phone =>
       $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get photoPath =>
+      $composableBuilder(column: $table.photoPath, builder: (column) => column);
+
+  GeneratedColumn<int> get baseSalary => $composableBuilder(
+    column: $table.baseSalary,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -11932,6 +12136,9 @@ class $$EmployeesTableTableManager
                 Value<int?> branchId = const Value.absent(),
                 Value<String?> status = const Value.absent(),
                 Value<String?> phone = const Value.absent(),
+                Value<String?> photoPath = const Value.absent(),
+                Value<int?> baseSalary = const Value.absent(),
+                Value<DateTime?> startDate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => EmployeesCompanion(
                 id: id,
@@ -11941,6 +12148,9 @@ class $$EmployeesTableTableManager
                 branchId: branchId,
                 status: status,
                 phone: phone,
+                photoPath: photoPath,
+                baseSalary: baseSalary,
+                startDate: startDate,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -11952,6 +12162,9 @@ class $$EmployeesTableTableManager
                 Value<int?> branchId = const Value.absent(),
                 Value<String?> status = const Value.absent(),
                 Value<String?> phone = const Value.absent(),
+                Value<String?> photoPath = const Value.absent(),
+                Value<int?> baseSalary = const Value.absent(),
+                Value<DateTime?> startDate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => EmployeesCompanion.insert(
                 id: id,
@@ -11961,6 +12174,9 @@ class $$EmployeesTableTableManager
                 branchId: branchId,
                 status: status,
                 phone: phone,
+                photoPath: photoPath,
+                baseSalary: baseSalary,
+                startDate: startDate,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

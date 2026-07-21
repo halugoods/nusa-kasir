@@ -227,7 +227,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Tren Pendapatan',
+                      Text('Candlestick Pendapatan',
                           style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -258,7 +258,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                       getTitlesWidget: (v, meta) => Text(
                                           formatRupiah(v.toInt()),
                                           style: TextStyle(
-                                              fontSize: 10, color: textTer)))),
+                                              fontSize: 11, color: textTer)))),
                               topTitles: AxisTitles(
                                   sideTitles: SideTitles(showTitles: false)),
                               rightTitles: AxisTitles(
@@ -610,9 +610,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       return BarChartGroupData(x: i, barRods: [
         BarChartRodData(
             toY: entries[i].value.toDouble(),
-            color: NusaConfig.primaryColor,
+            color: NusaConfig.primaryColor.withValues(alpha: 0.8),
             width: entries.length > 15 ? 8 : 14,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(4))),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4), bottom: Radius.circular(4)),
+            borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 1.5)),
       ]);
     });
   }
@@ -622,9 +623,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       return BarChartGroupData(x: i, barRods: [
         BarChartRodData(
             toY: entries[i].value.toDouble(),
-            color: NusaConfig.primaryColor,
+            color: NusaConfig.primaryColor.withValues(alpha: 0.8),
             width: 22,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(6))),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(6), bottom: Radius.circular(6)),
+            borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 1.5)),
       ]);
     });
   }
@@ -642,12 +644,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           final wd = dt.weekday - 1;
           if (wd >= 0 && wd < 7) {
             return Text(names[wd],
-                style: TextStyle(fontSize: 9, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary));
+                style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary));
           }
         }
       }
       return Text('${parts[2]}/${parts[1]}',
-          style: TextStyle(fontSize: 9, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary));
+          style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary));
     }
     return const SizedBox.shrink();
   }
@@ -845,23 +847,29 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       'Laporan',
       Column(children: [
         const SizedBox(height: 6),
-        // Row: Tabs (left) + period dropdown (right)
+        // Row: Tabs (left, in 1 card) + period dropdown (right, card style)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(children: [
-            // Tabs as toggle-style switches
-            _tabChip('Penjualan', 0, isDark: isDark),
-            const SizedBox(width: 8),
-            _tabChip('Laba Rugi', 1, isDark: isDark),
-            const Spacer(),
-            // Period dropdown
-            Icon(Icons.calendar_today_rounded, size: 18,
-                color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 160,
-              child: _periodDropdown(isDark),
+            // Segmented toggle in 1 card
+            Expanded(
+              child: Container(
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+                ),
+                child: Row(children: [
+                  _segBtn('Penjualan', 0, isDark: isDark),
+                  _segBtn('Laba Rugi', 1, isDark: isDark),
+                ]),
+              ),
             ),
+            const SizedBox(width: 8),
+            // Period dropdown card-style
+            _periodDropdown(isDark),
           ]),
         ),
         const SizedBox(height: 2),
@@ -878,56 +886,72 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Widget _periodDropdown(bool isDark) {
     final items = _periodOptions.map((p) => DropdownMenuItem(
       value: p,
-      child: Text(p, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
-          color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+      child: Text(p, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
     )).toList();
 
-    return DropdownButtonHideUnderline(
-      child: DropdownButton<String>(
-        value: _periodOptions.contains(_period) ? _period : 'Custom',
-        isExpanded: true,
-        isDense: true,
-        icon: Icon(Icons.expand_more, size: 20,
-            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
-            color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-        dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        underline: const SizedBox.shrink(),
-        items: items,
-        onChanged: (v) {
-          if (v == null) return;
-          if (v == 'Custom') {
-            _pickDateRange();
-            return;
-          }
-          setState(() {
-            _period = v;
-            _customFrom = null;
-            _customTo = null;
-            _refreshKey++;
-          });
-        },
+    return Container(
+      height: 36,
+      constraints: const BoxConstraints(maxWidth: 150),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _periodOptions.contains(_period) ? _period : 'Custom',
+          isExpanded: true,
+          isDense: true,
+          icon: Icon(Icons.expand_more_rounded, size: 18,
+              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+          dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          underline: const SizedBox.shrink(),
+          items: items,
+          onChanged: (v) {
+            if (v == null) return;
+            if (v == 'Custom') {
+              _pickDateRange();
+              return;
+            }
+            setState(() {
+              _period = v;
+              _customFrom = null;
+              _customTo = null;
+              _refreshKey++;
+            });
+          },
+        ),
       ),
     );
   }
 
-  Widget _tabChip(String label, int idx, {bool isDark = false}) {
+  Widget _segBtn(String label, int idx, {bool isDark = false}) {
     final sel = idx == _tab;
-    return FilterChip(
-      label: Text(label),
-      selected: sel,
-      showCheckmark: false,
-      selectedColor: NusaConfig.primaryColor,
-      checkmarkColor: Colors.white,
-      labelStyle: TextStyle(
-        color: sel
-            ? Colors.white
-            : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-        fontWeight: FontWeight.w600,
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _tab = idx),
+        child: Container(
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: sel ? NusaConfig.primaryColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: sel
+                    ? Colors.white
+                    : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+              )),
+        ),
       ),
-      backgroundColor: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-      onSelected: (_) => setState(() => _tab = idx),
     );
   }
 }
@@ -1046,7 +1070,7 @@ class _TxCard extends StatelessWidget {
                         ),
                         child: const Text('VOID',
                             style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: NusaConfig.primaryColor)),
                       ),

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -6,12 +7,12 @@ import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
+import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _avatarColors2 = [
@@ -206,20 +207,63 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       'Presensi',
       Column(children: [
         const SizedBox(height: 6),
-        // Tab switch + filter row
+        // Tab switch (1 card) + dropdown filter in one row
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(children: [
-            _tabChip('Hari Ini', 0, isDark: isDark),
-            const SizedBox(width: 8),
-            _tabChip('Riwayat', 1, isDark: isDark),
-            const Spacer(),
-            if (_tab == 0) _roleDropdown(isDark),
+            // Segmented toggle: Hari Ini / Riwayat in 1 card
+            Expanded(
+              child: Container(
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+                ),
+                child: Row(children: [
+                  _segBtn('Hari Ini', 0, isDark: isDark),
+                  _segBtn('Riwayat', 1, isDark: isDark),
+                ]),
+              ),
+            ),
+            if (_tab == 0) ...[
+              const SizedBox(width: 8),
+              _roleDropdown(isDark),
+            ],
           ]),
         ),
         const SizedBox(height: 6),
         Expanded(child: _tab == 0 ? _todayTab(isDark, isOwner) : _historyTab(isDark)),
       ]),
+    );
+  }
+
+  Widget _segBtn(String label, int idx, {bool isDark = false}) {
+    final sel = idx == _tab;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() {
+          _tab = idx;
+          if (idx == 1) _loadHistory();
+        }),
+        child: Container(
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: sel ? NusaConfig.primaryColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: sel
+                    ? Colors.white
+                    : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+              )),
+        ),
+      ),
     );
   }
 
@@ -244,14 +288,46 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         ),
       ),
       const SizedBox(height: 8),
-      // Search bar
+      // Search bar — placeholder style, not NusaInput
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-        child: NusaInput(
-          'Cari nama karyawan...',
-          controller: _searchCtrl,
-          prefixIcon: Icon(Icons.search, size: 20,
-              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+            borderRadius: BorderRadius.circular(NusaConfig.radiusXL),
+            border: Border.all(
+              color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder,
+            ),
+          ),
+          child: TextField(
+            controller: _searchCtrl,
+            style: TextStyle(fontSize: 15,
+                color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+            decoration: InputDecoration(
+              hintText: 'Cari nama karyawan...',
+              hintStyle: TextStyle(
+                fontSize: 15,
+                color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
+              ),
+              prefixIcon: Icon(Icons.search_rounded, size: 22,
+                  color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+              suffixIcon: _query.isNotEmpty
+                  ? GestureDetector(
+                      onTap: () {
+                        _searchCtrl.clear();
+                        setState(() => _query = '');
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Icon(Icons.clear_rounded, size: 20,
+                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                      ),
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+          ),
         ),
       ),
       const SizedBox(height: 8),
@@ -315,16 +391,24 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            // Avatar
+            // Avatar — bigger, supports photo
             Container(
-              width: 44, height: 44,
+              width: 48, height: 48,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 color: _avatarCol(e.name).withValues(alpha: 0.15),
+                image: e.photoPath != null && e.photoPath!.isNotEmpty
+                    ? DecorationImage(
+                        image: FileImage(File(e.photoPath!)),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
               alignment: Alignment.center,
-              child: Text(e.name[0].toUpperCase(),
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _avatarCol(e.name))),
+              child: (e.photoPath == null || e.photoPath!.isEmpty)
+                  ? Text(e.name[0].toUpperCase(),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _avatarCol(e.name)))
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -333,15 +417,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   Expanded(child: Text(e.name,
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
                           color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
-                  // Status dot + label
+                  // Status badge — more prominent
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(statusLabel,
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor)),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: statusColor)),
                   ),
                 ]),
                 const SizedBox(height: 2),
@@ -352,20 +436,20 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       color: NusaConfig.primaryColor.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(e.role, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
+                    child: Text(e.role, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
                   ),
                   if (hasPhone) ...[
                     const SizedBox(width: 6),
                     Icon(Icons.phone_android, size: 12, color: const Color(0xFF25D366).withValues(alpha: 0.7)),
                     const SizedBox(width: 2),
-                    Text(e.phone!, style: TextStyle(fontSize: 10, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                    Text(e.phone!, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
                   ],
                 ]),
               ]),
             ),
           ]),
           const SizedBox(height: 10),
-          // Time info
+          // Time info — bigger fonts
           Wrap(spacing: 10, runSpacing: 6, children: [
             _infoBadge(Icons.login_rounded, 'Masuk', inTime ?? '-',
                 color: inTime != null ? NusaConfig.accentGreen : null, isDark: isDark),
@@ -380,12 +464,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           // Action buttons
           Row(children: [
             Expanded(
-              child: _actionBtn('Absen Masuk', NusaConfig.accentGreen,
+              child: _actionBtn(Icons.login_rounded, 'Absen Masuk', NusaConfig.accentGreen,
                   enabled: !isCheckedIn && !isIzin, onTap: () => _checkIn(e)),
             ),
             const SizedBox(width: 6),
             Expanded(
-              child: _actionBtn('Absen Pulang', const Color(0xFFEF4444),
+              child: _actionBtn(Icons.logout_rounded, 'Absen Pulang', const Color(0xFFEF4444),
                   enabled: isCheckedIn && !isCheckedOut && !isIzin, onTap: () => _checkOut(e)),
             ),
             if (isOwner && !isCheckedIn && !isIzin) ...[
@@ -424,19 +508,18 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     }
 
     // Calculate overall sums
-    int totalHadir = 0, totalTerlambat = 0, totalIzin = 0, totalAlpha = 0, totalJam = 0, totalMenit = 0;
+    int totalHadir = 0, totalTerlambat = 0, totalIzin = 0, totalAlpha = 0;
     for (final v in _monthlySummary.values) {
       totalHadir += (v['hadir'] as int?) ?? 0;
       totalTerlambat += (v['terlambat'] as int?) ?? 0;
       totalIzin += (v['izin'] as int?) ?? 0;
       totalAlpha += (v['alpha'] as int?) ?? 0;
-      totalJam += (v['totalJam'] as int?) ?? 0;
-      totalMenit += (v['totalMenit'] as int?) ?? 0;
     }
-    totalJam += totalMenit ~/ 60;
-    totalMenit = totalMenit % 60;
 
     final monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    // Build calendar grid data per employee
+    final daysInMonth = DateTime(_histYear, _histMonth + 1, 0).day;
 
     return RefreshIndicator(
       onRefresh: _loadHistory,
@@ -444,60 +527,61 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          // Month picker
-          Row(children: [
-            Icon(Icons.calendar_month_outlined, size: 18, color: textSec),
-            const SizedBox(width: 10),
-            Expanded(
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<Map<String, int>>(
-                  value: monthOptions.firstWhere(
-                    (o) => o['year'] == _histYear && o['month'] == _histMonth,
-                    orElse: () => monthOptions.first,
-                  ),
-                  isExpanded: true,
-                  isDense: true,
-                  icon: Icon(Icons.expand_more, size: 20, color: textSec),
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textPri),
-                  dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  underline: const SizedBox.shrink(),
-                  items: monthOptions.map((o) => DropdownMenuItem(
-                    value: o,
-                    child: Text('${monthNames[o['month']!]} ${o['year']}',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textPri)),
-                  )).toList(),
-                  onChanged: (v) {
-                    if (v == null) return;
-                    setState(() { _histYear = v['year']!; _histMonth = v['month']!; });
-                    _loadHistory();
-                  },
+          // Month picker — card style
+          Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: surf,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: border),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<Map<String, int>>(
+                value: monthOptions.firstWhere(
+                  (o) => o['year'] == _histYear && o['month'] == _histMonth,
+                  orElse: () => monthOptions.first,
                 ),
+                isExpanded: true,
+                isDense: true,
+                icon: Icon(Icons.expand_more_rounded, size: 18, color: textTer),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSec),
+                dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                underline: const SizedBox.shrink(),
+                items: monthOptions.map((o) => DropdownMenuItem(
+                  value: o,
+                  child: Text('${monthNames[o['month']!]} ${o['year']}',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textPri)),
+                )).toList(),
+                onChanged: (v) {
+                  if (v == null) return;
+                  setState(() { _histYear = v['year']!; _histMonth = v['month']!; });
+                  _loadHistory();
+                },
               ),
             ),
-          ]),
+          ),
           const SizedBox(height: 12),
 
-          // Overall summary cards
+          // Overall summary chips — 4 chips only
           if (_monthlySummary.isNotEmpty) ...[
             Wrap(spacing: 6, runSpacing: 6, children: [
               _sumChip('$totalHadir Hadir', NusaConfig.accentGreen),
               _sumChip('$totalTerlambat Terlambat', NusaConfig.accentGold),
               _sumChip('$totalIzin Izin', const Color(0xFF3B82F6)),
               _sumChip('$totalAlpha Alpha', NusaConfig.primaryColor),
-              _sumChip('${totalJam}h ${totalMenit}m Kerja', const Color(0xFF8B5CF6)),
             ]),
             const SizedBox(height: 16),
           ],
 
-          // Employee list with progress
+          // Employee list with calendar-style attendance
           if (_historyGrouped.isEmpty)
             const EmptyState(icon: Icons.no_accounts_outlined, message: 'Belum ada data presensi bulan ini'),
 
           ..._historyGrouped.entries.map((entry) {
             final empName = entry.key;
             final atts = entry.value;
-            // Find employee data
             final emp = _employees.cast<Employee?>().firstWhere((e) => e!.name == empName, orElse: () => null);
             final ms = emp != null ? (_monthlySummary[emp.id] ?? {}) : <String, dynamic>{};
             final hadir = (ms['hadir'] as int?) ?? 0;
@@ -508,6 +592,26 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             final ratio = totalHari > 0 ? (hadir + terlambat) / totalHari : 0.0;
             final empRole = emp?.role ?? '';
             final empPhone = emp?.phone;
+
+            // Build day-by-day map for this employee
+            final dayStatus = <int, String>{};
+            for (final a in atts) {
+              if (a.status == 'Izin' || a.status == 'Sakit') {
+                dayStatus[a.date.day] = 'izin';
+              } else if (a.checkOut != null) {
+                dayStatus[a.date.day] = 'hadir';
+              } else if (a.checkIn != null) {
+                // Check terlambat
+                final parts = a.checkIn!.split(':');
+                final h = int.tryParse(parts.isNotEmpty ? parts[0] : '0') ?? 0;
+                final m = parts.length >= 2 ? (int.tryParse(parts[1]) ?? 0) : 0;
+                if (h > 8 || (h == 8 && m > 15)) {
+                  dayStatus[a.date.day] = 'terlambat';
+                } else {
+                  dayStatus[a.date.day] = 'hadir';
+                }
+              }
+            }
 
             return Container(
               margin: const EdgeInsets.only(bottom: 14),
@@ -525,10 +629,18 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       color: _avatarCol(empName).withValues(alpha: 0.15),
+                      image: emp?.photoPath != null && emp!.photoPath!.isNotEmpty
+                          ? DecorationImage(
+                              image: FileImage(File(emp.photoPath!)),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
                     alignment: Alignment.center,
-                    child: Text(empName[0].toUpperCase(),
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _avatarCol(empName))),
+                    child: (emp?.photoPath == null || emp!.photoPath!.isEmpty || emp == null)
+                        ? Text(empName[0].toUpperCase(),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _avatarCol(empName)))
+                        : null,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -538,7 +650,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                         Text(empRole, style: TextStyle(fontSize: 11, color: textTer)),
                     ]),
                   ),
-                  if (empPhone != null && empPhone.isNotEmpty)
+                  // Ratio text
+                  Text('${(ratio * 100).toStringAsFixed(0)}%',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
+                          color: ratio >= 0.8 ? NusaConfig.accentGreen : ratio >= 0.5 ? NusaConfig.accentGold : NusaConfig.primaryColor)),
+                  if (empPhone != null && empPhone.isNotEmpty) ...[
+                    const SizedBox(width: 6),
                     GestureDetector(
                       onTap: () async {
                         final clean = empPhone.replaceAll(RegExp(r'[^0-9]'), '');
@@ -555,64 +672,46 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                           color: const Color(0xFF25D366).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text('WA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF25D366))),
+                        child: const Text('WA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF25D366))),
                       ),
                     ),
+                  ],
                 ]),
                 const SizedBox(height: 10),
 
-                // Progress bar
+                // Linear progress bar
                 Row(children: [
-                  SizedBox(
-                    width: 12, height: 12,
-                    child: CircularProgressIndicator(
-                      value: ratio.clamp(0.0, 1.0),
-                      strokeWidth: 2,
-                      backgroundColor: NusaConfig.primaryColor.withValues(alpha: 0.12),
-                      valueColor: AlwaysStoppedAnimation(
-                          ratio >= 0.8 ? NusaConfig.accentGreen : ratio >= 0.5 ? NusaConfig.accentGold : NusaConfig.primaryColor),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: ratio.clamp(0.0, 1.0),
+                        backgroundColor: NusaConfig.primaryColor.withValues(alpha: 0.12),
+                        valueColor: AlwaysStoppedAnimation(
+                            ratio >= 0.8 ? NusaConfig.accentGreen : ratio >= 0.5 ? NusaConfig.accentGold : NusaConfig.primaryColor),
+                        minHeight: 6,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Text('${(ratio * 100).toStringAsFixed(0)}% kehadiran ($hadir H / $terlambat T / $izin I / $alpha A)',
+                  const SizedBox(width: 10),
+                  Text('$hadir H / $terlambat T / $izin I / $alpha A',
                       style: TextStyle(fontSize: 11, color: textSec)),
                 ]),
 
-                // Attendance list
+                // Mini calendar grid — current month
                 if (atts.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  // Day-of-week headers
+                  Row(
+                    children: ['Sn', 'Sl', 'Rb', 'Km', 'Jm', 'Sb', 'Mn'].map((d) => Expanded(
+                      child: Center(child: Text(d, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textTer))),
+                    )).toList(),
+                  ),
                   const SizedBox(height: 4),
-                  ...atts.map((a) {
-                    final dateLabel = '${a.date.day}/${a.date.month}';
-                    final inT = a.checkIn ?? '-';
-                    final outT = a.checkOut ?? '-';
-                    final isIzin = a.status == 'Izin' || a.status == 'Sakit';
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(children: [
-                        SizedBox(width: 48, child: Text(dateLabel, style: TextStyle(fontSize: 12, color: textSec))),
-                        Icon(Icons.login, size: 12, color: a.checkIn != null ? NusaConfig.accentGreen : textTer),
-                        const SizedBox(width: 4),
-                        SizedBox(width: 40, child: Text(inT, style: TextStyle(fontSize: 11, color: textPri))),
-                        const SizedBox(width: 6),
-                        Icon(Icons.logout, size: 12, color: a.checkOut != null ? NusaConfig.accentGreen : textTer),
-                        const SizedBox(width: 4),
-                        SizedBox(width: 40, child: Text(outT, style: TextStyle(fontSize: 11, color: textPri))),
-                        if (isIzin) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(a.status ?? 'Izin', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFF3B82F6))),
-                          ),
-                        ],
-                      ]),
-                    );
-                  }),
+                  // Calendar grid
+                  ..._buildCalendarGrid(_histYear, _histMonth, dayStatus, isDark),
                 ],
               ]),
             );
@@ -623,46 +722,110 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     );
   }
 
-  // ── Helper Widgets ──────────────────────────────────────────────────
+  List<Widget> _buildCalendarGrid(int year, int month, Map<int, String> dayStatus, bool isDark) {
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final firstWeekday = DateTime(year, month, 1).weekday; // 1=Mon, 7=Sun
+    final textSec = isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
+    final textTer = isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary;
 
-  Widget _tabChip(String label, int idx, {bool isDark = false}) {
-    final sel = idx == _tab;
-    return FilterChip(
-      label: Text(label),
-      selected: sel,
-      showCheckmark: false,
-      selectedColor: NusaConfig.primaryColor,
-      checkmarkColor: Colors.white,
-      labelStyle: TextStyle(
-        color: sel ? Colors.white : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-        fontWeight: FontWeight.w600,
+    final rows = <TableRow>[];
+    var cells = <Widget>[];
+    // Leading empty cells
+    for (var i = 1; i < firstWeekday; i++) {
+      cells.add(const SizedBox.shrink());
+    }
+    // Day cells
+    for (var d = 1; d <= daysInMonth; d++) {
+      final status = dayStatus[d];
+      final dot = status != null ? _attDot(status) : null;
+      final isToday = year == DateTime.now().year && month == DateTime.now().month && d == DateTime.now().day;
+
+      cells.add(Container(
+        padding: const EdgeInsets.all(3),
+        decoration: isToday
+            ? BoxDecoration(
+                color: NusaConfig.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(4),
+              )
+            : null,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('$d', style: TextStyle(fontSize: 11, fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+              color: isToday ? NusaConfig.primaryColor : (status != null ? textSec : textTer))),
+          if (dot != null) dot,
+        ]),
+      ));
+
+      if (cells.length == 7) {
+        rows.add(TableRow(children: cells));
+        cells = [];
+      }
+    }
+    // Pad last row
+    if (cells.isNotEmpty) {
+      while (cells.length < 7) {
+        cells.add(const SizedBox.shrink());
+      }
+      rows.add(TableRow(children: cells));
+    }
+    rows.insert(0, const TableRow(children: [SizedBox(height: 2)]));
+
+    return [
+      Table(
+        columnWidths: const {
+          0: FlexColumnWidth(1), 1: FlexColumnWidth(1), 2: FlexColumnWidth(1),
+          3: FlexColumnWidth(1), 4: FlexColumnWidth(1), 5: FlexColumnWidth(1), 6: FlexColumnWidth(1),
+        },
+        children: rows,
       ),
-      backgroundColor: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-      onSelected: (_) => setState(() {
-        _tab = idx;
-        if (idx == 1) _loadHistory();
-      }),
+    ];
+  }
+
+  Widget _attDot(String status) {
+    Color c;
+    switch (status) {
+      case 'hadir': c = NusaConfig.accentGreen; break;
+      case 'terlambat': c = NusaConfig.accentGold; break;
+      case 'izin': c = const Color(0xFF3B82F6); break;
+      default: c = NusaConfig.primaryColor;
+    }
+    return Container(
+      width: 5, height: 5,
+      margin: const EdgeInsets.only(top: 1),
+      decoration: BoxDecoration(color: c, shape: BoxShape.circle),
     );
   }
 
+  // ── Helper Widgets ──────────────────────────────────────────────────
+
   Widget _roleDropdown(bool isDark) {
-    return DropdownButtonHideUnderline(
-      child: DropdownButton<String>(
-        value: _roleOptions.contains(_roleFilter) ? _roleFilter : 'Semua',
-        isDense: true,
-        icon: Icon(Icons.filter_list, size: 18,
-            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-            color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-        dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        underline: const SizedBox.shrink(),
-        items: _roleOptions.map((r) => DropdownMenuItem(
-          value: r,
-          child: Text(r, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-              color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
-        )).toList(),
-        onChanged: (v) => setState(() => _roleFilter = v ?? 'Semua'),
+    return Container(
+      height: 36,
+      constraints: const BoxConstraints(maxWidth: 130),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _roleOptions.contains(_roleFilter) ? _roleFilter : 'Semua',
+          isDense: true,
+          icon: Icon(Icons.expand_more_rounded, size: 18,
+              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+          dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          underline: const SizedBox.shrink(),
+          items: _roleOptions.map((r) => DropdownMenuItem(
+            value: r,
+            child: Text(r, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+          )).toList(),
+          onChanged: (v) => setState(() => _roleFilter = v ?? 'Semua'),
+        ),
       ),
     );
   }
@@ -676,7 +839,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
       ),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
+        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
             color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
         const SizedBox(height: 2),
         Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color, height: 1.1)),
@@ -697,30 +860,32 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   Widget _infoBadge(IconData icon, String label, String value, {Color? color, bool isDark = false}) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 13, color: color ?? (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+      Icon(icon, size: 14, color: color ?? (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
       const SizedBox(width: 4),
       Text(value,
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
               color: color ?? (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
     ]);
   }
 
-  Widget _actionBtn(String label, Color color, {required bool enabled, required VoidCallback onTap}) {
+  Widget _actionBtn(IconData icon, String label, Color color, {required bool enabled, required VoidCallback onTap}) {
     return SizedBox(
-      height: 34,
-      child: ElevatedButton(
+      height: 36,
+      child: ElevatedButton.icon(
         onPressed: enabled ? onTap : null,
+        icon: Icon(icon, size: 16),
+        label: Text(label),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
           disabledBackgroundColor: color.withValues(alpha: 0.25),
           disabledForegroundColor: Colors.white54,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           minimumSize: Size.zero,
+          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -731,12 +896,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       child: Tooltip(
         message: tooltip,
         child: Container(
-          width: 34, height: 34,
+          width: 36, height: 36,
           decoration: BoxDecoration(
             color: NusaConfig.primaryColor.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, size: 16, color: NusaConfig.primaryColor),
+          child: Icon(icon, size: 18, color: NusaConfig.primaryColor),
         ),
       ),
     );
