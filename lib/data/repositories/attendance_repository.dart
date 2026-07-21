@@ -13,17 +13,22 @@ class AttendanceRepository {
             ]))
           .get();
 
+  Future<Employee?> getEmployee(int id) =>
+      (db.select(db.employees)..where((t) => t.id.equals(id))).getSingleOrNull();
+
   Future<int> addEmployee({
     required String name,
     required String pin,
     required String role,
     int? branchId,
+    String? phone,
   }) {
     return db.into(db.employees).insert(EmployeesCompanion.insert(
           name: name,
           pin: pin,
           role: role,
           branchId: Value(branchId),
+          phone: Value(phone),
         ));
   }
 
@@ -32,13 +37,20 @@ class AttendanceRepository {
     required String name,
     required String pin,
     required String role,
+    String? phone,
   }) =>
       (db.update(db.employees)..where((t) => t.id.equals(id))).write(
         EmployeesCompanion(
           name: Value(name),
           pin: Value(pin),
           role: Value(role),
+          phone: Value(phone),
         ),
+      );
+
+  Future<void> updateEmployeePhone(int id, String phone) =>
+      (db.update(db.employees)..where((t) => t.id.equals(id))).write(
+        EmployeesCompanion(phone: Value(phone)),
       );
 
   Future<void> deleteEmployee(int id) =>
@@ -56,6 +68,53 @@ class AttendanceRepository {
           ..limit(1))
         .get();
     return list.isNotEmpty ? list.first : null;
+  }
+
+  /// Get today's attendance for ALL employees.
+  Future<Map<int, AttendanceData?>> getAllToday() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final list = await (db.select(db.attendance)
+          ..where((t) => t.date.isBiggerThanValue(today)))
+        .get();
+    final map = <int, AttendanceData?>{};
+    for (final a in list) {
+      if (!map.containsKey(a.employeeId)) {
+        map[a.employeeId] = a;
+      }
+    }
+    return map;
+  }
+
+  /// Today's summary: {hadir, terlambat, izin, belum}
+  Future<Map<String, int>> getTodaySummary() async {
+    final emps = await getEmployees();
+    final todayMap = await getAllToday();
+    int hadir = 0, terlambat = 0, izin = 0, belum = 0;
+    for (final e in emps) {
+      final att = todayMap[e.id];
+      if (att == null || att.checkIn == null) {
+        if (att?.status == 'Izin' || att?.status == 'Sakit') {
+          izin++;
+        } else {
+          belum++;
+        }
+      } else {
+        final parts = (att.checkIn ?? '').split(':');
+        if (parts.length >= 2) {
+          final h = int.tryParse(parts[0]) ?? 0;
+          final m = int.tryParse(parts[1]) ?? 0;
+          if (h > 8 || (h == 8 && m > 15)) {
+            terlambat++;
+          } else {
+            hadir++;
+          }
+        } else {
+          hadir++;
+        }
+      }
+    }
+    return {'hadir': hadir, 'terlambat': terlambat, 'izin': izin, 'belum': belum};
   }
 
   Future<void> checkIn(int employeeId) async {
@@ -104,7 +163,6 @@ class AttendanceRepository {
     await setPettyCash(id, amount);
   }
 
-  /// Set final cash (kas akhir) for today's attendance record.
   Future<void> setFinalCashForToday(int employeeId, int amount) async {
     final today = await getToday(employeeId);
     final id = today?.id ??
@@ -114,16 +172,30 @@ class AttendanceRepository {
         .write(AttendanceCompanion(finalCash: Value(amount)));
   }
 
-  /// Check in with initial cash (kas awal wajib).
   Future<void> checkInWithCash(int employeeId, int cash) async {
     await checkIn(employeeId);
     await setPettyCashForToday(employeeId, cash);
   }
 
-  /// Check out with final cash (kas akhir wajib).
   Future<void> checkOutWithCash(int employeeId, int cash) async {
     await checkOut(employeeId);
     await setFinalCashForToday(employeeId, cash);
+  }
+
+  Future<void> markStatus(int attendanceId, String status) =>
+      (db.update(db.attendance)..where((t) => t.id.equals(attendanceId)))
+          .write(AttendanceCompanion(status: Value(status)));
+
+  /// Create a blank attendance record if none exists today, or mark existing as given status.
+  Future<void> markTodayStatus(int employeeId, String status) async {
+    final now = DateTime.now();
+    var today = await getToday(employeeId);
+    if (today == null) {
+      final id = await db.into(db.attendance).insert(AttendanceCompanion.insert(employeeId: employeeId));
+      today = AttendanceData(id: id, employeeId: employeeId, date: DateTime(now.year, now.month, now.day),
+          checkIn: null, checkOut: null, pettyCash: null, finalCash: null, status: null);
+    }
+    await markStatus(today.id, status);
   }
 
   Future<List<AttendanceData>> history({int? employeeId}) {
@@ -133,5 +205,72 @@ class AttendanceRepository {
     }
     q.orderBy([(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)]);
     return q.get();
+  }
+
+  Future<List<AttendanceData>> getMonthly({required int year, required int month, int? employeeId}) {
+    final start = DateTime(year, month, 1);
+    final end = DateTime(year, month + 1, 1);
+    final q = db.select(db.attendance)
+      ..where((t) => t.date.isBetweenValues(start, end));
+    if (employeeId != null) {
+      q.where((t) => t.employeeId.equals(employeeId));
+    }
+    q.orderBy([(t) => OrderingTerm(expression: t.date, mode: OrderingMode.asc)]);
+    return q.get();
+  }
+
+  Future<Map<int, Map<String, dynamic>>> getMonthlySummary({required int year, required int month}) async {
+    final emps = await getEmployees();
+    final allAtt = await getMonthly(year: year, month: month);
+    final result = <int, Map<String, dynamic>>{};
+    for (final e in emps) {
+      final atts = allAtt.where((a) => a.employeeId == e.id).toList();
+      int hadir = 0, terlambat = 0, izin = 0, alpha = 0, totalMin = 0;
+      for (final a in atts) {
+        if (a.status == 'Izin' || a.status == 'Sakit') {
+          izin++;
+          continue;
+        }
+        if (a.checkIn == null) {
+          alpha++;
+          continue;
+        }
+        final parts = (a.checkIn ?? '').split(':');
+        final h = int.tryParse(parts[0]) ?? 0;
+        final m = int.tryParse(parts[1]) ?? 0;
+        if (h > 8 || (h == 8 && m > 15)) {
+          terlambat++;
+        } else {
+          hadir++;
+        }
+        if (a.checkOut != null) {
+          final inParts = (a.checkIn ?? '00:00').split(':');
+          final outParts = (a.checkOut ?? '00:00').split(':');
+          final inMin = (int.tryParse(inParts[0]) ?? 0) * 60 + (int.tryParse(inParts[1]) ?? 0);
+          final outMin = (int.tryParse(outParts[0]) ?? 0) * 60 + (int.tryParse(outParts[1]) ?? 0);
+          if (outMin > inMin) totalMin += (outMin - inMin);
+        }
+      }
+      result[e.id] = {
+        'hadir': hadir,
+        'terlambat': terlambat,
+        'izin': izin,
+        'alpha': alpha,
+        'totalJam': totalMin ~/ 60,
+        'totalMenit': totalMin % 60,
+        'totalHadir': hadir + terlambat,
+      };
+    }
+    return result;
+  }
+
+  Future<Map<String, List<AttendanceData>>> getHistoryGrouped({required int year, required int month}) async {
+    final emps = await getEmployees();
+    final allAtt = await getMonthly(year: year, month: month);
+    final result = <String, List<AttendanceData>>{};
+    for (final e in emps) {
+      result[e.name] = allAtt.where((a) => a.employeeId == e.id).toList();
+    }
+    return result;
   }
 }

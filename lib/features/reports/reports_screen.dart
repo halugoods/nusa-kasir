@@ -439,7 +439,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               );
             },
           ),
-          // ── Donut: Metode Pembayaran ──
+          // ── Metode Pembayaran (bar style, like Produk Terlaris) ──
           FutureBuilder<Map<String, int>>(
             key: ValueKey('pay_$_refreshKey'),
             future: repo.salesByPaymentMethod(from: from, to: to),
@@ -449,6 +449,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 return const SizedBox.shrink();
               }
               final totalPay = pays.values.fold(0, (s, v) => s + v);
+              final sorted = pays.entries.toList()
+                ..sort((a, b) => b.value.compareTo(a.value));
+              final maxVal = sorted.isNotEmpty ? sorted.first.value : 1;
               return Container(
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 padding: const EdgeInsets.all(16),
@@ -465,63 +468,52 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                               fontWeight: FontWeight.w700,
                               color: labelClr)),
                       const SizedBox(height: 12),
-                      Row(children: [
-                        SizedBox(
-                          width: 130,
-                          height: 130,
-                          child: PieChart(PieChartData(
-                            sections: pays.entries.map((e) {
-                              final pct = totalPay > 0
-                                  ? (e.value / totalPay) * 100
-                                  : 0.0;
-                              return PieChartSectionData(
-                                  value: e.value.toDouble(),
-                                  title: '${pct.toStringAsFixed(0)}%',
-                                  titleStyle: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white),
-                                  color: _payColor(e.key),
-                                  radius: 50);
-                            }).toList(),
-                            sectionsSpace: 2,
-                            centerSpaceRadius: 32,
-                          )),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                              children: pays.entries.map((e) {
-                            final pct = totalPay > 0
-                                ? (e.value / totalPay) * 100
-                                : 0.0;
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Row(children: [
-                                Container(
-                                    width: 10,
-                                    height: 10,
-                                    margin:
-                                        const EdgeInsets.only(right: 8),
-                                    decoration: BoxDecoration(
-                                        color: _payColor(e.key),
-                                        borderRadius:
-                                            BorderRadius.circular(2))),
-                                Expanded(
-                                    child: Text(e.key,
+                      ...sorted.map((e) {
+                        final pct = totalPay > 0
+                            ? (e.value / totalPay) * 100
+                            : 0.0;
+                        final ratio = maxVal > 0 ? e.value / maxVal : 0.0;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Row(children: [
+                            Expanded(
+                              child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Row(children: [
+                                      Expanded(
+                                        child: Text(e.key,
+                                            style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                color: labelClr)),
+                                      ),
+                                      Text('${pct.toStringAsFixed(0)}%',
+                                          style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: NusaConfig.primaryColor)),
+                                    ]),
+                                    const SizedBox(height: 4),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(3),
+                                      child: LinearProgressIndicator(
+                                        value: ratio.clamp(0.0, 1.0),
+                                        backgroundColor: _payColor(e.key).withValues(alpha: 0.12),
+                                        valueColor: AlwaysStoppedAnimation(_payColor(e.key)),
+                                        minHeight: 4,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text('${e.value} transaksi',
                                         style: TextStyle(
-                                            fontSize: 12,
-                                            color: textSec))),
-                                Text('${pct.toStringAsFixed(0)}%',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: labelClr)),
-                              ]),
-                            );
-                          }).toList()),
-                        ),
-                      ]),
+                                            fontSize: 11, color: textTer)),
+                                  ]),
+                            ),
+                          ]),
+                        );
+                      }),
                     ]),
               );
             },
@@ -853,14 +845,21 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       'Laporan',
       Column(children: [
         const SizedBox(height: 6),
-        // Period dropdown (like produk/stok sort dropdown)
+        // Row: Tabs (left) + period dropdown (right)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(children: [
+            // Tabs as toggle-style switches
+            _tabChip('Penjualan', 0, isDark: isDark),
+            const SizedBox(width: 8),
+            _tabChip('Laba Rugi', 1, isDark: isDark),
+            const Spacer(),
+            // Period dropdown
             Icon(Icons.calendar_today_rounded, size: 18,
                 color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
             const SizedBox(width: 10),
-            Expanded(
+            SizedBox(
+              width: 160,
               child: _periodDropdown(isDark),
             ),
           ]),
@@ -871,16 +870,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           Text(_periodLabel(),
               style: TextStyle(
                   fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
-        // Tabs
-        SizedBox(
-          height: 44,
-          child: Row(children: [
-            const SizedBox(width: 16),
-            _tabChip('Penjualan', 0, isDark: isDark),
-            const SizedBox(width: 8),
-            _tabChip('Laba Rugi', 1, isDark: isDark),
-          ]),
-        ),
         Expanded(child: _tab == 0 ? _penjualanTab() : _labaRugiTab()),
       ]),
     );

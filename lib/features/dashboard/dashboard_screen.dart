@@ -581,6 +581,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: NusaConfig.primaryColor,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.point_of_sale_rounded),
+        label: const Text('Kasir',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        onPressed: () => _bukaKasir(),
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async { await _load(); },
@@ -709,13 +719,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   }).toList(),
                 ),
 
-                // Buka Kasir CTA
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-                  child: _BukaKasirCTA(
-                    onTap: () => _bukaKasir(),
-                  ),
-                ),
+                // Buka Kasir CTA — now handled by floating FAB
               ],
             ),
           ),
@@ -893,49 +897,3 @@ class MenuIcon extends StatelessWidget {
       );
 }
 
-/// "Kasir" CTA card — subtle gradient card, not just a flat button.
-class _BukaKasirCTA extends StatelessWidget {
-  final VoidCallback? onTap;
-  const _BukaKasirCTA({this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              NusaConfig.primaryColor,
-              NusaConfig.primaryDark,
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: NusaConfig.primaryColor.withValues(alpha: 0.25),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Center(
-          child: const Text(
-            'Kasir',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

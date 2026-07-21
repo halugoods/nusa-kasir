@@ -9,7 +9,6 @@ import 'package:nusa_kasir/data/repositories/promo_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_form_field.dart';
 import "package:nusa_kasir/shared/widgets/top_toast.dart";
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
@@ -141,14 +140,51 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
                       const SizedBox(height: 12),
                       NusaInput('Kode', controller: codeC, hint: 'Cth: HEMAT10'),
                       const SizedBox(height: 12),
-                      NusaDropdownField<String>(
-                        label: 'Tipe Diskon',
-                        value: type,
-                        items: const [
-                          DropdownMenuItem(value: 'persen', child: Text('Persen (%)')),
-                          DropdownMenuItem(value: 'nominal', child: Text('Nominal (Rp)')),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Tipe Diskon',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                              )),
+                          const SizedBox(height: 6),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder,
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: type,
+                                isExpanded: true,
+                                isDense: true,
+                                icon: Icon(Icons.expand_more, size: 20,
+                                    color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                                ),
+                                dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                underline: const SizedBox.shrink(),
+                                items: const [
+                                  DropdownMenuItem(value: 'persen', child: Text('Persen (%)')),
+                                  DropdownMenuItem(value: 'nominal', child: Text('Nominal (Rp)')),
+                                ],
+                                onChanged: (v) => setSt(() => type = v!),
+                              ),
+                            ),
+                          ),
                         ],
-                        onChanged: (v) => setSt(() => type = v!),
                       ),
                       const SizedBox(height: 12),
                       NusaInput(type == 'persen' ? 'Nilai (%)' : 'Nilai (Rp)',

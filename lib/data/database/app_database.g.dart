@@ -3499,6 +3499,15 @@ class $EmployeesTable extends Employees
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3519,6 +3528,7 @@ class $EmployeesTable extends Employees
     role,
     branchId,
     status,
+    phone,
     createdAt,
   ];
   @override
@@ -3572,6 +3582,12 @@ class $EmployeesTable extends Employees
         status.isAcceptableOrUnknown(data['status']!, _statusMeta),
       );
     }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3611,6 +3627,10 @@ class $EmployeesTable extends Employees
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       ),
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -3631,6 +3651,7 @@ class Employee extends DataClass implements Insertable<Employee> {
   final String role;
   final int? branchId;
   final String? status;
+  final String? phone;
   final DateTime createdAt;
   const Employee({
     required this.id,
@@ -3639,6 +3660,7 @@ class Employee extends DataClass implements Insertable<Employee> {
     required this.role,
     this.branchId,
     this.status,
+    this.phone,
     required this.createdAt,
   });
   @override
@@ -3653,6 +3675,9 @@ class Employee extends DataClass implements Insertable<Employee> {
     }
     if (!nullToAbsent || status != null) {
       map['status'] = Variable<String>(status);
+    }
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -3670,6 +3695,9 @@ class Employee extends DataClass implements Insertable<Employee> {
       status: status == null && nullToAbsent
           ? const Value.absent()
           : Value(status),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
       createdAt: Value(createdAt),
     );
   }
@@ -3686,6 +3714,7 @@ class Employee extends DataClass implements Insertable<Employee> {
       role: serializer.fromJson<String>(json['role']),
       branchId: serializer.fromJson<int?>(json['branchId']),
       status: serializer.fromJson<String?>(json['status']),
+      phone: serializer.fromJson<String?>(json['phone']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -3699,6 +3728,7 @@ class Employee extends DataClass implements Insertable<Employee> {
       'role': serializer.toJson<String>(role),
       'branchId': serializer.toJson<int?>(branchId),
       'status': serializer.toJson<String?>(status),
+      'phone': serializer.toJson<String?>(phone),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -3710,6 +3740,7 @@ class Employee extends DataClass implements Insertable<Employee> {
     String? role,
     Value<int?> branchId = const Value.absent(),
     Value<String?> status = const Value.absent(),
+    Value<String?> phone = const Value.absent(),
     DateTime? createdAt,
   }) => Employee(
     id: id ?? this.id,
@@ -3718,6 +3749,7 @@ class Employee extends DataClass implements Insertable<Employee> {
     role: role ?? this.role,
     branchId: branchId.present ? branchId.value : this.branchId,
     status: status.present ? status.value : this.status,
+    phone: phone.present ? phone.value : this.phone,
     createdAt: createdAt ?? this.createdAt,
   );
   Employee copyWithCompanion(EmployeesCompanion data) {
@@ -3728,6 +3760,7 @@ class Employee extends DataClass implements Insertable<Employee> {
       role: data.role.present ? data.role.value : this.role,
       branchId: data.branchId.present ? data.branchId.value : this.branchId,
       status: data.status.present ? data.status.value : this.status,
+      phone: data.phone.present ? data.phone.value : this.phone,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -3741,6 +3774,7 @@ class Employee extends DataClass implements Insertable<Employee> {
           ..write('role: $role, ')
           ..write('branchId: $branchId, ')
           ..write('status: $status, ')
+          ..write('phone: $phone, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3748,7 +3782,7 @@ class Employee extends DataClass implements Insertable<Employee> {
 
   @override
   int get hashCode =>
-      Object.hash(id, name, pin, role, branchId, status, createdAt);
+      Object.hash(id, name, pin, role, branchId, status, phone, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3759,6 +3793,7 @@ class Employee extends DataClass implements Insertable<Employee> {
           other.role == this.role &&
           other.branchId == this.branchId &&
           other.status == this.status &&
+          other.phone == this.phone &&
           other.createdAt == this.createdAt);
 }
 
@@ -3769,6 +3804,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
   final Value<String> role;
   final Value<int?> branchId;
   final Value<String?> status;
+  final Value<String?> phone;
   final Value<DateTime> createdAt;
   const EmployeesCompanion({
     this.id = const Value.absent(),
@@ -3777,6 +3813,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     this.role = const Value.absent(),
     this.branchId = const Value.absent(),
     this.status = const Value.absent(),
+    this.phone = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   EmployeesCompanion.insert({
@@ -3786,6 +3823,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     required String role,
     this.branchId = const Value.absent(),
     this.status = const Value.absent(),
+    this.phone = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        pin = Value(pin),
@@ -3797,6 +3835,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     Expression<String>? role,
     Expression<int>? branchId,
     Expression<String>? status,
+    Expression<String>? phone,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -3806,6 +3845,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
       if (role != null) 'role': role,
       if (branchId != null) 'branch_id': branchId,
       if (status != null) 'status': status,
+      if (phone != null) 'phone': phone,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -3817,6 +3857,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     Value<String>? role,
     Value<int?>? branchId,
     Value<String?>? status,
+    Value<String?>? phone,
     Value<DateTime>? createdAt,
   }) {
     return EmployeesCompanion(
@@ -3826,6 +3867,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
       role: role ?? this.role,
       branchId: branchId ?? this.branchId,
       status: status ?? this.status,
+      phone: phone ?? this.phone,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -3851,6 +3893,9 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -3866,6 +3911,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
           ..write('role: $role, ')
           ..write('branchId: $branchId, ')
           ..write('status: $status, ')
+          ..write('phone: $phone, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3956,6 +4002,15 @@ class $AttendanceTable extends Attendance
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3965,6 +4020,7 @@ class $AttendanceTable extends Attendance
     checkOut,
     pettyCash,
     finalCash,
+    status,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4019,6 +4075,12 @@ class $AttendanceTable extends Attendance
         finalCash.isAcceptableOrUnknown(data['final_cash']!, _finalCashMeta),
       );
     }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
     return context;
   }
 
@@ -4056,6 +4118,10 @@ class $AttendanceTable extends Attendance
         DriftSqlType.int,
         data['${effectivePrefix}final_cash'],
       ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      ),
     );
   }
 
@@ -4073,6 +4139,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
   final String? checkOut;
   final int? pettyCash;
   final int? finalCash;
+  final String? status;
   const AttendanceData({
     required this.id,
     required this.employeeId,
@@ -4081,6 +4148,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     this.checkOut,
     this.pettyCash,
     this.finalCash,
+    this.status,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4099,6 +4167,9 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     }
     if (!nullToAbsent || finalCash != null) {
       map['final_cash'] = Variable<int>(finalCash);
+    }
+    if (!nullToAbsent || status != null) {
+      map['status'] = Variable<String>(status);
     }
     return map;
   }
@@ -4120,6 +4191,9 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       finalCash: finalCash == null && nullToAbsent
           ? const Value.absent()
           : Value(finalCash),
+      status: status == null && nullToAbsent
+          ? const Value.absent()
+          : Value(status),
     );
   }
 
@@ -4136,6 +4210,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       checkOut: serializer.fromJson<String?>(json['checkOut']),
       pettyCash: serializer.fromJson<int?>(json['pettyCash']),
       finalCash: serializer.fromJson<int?>(json['finalCash']),
+      status: serializer.fromJson<String?>(json['status']),
     );
   }
   @override
@@ -4149,6 +4224,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       'checkOut': serializer.toJson<String?>(checkOut),
       'pettyCash': serializer.toJson<int?>(pettyCash),
       'finalCash': serializer.toJson<int?>(finalCash),
+      'status': serializer.toJson<String?>(status),
     };
   }
 
@@ -4160,6 +4236,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     Value<String?> checkOut = const Value.absent(),
     Value<int?> pettyCash = const Value.absent(),
     Value<int?> finalCash = const Value.absent(),
+    Value<String?> status = const Value.absent(),
   }) => AttendanceData(
     id: id ?? this.id,
     employeeId: employeeId ?? this.employeeId,
@@ -4168,6 +4245,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     checkOut: checkOut.present ? checkOut.value : this.checkOut,
     pettyCash: pettyCash.present ? pettyCash.value : this.pettyCash,
     finalCash: finalCash.present ? finalCash.value : this.finalCash,
+    status: status.present ? status.value : this.status,
   );
   AttendanceData copyWithCompanion(AttendanceCompanion data) {
     return AttendanceData(
@@ -4180,6 +4258,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       checkOut: data.checkOut.present ? data.checkOut.value : this.checkOut,
       pettyCash: data.pettyCash.present ? data.pettyCash.value : this.pettyCash,
       finalCash: data.finalCash.present ? data.finalCash.value : this.finalCash,
+      status: data.status.present ? data.status.value : this.status,
     );
   }
 
@@ -4192,7 +4271,8 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
           ..write('checkIn: $checkIn, ')
           ..write('checkOut: $checkOut, ')
           ..write('pettyCash: $pettyCash, ')
-          ..write('finalCash: $finalCash')
+          ..write('finalCash: $finalCash, ')
+          ..write('status: $status')
           ..write(')'))
         .toString();
   }
@@ -4206,6 +4286,7 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     checkOut,
     pettyCash,
     finalCash,
+    status,
   );
   @override
   bool operator ==(Object other) =>
@@ -4217,7 +4298,8 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
           other.checkIn == this.checkIn &&
           other.checkOut == this.checkOut &&
           other.pettyCash == this.pettyCash &&
-          other.finalCash == this.finalCash);
+          other.finalCash == this.finalCash &&
+          other.status == this.status);
 }
 
 class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
@@ -4228,6 +4310,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
   final Value<String?> checkOut;
   final Value<int?> pettyCash;
   final Value<int?> finalCash;
+  final Value<String?> status;
   const AttendanceCompanion({
     this.id = const Value.absent(),
     this.employeeId = const Value.absent(),
@@ -4236,6 +4319,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     this.checkOut = const Value.absent(),
     this.pettyCash = const Value.absent(),
     this.finalCash = const Value.absent(),
+    this.status = const Value.absent(),
   });
   AttendanceCompanion.insert({
     this.id = const Value.absent(),
@@ -4245,6 +4329,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     this.checkOut = const Value.absent(),
     this.pettyCash = const Value.absent(),
     this.finalCash = const Value.absent(),
+    this.status = const Value.absent(),
   }) : employeeId = Value(employeeId);
   static Insertable<AttendanceData> custom({
     Expression<int>? id,
@@ -4254,6 +4339,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     Expression<String>? checkOut,
     Expression<int>? pettyCash,
     Expression<int>? finalCash,
+    Expression<String>? status,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4263,6 +4349,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
       if (checkOut != null) 'check_out': checkOut,
       if (pettyCash != null) 'petty_cash': pettyCash,
       if (finalCash != null) 'final_cash': finalCash,
+      if (status != null) 'status': status,
     });
   }
 
@@ -4274,6 +4361,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     Value<String?>? checkOut,
     Value<int?>? pettyCash,
     Value<int?>? finalCash,
+    Value<String?>? status,
   }) {
     return AttendanceCompanion(
       id: id ?? this.id,
@@ -4283,6 +4371,7 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
       checkOut: checkOut ?? this.checkOut,
       pettyCash: pettyCash ?? this.pettyCash,
       finalCash: finalCash ?? this.finalCash,
+      status: status ?? this.status,
     );
   }
 
@@ -4310,6 +4399,9 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     if (finalCash.present) {
       map['final_cash'] = Variable<int>(finalCash.value);
     }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
     return map;
   }
 
@@ -4322,7 +4414,8 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
           ..write('checkIn: $checkIn, ')
           ..write('checkOut: $checkOut, ')
           ..write('pettyCash: $pettyCash, ')
-          ..write('finalCash: $finalCash')
+          ..write('finalCash: $finalCash, ')
+          ..write('status: $status')
           ..write(')'))
         .toString();
   }
@@ -11655,6 +11748,7 @@ typedef $$EmployeesTableCreateCompanionBuilder =
       required String role,
       Value<int?> branchId,
       Value<String?> status,
+      Value<String?> phone,
       Value<DateTime> createdAt,
     });
 typedef $$EmployeesTableUpdateCompanionBuilder =
@@ -11665,6 +11759,7 @@ typedef $$EmployeesTableUpdateCompanionBuilder =
       Value<String> role,
       Value<int?> branchId,
       Value<String?> status,
+      Value<String?> phone,
       Value<DateTime> createdAt,
     });
 
@@ -11704,6 +11799,11 @@ class $$EmployeesTableFilterComposer
 
   ColumnFilters<String> get status => $composableBuilder(
     column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11752,6 +11852,11 @@ class $$EmployeesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -11784,6 +11889,9 @@ class $$EmployeesTableAnnotationComposer
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -11823,6 +11931,7 @@ class $$EmployeesTableTableManager
                 Value<String> role = const Value.absent(),
                 Value<int?> branchId = const Value.absent(),
                 Value<String?> status = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => EmployeesCompanion(
                 id: id,
@@ -11831,6 +11940,7 @@ class $$EmployeesTableTableManager
                 role: role,
                 branchId: branchId,
                 status: status,
+                phone: phone,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -11841,6 +11951,7 @@ class $$EmployeesTableTableManager
                 required String role,
                 Value<int?> branchId = const Value.absent(),
                 Value<String?> status = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => EmployeesCompanion.insert(
                 id: id,
@@ -11849,6 +11960,7 @@ class $$EmployeesTableTableManager
                 role: role,
                 branchId: branchId,
                 status: status,
+                phone: phone,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -11882,6 +11994,7 @@ typedef $$AttendanceTableCreateCompanionBuilder =
       Value<String?> checkOut,
       Value<int?> pettyCash,
       Value<int?> finalCash,
+      Value<String?> status,
     });
 typedef $$AttendanceTableUpdateCompanionBuilder =
     AttendanceCompanion Function({
@@ -11892,6 +12005,7 @@ typedef $$AttendanceTableUpdateCompanionBuilder =
       Value<String?> checkOut,
       Value<int?> pettyCash,
       Value<int?> finalCash,
+      Value<String?> status,
     });
 
 class $$AttendanceTableFilterComposer
@@ -11935,6 +12049,11 @@ class $$AttendanceTableFilterComposer
 
   ColumnFilters<int> get finalCash => $composableBuilder(
     column: $table.finalCash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -11982,6 +12101,11 @@ class $$AttendanceTableOrderingComposer
     column: $table.finalCash,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AttendanceTableAnnotationComposer
@@ -12015,6 +12139,9 @@ class $$AttendanceTableAnnotationComposer
 
   GeneratedColumn<int> get finalCash =>
       $composableBuilder(column: $table.finalCash, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
 }
 
 class $$AttendanceTableTableManager
@@ -12055,6 +12182,7 @@ class $$AttendanceTableTableManager
                 Value<String?> checkOut = const Value.absent(),
                 Value<int?> pettyCash = const Value.absent(),
                 Value<int?> finalCash = const Value.absent(),
+                Value<String?> status = const Value.absent(),
               }) => AttendanceCompanion(
                 id: id,
                 employeeId: employeeId,
@@ -12063,6 +12191,7 @@ class $$AttendanceTableTableManager
                 checkOut: checkOut,
                 pettyCash: pettyCash,
                 finalCash: finalCash,
+                status: status,
               ),
           createCompanionCallback:
               ({
@@ -12073,6 +12202,7 @@ class $$AttendanceTableTableManager
                 Value<String?> checkOut = const Value.absent(),
                 Value<int?> pettyCash = const Value.absent(),
                 Value<int?> finalCash = const Value.absent(),
+                Value<String?> status = const Value.absent(),
               }) => AttendanceCompanion.insert(
                 id: id,
                 employeeId: employeeId,
@@ -12081,6 +12211,7 @@ class $$AttendanceTableTableManager
                 checkOut: checkOut,
                 pettyCash: pettyCash,
                 finalCash: finalCash,
+                status: status,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

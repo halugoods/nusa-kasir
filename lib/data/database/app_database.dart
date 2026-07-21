@@ -13,7 +13,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.test() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -60,6 +60,10 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(settings, settings.silverThreshold);
         await m.addColumn(settings, settings.goldThreshold);
         await m.addColumn(settings, settings.platinumThreshold);
+      }
+      if (from < 12) {
+        await m.addColumn(employees, employees.phone);
+        await m.addColumn(attendance, attendance.status);
       }
     },
   );

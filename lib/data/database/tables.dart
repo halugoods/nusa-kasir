@@ -78,6 +78,7 @@ class Employees extends Table {
   TextColumn get role => text()();
   IntColumn get branchId => integer().nullable()();
   TextColumn get status => text().nullable()();
+  TextColumn get phone => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 class Attendance extends Table {
@@ -88,6 +89,7 @@ class Attendance extends Table {
   TextColumn get checkOut => text().nullable()();
   IntColumn get pettyCash => integer().nullable()();
   IntColumn get finalCash => integer().nullable()();
+  TextColumn get status => text().nullable()();
 }
 class Expenses extends Table {
   IntColumn get id => integer().autoIncrement()();
