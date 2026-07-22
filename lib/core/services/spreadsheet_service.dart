@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/sheets/v4.dart';
@@ -30,9 +31,29 @@ class SpreadsheetService {
   bool get isSignedIn => _signIn.currentUser != null;
 
   Future<SheetsApi?> _client() async {
-    final authClient = await _signIn.authenticatedClient();
-    if (authClient == null) return null;
-    return SheetsApi(authClient);
+    try {
+      final authClient = await _signIn.authenticatedClient();
+      if (authClient == null) {
+        debugPrint('[Spreadsheet] authenticatedClient() returned null — no Sheets scope on token');
+        return null;
+      }
+      return SheetsApi(authClient);
+    } catch (e) {
+      debugPrint('[Spreadsheet] _client() threw: $e');
+      return null;
+    }
+  }
+
+  /// Verifies the current sign-in actually has Sheets access.
+  /// Returns empty string on success, or user-facing error message.
+  Future<String> verifyAccess() async {
+    final api = await _client();
+    if (api == null) {
+      return 'Token tidak memiliki akses Google Sheets.\n'
+          'Pastikan Anda menyetujui izin "Spreadsheet" saat login Google.';
+    }
+    // Token is valid — authenticatedClient() succeeded
+    return '';
   }
 
   /// Find or create a per-user spreadsheet.
@@ -59,7 +80,8 @@ class SpreadsheetService {
         ],
       ));
       return sheet.spreadsheetId;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Spreadsheet] findOrCreate failed: $e');
       return null;
     }
   }
@@ -84,7 +106,7 @@ class SpreadsheetService {
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) { return false; }
+    } catch (e) { debugPrint('[Spreadsheet] syncProducts: $e'); return false; }
   }
 
   Future<bool> syncTransactions(String spreadsheetId) async {
@@ -103,7 +125,7 @@ class SpreadsheetService {
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) { return false; }
+    } catch (e) { debugPrint('[Spreadsheet] syncTransactions: $e'); return false; }
   }
 
   Future<bool> syncStock(String spreadsheetId) async {
@@ -125,7 +147,7 @@ class SpreadsheetService {
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) { return false; }
+    } catch (e) { debugPrint('[Spreadsheet] syncStock: $e'); return false; }
   }
 
   Future<bool> syncLaporan(String spreadsheetId) async {
@@ -158,7 +180,7 @@ class SpreadsheetService {
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) { return false; }
+    } catch (e) { debugPrint('[Spreadsheet] syncLaporan: $e'); return false; }
   }
 
   Future<bool> syncKeuangan(String spreadsheetId) async {
@@ -189,7 +211,7 @@ class SpreadsheetService {
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) { return false; }
+    } catch (e) { debugPrint('[Spreadsheet] syncKeuangan: $e'); return false; }
   }
 
   Future<bool> syncKaryawan(String spreadsheetId) async {
@@ -211,7 +233,7 @@ class SpreadsheetService {
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) { return false; }
+    } catch (e) { debugPrint('[Spreadsheet] syncKaryawan: $e'); return false; }
   }
 
   Future<bool> syncPelanggan(String spreadsheetId) async {
@@ -230,7 +252,7 @@ class SpreadsheetService {
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) { return false; }
+    } catch (e) { debugPrint('[Spreadsheet] syncPelanggan: $e'); return false; }
   }
 
   Future<bool> syncSupplier(String spreadsheetId) async {
@@ -249,7 +271,7 @@ class SpreadsheetService {
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) { return false; }
+    } catch (e) { debugPrint('[Spreadsheet] syncSupplier: $e'); return false; }
   }
 
   Future<bool> syncPromo(String spreadsheetId) async {
@@ -271,7 +293,7 @@ class SpreadsheetService {
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) { return false; }
+    } catch (e) { debugPrint('[Spreadsheet] syncPromo: $e'); return false; }
   }
 
   Future<bool> syncPresensi(String spreadsheetId) async {
@@ -298,7 +320,7 @@ class SpreadsheetService {
         valueInputOption: 'USER_ENTERED',
       );
       return true;
-    } catch (_) { return false; }
+    } catch (e) { debugPrint('[Spreadsheet] syncPresensi: $e'); return false; }
   }
 
   Future<bool> syncAll(String spreadsheetId) async {

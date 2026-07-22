@@ -40,38 +40,62 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
 
   Future<void> _init() async {
     _svc = SpreadsheetService(ref.read(databaseProvider));
-    // Try restore previous session
+    // Only restore saved IDs — DO NOT call signInSilently() here,
+    // it restores a session WITHOUT Sheets API scope, which breaks
+    // authenticatedClient() for the rest of the app session.
     final savedEmail = await SecureStore.getSheetsEmail();
     final savedSheetId = await SecureStore.getSheetsId();
 
-    if (savedEmail != null) {
+    if (savedEmail != null && mounted) {
       setState(() {
         _userEmail = savedEmail;
         _spreadsheetId = savedSheetId;
       });
-      // Silent sign-in to refresh token
-      final account = await _svc!.signInSilently();
-      if (account != null && mounted) {
-        setState(() => _userEmail = account.email);
-      }
     }
   }
 
   Future<void> _signIn() async {
     setState(() => _connecting = true);
-    final account = await _svc!.signIn();
-    if (account != null && mounted) {
+
+    try {
+      // 1. Completely disconnect any stale session first.
+      //    A stale session (e.g. from signInSilently) has no Sheets scope
+      //    and will cause authenticatedClient() to return null forever.
+      await _svc!.signOut();
+
+      // 2. Fresh sign-in — this will show the Google consent screen
+      //    that explicitly asks for Spreadsheet permission.
+      final account = await _svc!.signIn();
+      if (account == null || !mounted) {
+        setState(() => _connecting = false);
+        return;
+      }
+
+      // 3. Verify the token actually has Sheets access
+      final err = await _svc!.verifyAccess();
+      if (err.isNotEmpty && mounted) {
+        setState(() => _connecting = false);
+        TopToast.error(context, err);
+        return;
+      }
+
+      // 4. Save & restore
       final email = account.email;
       await SecureStore.saveSheetsEmail(email);
-      // Restore spreadsheet ID if exists (no auto-create)
       final savedId = await SecureStore.getSheetsId();
-      setState(() {
-        _userEmail = email;
-        _spreadsheetId = (savedId != null && savedId.isNotEmpty) ? savedId : null;
-        _connecting = false;
-      });
-    } else {
-      if (mounted) setState(() => _connecting = false);
+      if (mounted) {
+        setState(() {
+          _userEmail = email;
+          _spreadsheetId = (savedId != null && savedId.isNotEmpty) ? savedId : null;
+          _connecting = false;
+        });
+        TopToast.success(context, 'Login berhasil — siap membuat spreadsheet');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _connecting = false);
+        TopToast.error(context, 'Gagal login — periksa koneksi internet');
+      }
     }
   }
 
@@ -92,26 +116,40 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
   Future<void> _createSheet() async {
     final email = _userEmail;
     if (email.isEmpty) return;
+
     if (_svc == null) {
-      TopToast.error(context, 'Gagal terhubung ke Google, silakan login ulang');
+      TopToast.error(context, 'Gagal terhubung ke Google — silakan login ulang');
       return;
     }
+
     setState(() => _connecting = true);
+
     try {
+      // Verify access before attempting create
+      final verifyErr = await _svc!.verifyAccess();
+      if (verifyErr.isNotEmpty) {
+        if (mounted) {
+          setState(() => _connecting = false);
+          TopToast.error(context, verifyErr);
+        }
+        return;
+      }
+
       final id = await _svc!.findOrCreate(email);
-      if (id != null && mounted) {
+      if (id != null && id.isNotEmpty && mounted) {
         await SecureStore.saveSheetsId(id);
         setState(() {
           _spreadsheetId = id;
           _connecting = false;
         });
-        TopToast.success(context, 'Spreadsheet dibuat — otomatis sinkron semua data...');
+        TopToast.success(context, 'Spreadsheet dibuat — sinkron data otomatis...');
         _syncAll();
       } else if (mounted) {
         setState(() => _connecting = false);
-        TopToast.error(context, 'Gagal membuat spreadsheet — coba login ulang');
+        TopToast.error(context, 'Gagal membuat spreadsheet di Google Drive.\n'
+            'Pastikan Google Drive Anda aktif dan coba lagi.');
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _connecting = false);
         TopToast.error(context, 'Gagal membuat spreadsheet — coba login ulang');
@@ -121,6 +159,14 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
 
   Future<void> _syncTab(String tab) async {
     if (_spreadsheetId == null || _svc == null) return;
+
+    // Quick access check before syncing
+    final verifyErr = await _svc!.verifyAccess();
+    if (verifyErr.isNotEmpty) {
+      if (mounted) TopToast.error(context, verifyErr);
+      return;
+    }
+
     setState(() {
       _syncing = true;
       _syncingTab = tab;
@@ -158,6 +204,14 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
 
   Future<void> _syncAll() async {
     if (_spreadsheetId == null || _svc == null) return;
+
+    // Quick access check before syncing
+    final verifyErr = await _svc!.verifyAccess();
+    if (verifyErr.isNotEmpty) {
+      if (mounted) TopToast.error(context, verifyErr);
+      return;
+    }
+
     setState(() {
       _syncing = true;
       _syncingTab = 'Semua';

@@ -327,24 +327,39 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
           // Search + Export row
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(children: [
+            child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
               Expanded(
-                child: NusaInput(
-                  'Cari supplier...',
-                  controller: _searchC,
-                  hint: 'Cari supplier...',
-                  prefixIcon: Icon(Icons.search, size: 20,
-                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-                  suffixIcon: _query.isNotEmpty
-                      ? GestureDetector(
-                          onTap: () => _searchC.clear(),
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: Icon(Icons.clear_rounded, size: 18,
-                                color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-                          ),
-                        )
-                      : null,
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder),
+                  ),
+                  child: TextField(
+                    controller: _searchC,
+                    style: TextStyle(fontSize: 14, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Cari supplier...',
+                      prefixIcon: Icon(Icons.search, size: 20,
+                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                      suffixIcon: _query.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () => _searchC.clear(),
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: Icon(Icons.clear_rounded, size: 18,
+                                    color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                              ),
+                            )
+                          : null,
+                      hintStyle: TextStyle(
+                          color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
+                          fontSize: 14),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                      border: InputBorder.none,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
