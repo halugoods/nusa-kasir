@@ -8,6 +8,7 @@ import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/core/utils/contact_picker.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/customer_repository.dart';
+import 'package:nusa_kasir/data/repositories/debt_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
@@ -40,6 +41,7 @@ class CustomersScreen extends ConsumerStatefulWidget {
 class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   final _search = TextEditingController();
   List<Customer> _customers = [];
+  Map<int, int> _outstanding = {}; // customerId -> outstanding debt amount
   bool _loading = true;
   String _levelFilter = 'Semua';
 
@@ -61,7 +63,13 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
 
   Future<void> _load() async {
     final repo = CustomerRepository(ref.read(databaseProvider));
+    final debtRepo = DebtRepository(ref.read(databaseProvider));
     final all = await repo.getCustomers();
+    final activeDebts = await debtRepo.getActiveDebts();
+    final outstanding = <int, int>{};
+    for (final d in activeDebts) {
+      outstanding[d.customerId] = (outstanding[d.customerId] ?? 0) + d.remainingAmount;
+    }
     final q = _search.text.toLowerCase();
     var filtered = q.isEmpty
         ? all
@@ -77,6 +85,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
     if (mounted) {
       setState(() {
         _customers = filtered;
+        _outstanding = outstanding;
         _loading = false;
       });
     }
@@ -392,6 +401,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                               child: _CustomerTile(
                                 customer: c,
                                 onTap: () => _showDetail(c),
+                                outstandingDebt: _outstanding[c.id] ?? 0,
                               ),
                             );
                           },
@@ -495,7 +505,8 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
 class _CustomerTile extends StatelessWidget {
   final Customer customer;
   final VoidCallback onTap;
-  const _CustomerTile({required this.customer, required this.onTap});
+  final int outstandingDebt;
+  const _CustomerTile({required this.customer, required this.onTap, this.outstandingDebt = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -579,6 +590,15 @@ class _CustomerTile extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         color: NusaConfig.primaryColor,
                       )),
+                  if (outstandingDebt > 0) ...[
+                    const SizedBox(height: 3),
+                    Text('Piutang: ${formatRupiah(outstandingDebt)}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: NusaConfig.accentGold,
+                        )),
+                  ],
                 ],
               ),
             ),

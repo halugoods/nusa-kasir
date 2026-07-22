@@ -5,6 +5,7 @@ import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/core/utils/receipt_printer.dart';
+import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/pos/cart.dart';
 import "package:nusa_kasir/shared/widgets/top_toast.dart";
@@ -37,6 +38,7 @@ class ReceiptSheet extends ConsumerWidget {
   final String? invoice;
   final String? dateStr;
   final int pointsUsed;
+  final bool autoPrint;
 
   const ReceiptSheet({
     required this.items,
@@ -51,6 +53,7 @@ class ReceiptSheet extends ConsumerWidget {
     this.invoice,
     this.dateStr,
     this.pointsUsed = 0,
+    this.autoPrint = false,
     super.key,
   });
 
@@ -68,6 +71,7 @@ class ReceiptSheet extends ConsumerWidget {
     String? invoice,
     String? dateStr,
     int pointsUsed = 0,
+    bool autoPrint = false,
   }) {
     final items = cartItems
         .map((c) => _ReceiptItem(name: c.name, qty: c.qty, price: c.price))
@@ -85,6 +89,7 @@ class ReceiptSheet extends ConsumerWidget {
       invoice: invoice,
       dateStr: dateStr,
       pointsUsed: pointsUsed,
+      autoPrint: autoPrint,
     );
   }
 
@@ -143,6 +148,14 @@ class ReceiptSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final db = ref.read(databaseProvider);
+
+    // Auto-print: trigger after first frame if enabled.
+    if (autoPrint) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _autoPrintReceipt(context, ref);
+      });
+    }
+
     return FutureBuilder<String>(
       future: SettingsRepository(db).getStoreName(),
       builder: (context, snap) {
@@ -474,6 +487,52 @@ class ReceiptSheet extends ConsumerWidget {
     );
   }
 
+  // ── Auto-print (silent fallback if printer unavailable) ──
+  Future<void> _autoPrintReceipt(
+      BuildContext context, WidgetRef ref) async {
+    final db = ref.read(databaseProvider);
+    final storeName = await SettingsRepository(db).getStoreName();
+    if (storeName.isEmpty) return;
+
+    final printer = ReceiptPrinter();
+    try {
+      final devices = await printer.discover(timeout: const Duration(seconds: 4));
+      if (devices.isEmpty) return;
+
+      final saved = await SettingsRepository(ref.read(databaseProvider))
+          .getPrinterAddress();
+      PrinterDevice target = devices.first;
+      if (saved != null && saved.contains('|')) {
+        final savedAddr = saved.split('|').last;
+        final found = devices.where((d) => d.address == savedAddr);
+        if (found.isNotEmpty) target = found.first;
+      }
+
+      final paperSize = await SecureStore.getPaperSize();
+      await printer.connect(target);
+      await printer.printReceipt(
+        storeName: storeName.isNotEmpty ? storeName : 'NUSA Kasir',
+        lines: items
+            .map((i) => ReceiptLine(name: i.name, qty: i.qty, price: i.price))
+            .toList(),
+        total: total,
+        paymentMethod: paymentMethod,
+        cashierName: cashierName,
+        invoice: invoice ?? '',
+        dateStr: dateStr ?? '',
+        discount: discount,
+        cashGiven: cashGiven,
+        cashReturn: cashReturn,
+        customerName: customerName,
+        paperWidth: paperSize,
+      );
+    } catch (_) {
+      // Silent fail on auto-print — user can still manually print
+    } finally {
+      printer.dispose();
+    }
+  }
+
   // ── Print (Bluetooth thermal) ──
   Future<void> _printReceipt(
       BuildContext context, WidgetRef ref, String storeName) async {
@@ -496,6 +555,7 @@ class ReceiptSheet extends ConsumerWidget {
         if (found.isNotEmpty) target = found.first;
       }
 
+      final paperSize = await SecureStore.getPaperSize();
       await printer.connect(target);
       final ok = await printer.printReceipt(
         storeName: storeName,
@@ -505,6 +565,13 @@ class ReceiptSheet extends ConsumerWidget {
         total: total,
         paymentMethod: paymentMethod,
         cashierName: cashierName,
+        invoice: invoice ?? '',
+        dateStr: dateStr ?? '',
+        discount: discount,
+        cashGiven: cashGiven,
+        cashReturn: cashReturn,
+        customerName: customerName,
+        paperWidth: paperSize,
       );
       if (context.mounted) {
         if (ok) {

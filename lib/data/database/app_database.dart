@@ -9,12 +9,12 @@ part 'app_database.g.dart';
 @DriftDatabase(tables: [Categories, Products, StockMovements, Transactions, Customers, Promos,
   Employees, Attendance, Expenses, ExpenseCategories, RecurringExpenses, Payroll, Waste,
   Liquidity, Suppliers, Branches, Settings, ActivationsLocal, SyncQueue, CashierSessions,
-  OnlineOrders])
+  OnlineOrders, CustomerDebts, DebtPayments, ShiftSessions, StockCounts, StockCountItems])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.test() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -76,6 +76,17 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(liquidity, liquidity.branchId);
         await m.createTable(expenseCategories);
         await m.createTable(recurringExpenses);
+      }
+      if (from < 15) {
+        await m.createTable(customerDebts);
+        await m.createTable(debtPayments);
+      }
+      if (from < 16) {
+        await m.createTable(shiftSessions);
+      }
+      if (from < 17) {
+        await m.createTable(stockCounts);
+        await m.createTable(stockCountItems);
       }
     },
   );

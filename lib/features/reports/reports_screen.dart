@@ -31,10 +31,21 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   String _period = 'Hari Ini';
   DateTime? _customFrom;
   DateTime? _customTo;
-  static const _periodOptions = ['Hari Ini', '7 Hr', '30 Hr', 'Bln Ini', 'Custom', 'Semua'];
+  static const _periodOptions = [
+    'Hari Ini',
+    '7 Hr',
+    '30 Hr',
+    'Bln Ini',
+    'Custom',
+    'Semua'
+  ];
   static const _periodLabels = {
-    'Hari Ini': 'Hari Ini', '7 Hr': '7 Hari', '30 Hr': '30 Hari',
-    'Bln Ini': 'Bulan Ini', 'Custom': 'Custom', 'Semua': 'Semua',
+    'Hari Ini': 'Hari Ini',
+    '7 Hr': '7 Hari',
+    '30 Hr': '30 Hari',
+    'Bln Ini': 'Bulan Ini',
+    'Custom': 'Custom',
+    'Semua': 'Semua',
   };
 
   (DateTime?, DateTime?) _range() {
@@ -58,7 +69,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   String _periodLabel() {
     final actual = _periodLabels[_period] ?? _period;
     if (actual == 'Custom' && _customFrom != null && _customTo != null) {
-      return '${_customFrom!.day}/${_customFrom!.month} – ${_customTo!.day}/${_customTo!.month}/${_customTo!.year}';
+      return '${_customFrom!.day}/${_customFrom!.month} \u2013 ${_customTo!.day}/${_customTo!.month}/${_customTo!.year}';
     }
     return actual;
   }
@@ -88,25 +99,134 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   // ── Export ─────────────────────────────────────────────────────────
 
   Future<String?> _pickFormat() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return showModalBottomSheet<String>(
       context: context,
-      builder: (_) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(
-            leading: const Icon(Icons.table_chart),
-            title: const Text('Export Excel (.xlsx)'),
-            onTap: () => Navigator.of(context).pop('excel'),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+          borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? NusaConfig.darkBorder
+                      : NusaConfig.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            // Title
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text('Export Laporan',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: isDark
+                          ? NusaConfig.darkTextPrimary
+                          : NusaConfig.textPrimary)),
+            ),
+            _exportOption(
+              icon: Icons.table_chart,
+              title: 'Export Excel (.xlsx)',
+              desc: 'Spreadsheet lengkap dengan semua kolom transaksi',
+              color: NusaConfig.accentGreen,
+              isDark: isDark,
+              onTap: () => Navigator.of(ctx).pop('excel'),
+            ),
+            const SizedBox(height: 8),
+            _exportOption(
+              icon: Icons.description,
+              title: 'Export CSV (.csv)',
+              desc: 'File CSV ringan untuk import ke aplikasi lain',
+              color: NusaConfig.info,
+              isDark: isDark,
+              onTap: () => Navigator.of(ctx).pop('csv'),
+            ),
+            const SizedBox(height: 8),
+            _exportOption(
+              icon: Icons.picture_as_pdf,
+              title: 'Export PDF Lengkap (.pdf)',
+              desc: 'Laporan komprehensif dengan Laba/Rugi, grafik & analisis',
+              color: NusaConfig.primaryColor,
+              isDark: isDark,
+              onTap: () => Navigator.of(ctx).pop('pdf'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _exportOption({
+    required IconData icon,
+    required String title,
+    required String desc,
+    required Color color,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor,
           ),
-          ListTile(
-            leading: const Icon(Icons.description),
-            title: const Text('Export CSV (.csv)'),
-            onTap: () => Navigator.of(context).pop('csv'),
+        ),
+        child: Row(children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 22),
           ),
-          ListTile(
-            leading: const Icon(Icons.picture_as_pdf),
-            title: const Text('Export PDF (.pdf)'),
-            onTap: () => Navigator.of(context).pop('pdf'),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? NusaConfig.darkTextPrimary
+                            : NusaConfig.textPrimary)),
+                const SizedBox(height: 2),
+                Text(desc,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? NusaConfig.darkTextTertiary
+                            : NusaConfig.textTertiary)),
+              ],
+            ),
           ),
+          Icon(Icons.chevron_right_rounded,
+              color: isDark
+                  ? NusaConfig.darkTextTertiary
+                  : NusaConfig.textTertiary),
         ]),
       ),
     );
@@ -121,25 +241,109 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     try {
       final stamp =
           '${DateTime.now().year}${DateTime.now().month}${DateTime.now().day}_${DateTime.now().hour}${DateTime.now().minute}';
-      final name = 'laporan_${_periodLabel().replaceAll(' ', '').toLowerCase()}_$stamp';
+      final name =
+          'laporan_${_periodLabel().replaceAll(' ', '').toLowerCase()}_$stamp';
       if (format == 'pdf') {
-        final file = await exportReportPdf(
-            period: _periodLabel(),
-            summary: sum,
-            topProducts: top,
-            categories: cats,
-            payments: pays);
-        await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+        // Full comprehensive PDF with profit/loss
+        final (from, to) = _range();
+        final repo = ReportRepository(ref.read(databaseProvider));
+
+        // Fetch additional data for full PDF
+        Map<String, dynamic>? pl;
+        try {
+          pl = await repo.profitLoss(from: from, to: to);
+        } catch (_) {
+          // Profit/loss is optional for the PDF
+        }
+
+        final file = await exportFullReportPdf(
+          period: _periodLabel(),
+          summary: sum,
+          profitLossData: pl,
+          topProducts: top,
+          categories: cats,
+          payments: pays,
+        );
+
+        if (!mounted) return;
+        TopToast.success(context, 'PDF berhasil dibuat');
+
+        // Offer share
+        final share = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Laporan Siap'),
+            content: const Text('Laporan PDF lengkap telah dibuat. Bagikan sekarang?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Nanti'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Bagikan'),
+              ),
+            ],
+          ),
+        );
+
+        if (share == true) {
+          await SharePlus.instance.share(ShareParams(
+              files: [XFile(file.path)],
+              subject: 'Laporan NUSA Kasir',
+              text: 'Laporan lengkap NUSA Kasir (${_periodLabel()})'));
+        }
       } else {
         final file = format == 'excel'
             ? await exportExcel(items, name)
             : await exportCsv(items, name);
-        await Share.shareXFiles([XFile(file.path)],
+        if (!mounted) return;
+        TopToast.success(context, 'Laporan berhasil diexport');
+        await SharePlus.instance.share(ShareParams(
+            files: [XFile(file.path)],
             subject: 'Laporan NUSA Kasir',
-            text: 'Laporan penjualan NUSA Kasir (${_periodLabel()})');
+            text: 'Laporan penjualan NUSA Kasir (${_periodLabel()})'));
       }
     } catch (e) {
       if (mounted) TopToast.error(context, 'Gagal ekspor: $e');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  /// Quick share: directly generates and shares PDF without picking format.
+  Future<void> _quickSharePdf() async {
+    setState(() => _exporting = true);
+    try {
+      final (from, to) = _range();
+      final repo = ReportRepository(ref.read(databaseProvider));
+
+      final data = await repo.summary(from: from, to: to);
+      final top = await repo.topProducts(from: from, to: to);
+      final cats = await repo.salesByCategory(from: from, to: to);
+      final pays = await repo.salesByPaymentMethod(from: from, to: to);
+
+      Map<String, dynamic>? pl;
+      try {
+        pl = await repo.profitLoss(from: from, to: to);
+      } catch (_) {}
+
+      final file = await exportFullReportPdf(
+        period: _periodLabel(),
+        summary: data,
+        profitLossData: pl,
+        topProducts: top,
+        categories: cats,
+        payments: pays,
+      );
+
+      if (!mounted) return;
+      await SharePlus.instance.share(ShareParams(
+          files: [XFile(file.path)],
+          subject: 'Laporan NUSA Kasir',
+          text: 'Laporan lengkap NUSA Kasir (${_periodLabel()})'));
+    } catch (e) {
+      if (mounted) TopToast.error(context, 'Gagal membagikan: $e');
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -173,8 +377,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             builder: (ctx, snap) {
               if (snap.connectionState != ConnectionState.done) {
                 return const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: SkeletonList());
+                    padding: EdgeInsets.all(20), child: SkeletonList());
               }
               final d = snap.data ?? {};
               final omzet = d['omzet'] as int? ?? 0;
@@ -188,14 +391,17 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: Column(children: [
                   Row(children: [
-                    Expanded(child: _StatCard('Omzet', formatRupiah(omzet),
-                        isDark: isDark)),
+                    Expanded(
+                        child: _StatCard('Omzet', formatRupiah(omzet),
+                            isDark: isDark)),
                     const SizedBox(width: 10),
-                    Expanded(child: _StatCard('Transaksi', count.toString(),
-                        isDark: isDark)),
+                    Expanded(
+                        child: _StatCard('Transaksi', count.toString(),
+                            isDark: isDark)),
                     const SizedBox(width: 10),
-                    Expanded(child: _StatCard('Rata-rata', formatRupiah(avg),
-                        isDark: isDark)),
+                    Expanded(
+                        child: _StatCard('Rata-rata', formatRupiah(avg),
+                            isDark: isDark)),
                   ]),
                   if (hasPrev) ...[
                     const SizedBox(height: 10),
@@ -219,9 +425,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               if (daily.isEmpty) return const SizedBox.shrink();
               final entries = daily.entries.toList()
                 ..sort((a, b) => a.key.compareTo(b.key));
-              final maxVal = entries.fold<int>(0, (m, e) => e.value > m ? e.value : m);
+              final maxVal =
+                  entries.fold<int>(0, (m, e) => e.value > m ? e.value : m);
               final show7 = entries.length > 7;
-              final bars = show7 ? _buildDailyBars(entries, maxVal) : _buildDayBars(entries, maxVal);
+              final bars = show7
+                  ? _buildDailyBars(entries, maxVal)
+                  : _buildDayBars(entries, maxVal);
               return Container(
                 height: 220,
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -245,7 +454,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           gridData: FlGridData(
                               show: true,
                               drawVerticalLine: false,
-                              horizontalInterval: maxVal > 0 ? (maxVal / 4).ceilToDouble() : 50000),
+                              horizontalInterval: maxVal > 0
+                                  ? (maxVal / 4).ceilToDouble()
+                                  : 50000),
                           titlesData: FlTitlesData(
                               show: true,
                               bottomTitles: AxisTitles(
@@ -253,8 +464,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                       showTitles: true,
                                       getTitlesWidget: (v, meta) {
                                         final idx = v.toInt();
-                                        if (idx < 0 || idx >= entries.length) return const SizedBox.shrink();
-                                        return _barLabel(idx, entries, isDark: isDark);
+                                        if (idx < 0 ||
+                                            idx >= entries.length) {
+                                          return const SizedBox.shrink();
+                                        }
+                                        return _barLabel(idx, entries,
+                                            isDark: isDark);
                                       },
                                       reservedSize: 28)),
                               leftTitles: AxisTitles(
@@ -264,11 +479,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                       getTitlesWidget: (v, meta) => Text(
                                           formatRupiah(v.toInt()),
                                           style: TextStyle(
-                                              fontSize: 11, color: textTer)))),
+                                              fontSize: 11,
+                                              color: textTer)))),
                               topTitles: AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false)),
+                                  sideTitles:
+                                      SideTitles(showTitles: false)),
                               rightTitles: AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false))),
+                                  sideTitles:
+                                      SideTitles(showTitles: false))),
                           borderData: FlBorderData(show: false),
                         )),
                       ),
@@ -303,8 +521,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         final p = e.value;
                         final qty = (p['qty'] as int?) ?? 0;
                         final rev = (p['revenue'] as int?) ?? 0;
-                        final maxQty =
-                            list.isNotEmpty ? (list.first['qty'] as int?) ?? 1 : 1;
+                        final maxQty = list.isNotEmpty
+                            ? (list.first['qty'] as int?) ?? 1
+                            : 1;
                         final ratio = maxQty > 0 ? qty / maxQty : 0.0;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
@@ -331,7 +550,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                     ]),
                                     const SizedBox(height: 4),
                                     ClipRRect(
-                                      borderRadius: BorderRadius.circular(3),
+                                      borderRadius:
+                                          BorderRadius.circular(3),
                                       child: LinearProgressIndicator(
                                         value: ratio.clamp(0.0, 1.0),
                                         backgroundColor: NusaConfig
@@ -346,7 +566,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                     const SizedBox(height: 2),
                                     Text('${qty}x terjual',
                                         style: TextStyle(
-                                            fontSize: 11, color: textTer)),
+                                            fontSize: 11,
+                                            color: textTer)),
                                   ]),
                             ),
                           ]),
@@ -389,12 +610,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             sections: list.asMap().entries.map((e) {
                               final cat = e.value;
                               final pct = totalRev > 0
-                                  ? ((cat['revenue'] as int) / totalRev) * 100
+                                  ? ((cat['revenue'] as int) /
+                                          totalRev) *
+                                      100
                                   : 0.0;
                               return PieChartSectionData(
-                                  value: (cat['revenue'] as int).toDouble(),
-                                  title: '${pct.toStringAsFixed(0)}%',
-                                  titleStyle: TextStyle(
+                                  value:
+                                      (cat['revenue'] as int).toDouble(),
+                                  title:
+                                      '${pct.toStringAsFixed(0)}%',
+                                  titleStyle: const TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                       color: Colors.white),
@@ -411,18 +636,21 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           child: Column(
                               children: list.take(6).map((c) {
                             final pct = totalRev > 0
-                                ? ((c['revenue'] as int) / totalRev) * 100
+                                ? ((c['revenue'] as int) / totalRev) *
+                                    100
                                 : 0.0;
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
+                              padding:
+                                  const EdgeInsets.only(bottom: 6),
                               child: Row(children: [
                                 Container(
                                     width: 10,
                                     height: 10,
-                                    margin:
-                                        const EdgeInsets.only(right: 8),
+                                    margin: const EdgeInsets.only(
+                                        right: 8),
                                     decoration: BoxDecoration(
-                                        color: _catColors[list.indexOf(c) %
+                                        color: _catColors[list.indexOf(
+                                                c) %
                                             _catColors.length],
                                         borderRadius:
                                             BorderRadius.circular(2))),
@@ -486,7 +714,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                   : 0.0;
                               return PieChartSectionData(
                                   value: amt.toDouble(),
-                                  title: '${pct.toStringAsFixed(0)}%',
+                                  title:
+                                      '${pct.toStringAsFixed(0)}%',
                                   titleStyle: const TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
@@ -506,13 +735,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                 ? (e.value / totalPay) * 100
                                 : 0.0;
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
+                              padding:
+                                  const EdgeInsets.only(bottom: 6),
                               child: Row(children: [
                                 Container(
                                     width: 10,
                                     height: 10,
-                                    margin:
-                                        const EdgeInsets.only(right: 8),
+                                    margin: const EdgeInsets.only(
+                                        right: 8),
                                     decoration: BoxDecoration(
                                         color: _payColor(e.key),
                                         borderRadius:
@@ -534,32 +764,48 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       ]),
                       const SizedBox(height: 6),
                       Text('${formatRupiah(totalPay)} total',
-                          style: TextStyle(fontSize: 11, color: textTer)),
+                          style:
+                              TextStyle(fontSize: 11, color: textTer)),
                     ]),
               );
             },
           ),
-          // ── Export button ──
+          // ── Export + Share buttons ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: NusaButton(
-              _exporting ? 'Memproses...' : 'Export Laporan',
-              fullWidth: true,
-              onPressed: _exporting
-                  ? null
-                  : () async {
-                      final data = await repo.summary(from: from, to: to);
-                      final items =
-                          (data['items'] as List<Transaction>?) ?? [];
-                      final top =
-                          await repo.topProducts(from: from, to: to);
-                      final cats =
-                          await repo.salesByCategory(from: from, to: to);
-                      final pays = await repo.salesByPaymentMethod(
-                          from: from, to: to);
-                      await _doExport(items, data, top, cats, pays);
-                    },
-            ),
+            child: Row(children: [
+              Expanded(
+                child: NusaButton(
+                  _exporting ? 'Memproses...' : 'Export Laporan',
+                  fullWidth: true,
+                  onPressed: _exporting
+                      ? null
+                      : () async {
+                          final data =
+                              await repo.summary(from: from, to: to);
+                          final items =
+                              (data['items'] as List<Transaction>?) ?? [];
+                          final top = await repo.topProducts(
+                              from: from, to: to);
+                          final cats = await repo.salesByCategory(
+                              from: from, to: to);
+                          final pays = await repo.salesByPaymentMethod(
+                              from: from, to: to);
+                          await _doExport(
+                              items, data, top, cats, pays);
+                        },
+                ),
+              ),
+              const SizedBox(width: 10),
+              _iconButton(
+                icon: Icons.share_rounded,
+                label: 'Bagikan',
+                color: NusaConfig.info,
+                isDark: isDark,
+                onPressed: _exporting ? null : _quickSharePdf,
+                loading: _exporting,
+              ),
+            ]),
           ),
           const SizedBox(height: 12),
           // ── Transaction list ──
@@ -595,11 +841,54 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 itemCount: list.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (_, i) => _TxCard(tx: list[i], isDark: isDark),
+                itemBuilder: (_, i) =>
+                    _TxCard(tx: list[i], isDark: isDark),
               );
             },
           ),
         ]),
+      ),
+    );
+  }
+
+  Widget _iconButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isDark,
+    required VoidCallback? onPressed,
+    bool loading = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: isDark ? 0.15 : 0.1),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: color.withValues(alpha: 0.25)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            loading
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: color))
+                : Icon(icon, size: 18, color: color),
+            const SizedBox(width: 6),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: color)),
+          ]),
+        ),
       ),
     );
   }
@@ -626,49 +915,60 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     }
   }
 
-  List<BarChartGroupData> _buildDailyBars(List<MapEntry<String, int>> entries, int maxVal) {
+  List<BarChartGroupData> _buildDailyBars(
+      List<MapEntry<String, int>> entries, int maxVal) {
     return List.generate(entries.length, (i) {
       return BarChartGroupData(x: i, barRods: [
         BarChartRodData(
             toY: entries[i].value.toDouble(),
             color: NusaConfig.primaryColor.withValues(alpha: 0.85),
             width: entries.length > 15 ? 8 : 14,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(5))),
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(5))),
       ]);
     });
   }
 
-  List<BarChartGroupData> _buildDayBars(List<MapEntry<String, int>> entries, int maxVal) {
+  List<BarChartGroupData> _buildDayBars(
+      List<MapEntry<String, int>> entries, int maxVal) {
     return List.generate(entries.length, (i) {
       return BarChartGroupData(x: i, barRods: [
         BarChartRodData(
             toY: entries[i].value.toDouble(),
             color: NusaConfig.primaryColor.withValues(alpha: 0.85),
             width: 22,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(6))),
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(6))),
       ]);
     });
   }
 
-  Widget _barLabel(int idx, List<MapEntry<String, int>> entries, {bool isDark = false}) {
+  Widget _barLabel(int idx, List<MapEntry<String, int>> entries,
+      {bool isDark = false}) {
     final key = entries[idx].key;
-    // Parse "YYYY-MM-DD" → "DD/MM" or day name
     final parts = key.split('-');
     if (parts.length == 3) {
       if (entries.length <= 7) {
-        // Show day names
         final dt = DateTime.tryParse(key);
         if (dt != null) {
           final names = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
           final wd = dt.weekday - 1;
           if (wd >= 0 && wd < 7) {
             return Text(names[wd],
-                style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary));
+                style: TextStyle(
+                    fontSize: 11,
+                    color: isDark
+                        ? NusaConfig.darkTextTertiary
+                        : NusaConfig.textTertiary));
           }
         }
       }
       return Text('${parts[2]}/${parts[1]}',
-          style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary));
+          style: TextStyle(
+              fontSize: 11,
+              color: isDark
+                  ? NusaConfig.darkTextTertiary
+                  : NusaConfig.textTertiary));
     }
     return const SizedBox.shrink();
   }
@@ -734,11 +1034,53 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   style: TextStyle(fontSize: 12, color: textTer)),
             ])),
             const SizedBox(height: 16),
+            // ── Export + Share buttons in Laba Rugi tab too ──
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Row(children: [
+                Expanded(
+                  child: NusaButton(
+                    _exporting ? 'Memproses...' : 'Export Laporan',
+                    fullWidth: true,
+                    onPressed: _exporting
+                        ? null
+                        : () async {
+                            final data =
+                                await repo.summary(from: from, to: to);
+                            final items =
+                                (data['items'] as List<Transaction>?) ??
+                                    [];
+                            final top = await repo.topProducts(
+                                from: from, to: to);
+                            final cats =
+                                await repo.salesByCategory(
+                                    from: from, to: to);
+                            final pays =
+                                await repo.salesByPaymentMethod(
+                                    from: from, to: to);
+                            await _doExport(
+                                items, data, top, cats, pays);
+                          },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _iconButton(
+                  icon: Icons.share_rounded,
+                  label: 'Bagikan',
+                  color: NusaConfig.info,
+                  isDark: isDark,
+                  onPressed: _exporting ? null : _quickSharePdf,
+                  loading: _exporting,
+                ),
+              ]),
+            ),
             _plSection('Pendapatan', [
               _plRow('Pendapatan Penjualan', formatRupiah(pendapatan),
                   isHighlight: true, isDark: isDark),
-              _plRow('HPP (Harga Pokok Penjualan)', '${formatRupiah(hpp)}',
-                  isDeduct: true, isDark: isDark),
+              _plRow('HPP (Harga Pokok Penjualan)',
+                  '${formatRupiah(hpp)}',
+                  isDeduct: true,
+                  isDark: isDark),
               _plDivider(isDark: isDark),
               _plRow('Laba Kotor', formatRupiah(labaKotor),
                   isBold: true,
@@ -749,8 +1091,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ], isDark: isDark),
             const SizedBox(height: 12),
             _plSection('Beban', [
-              _plRow('Pengeluaran Operasional', formatRupiah(expenses),
-                  isDeduct: true, isDark: isDark),
+              _plRow('Pengeluaran Operasional',
+                  formatRupiah(expenses),
+                  isDeduct: true,
+                  isDark: isDark),
               _plRow('Payroll / Gaji', formatRupiah(payroll),
                   isDeduct: true, isDark: isDark),
               _plRow('Waste / Barang Rusak', formatRupiah(waste),
@@ -765,8 +1109,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ], isDark: isDark),
             const SizedBox(height: 12),
             NusaCard(Column(children: [
-              _plRow(
-                  'Laba / Rugi Bersih', formatRupiah(labaBersih.abs()),
+              _plRow('Laba / Rugi Bersih',
+                  formatRupiah(labaBersih.abs()),
                   isBold: true,
                   isHighlight: true,
                   color: labaBersih >= 0
@@ -788,7 +1132,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             Text(
               '* Perhitungan berdasarkan data yang tersedia. HPP dihitung dari harga beli produk.',
               style: TextStyle(
-                  fontSize: 11, color: textTer, fontStyle: FontStyle.italic),
+                  fontSize: 11,
+                  color: textTer,
+                  fontStyle: FontStyle.italic),
               textAlign: TextAlign.center,
             ),
           ]),
@@ -797,7 +1143,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  Widget _plSection(String title, List<Widget> rows, {bool isDark = false}) =>
+  Widget _plSection(String title, List<Widget> rows,
+          {bool isDark = false}) =>
       NusaCard(Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -820,14 +1167,17 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       bool isHighlight = false,
       Color? color,
       bool isDark = false}) {
-    final prefix = isDeduct ? '− ' : (isAdd ? '+ ' : '');
+    final prefix = isDeduct ? '\u2212 ' : (isAdd ? '+ ' : '');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      child:
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(label,
             style: TextStyle(
                 fontSize: 14,
-                fontWeight: isHighlight ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: isHighlight
+                    ? FontWeight.w700
+                    : FontWeight.w500,
                 color: isHighlight
                     ? (isDark
                         ? NusaConfig.darkTextPrimary
@@ -838,8 +1188,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         Text('$prefix$value',
             style: TextStyle(
                 fontSize: 14,
-                fontWeight:
-                    isBold || isHighlight ? FontWeight.w700 : FontWeight.w600,
+                fontWeight: isBold || isHighlight
+                    ? FontWeight.w700
+                    : FontWeight.w600,
                 color: color ??
                     (isDeduct
                         ? Colors.red.shade400
@@ -856,6 +1207,125 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       height: 16,
       thickness: 1,
       color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor);
+
+  // ── Ringkasan Harian ───────────────────────────────────────────────
+
+  Widget _ringkasanHarianCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final repo = ReportRepository(ref.read(databaseProvider));
+
+    return FutureBuilder<Map<String, dynamic>>(
+      key: ValueKey('daily_$_refreshKey'),
+      future: _fetchDailySummary(repo),
+      builder: (ctx, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: SkeletonList());
+        }
+        final d = snap.data ?? {};
+        final omzet = d['omzet'] as int? ?? 0;
+        final count = d['count'] as int? ?? 0;
+        final avg = d['avg'] as int? ?? 0;
+        final hasPrev = d['hasPrevious'] as bool? ?? false;
+        final omzetG = d['omzetGrowth'] as double? ?? 0;
+
+        return Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: NusaCard(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.today_rounded,
+                      size: 18,
+                      color: isDark
+                          ? NusaConfig.darkTextSecondary
+                          : NusaConfig.textSecondary),
+                  const SizedBox(width: 6),
+                  Text('Ringkasan Hari Ini',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isDark
+                              ? NusaConfig.darkTextPrimary
+                              : NusaConfig.textPrimary)),
+                  const Spacer(),
+                  if (hasPrev)
+                    _miniGrowth(omzetG,
+                        label: 'vs kemarin', isDark: isDark),
+                ]),
+                const SizedBox(height: 12),
+                Row(children: [
+                  _dailyStat('Omzet', formatRupiah(omzet),
+                      isDark: isDark),
+                  _dailyDivider(),
+                  _dailyStat('Transaksi', count.toString(),
+                      isDark: isDark),
+                  _dailyDivider(),
+                  _dailyStat('Rata-rata', formatRupiah(avg),
+                      isDark: isDark),
+                ]),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> _fetchDailySummary(
+      ReportRepository repo) async {
+    final now = DateTime.now();
+    final todayFrom = DateTime(now.year, now.month, now.day);
+    return repo.summaryWithPrevious(todayFrom, now);
+  }
+
+  Widget _dailyStat(String label, String value, {bool isDark = false}) {
+    return Expanded(
+      child: Column(children: [
+        Text(value,
+            style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: NusaConfig.primaryColor)),
+        const SizedBox(height: 2),
+        Text(label,
+            style: TextStyle(
+                fontSize: 11,
+                color: isDark
+                    ? NusaConfig.darkTextTertiary
+                    : NusaConfig.textTertiary)),
+      ]),
+    );
+  }
+
+  Widget _dailyDivider() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 1,
+      height: 36,
+      color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor,
+    );
+  }
+
+  Widget _miniGrowth(double pct,
+      {String label = '', bool isDark = false}) {
+    final up = pct >= 0;
+    final color =
+        up ? NusaConfig.accentGreenDark : NusaConfig.primaryColor;
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(up ? Icons.trending_up : Icons.trending_down,
+          size: 14, color: color),
+      const SizedBox(width: 3),
+      Text('${up ? "+" : ""}${pct.toStringAsFixed(1)}% $label',
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color)),
+    ]);
+  }
 
   // ── MAIN BUILD ─────────────────────────────────────────────────────
 
@@ -875,10 +1345,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               child: Container(
                 height: 36,
                 decoration: BoxDecoration(
-                  color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+                  color: isDark
+                      ? NusaConfig.darkSurface
+                      : NusaConfig.backgroundColor,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                      color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+                      color: isDark
+                          ? NusaConfig.darkBorder
+                          : NusaConfig.dividerColor),
                 ),
                 child: Row(children: [
                   _segBtn('Penjualan', 0, isDark: isDark),
@@ -896,17 +1370,26 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         if (_period == 'Custom')
           Text(_periodLabel(),
               style: TextStyle(
-                  fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                  fontSize: 12,
+                  color: isDark
+                      ? NusaConfig.darkTextTertiary
+                      : NusaConfig.textTertiary)),
+        // Ringkasan Harian card (only for Penjualan tab)
+        if (_tab == 0) _ringkasanHarianCard(),
         Expanded(child: _tab == 0 ? _penjualanTab() : _labaRugiTab()),
       ]),
     );
   }
 
   Widget _periodDropdown(bool isDark) {
-    final items = _periodOptions.map((p) => DropdownMenuItem(
-      value: p,
-      child: Text(p, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-    )).toList();
+    final items = _periodOptions
+        .map((p) => DropdownMenuItem(
+              value: p,
+              child: Text(p,
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600)),
+            ))
+        .toList();
 
     return Container(
       height: 36,
@@ -923,10 +1406,17 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           value: _periodOptions.contains(_period) ? _period : 'Custom',
           isExpanded: true,
           isDense: true,
-          icon: Icon(Icons.expand_more_rounded, size: 18,
-              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+          icon: Icon(Icons.expand_more_rounded,
+              size: 18,
+              color: isDark
+                  ? NusaConfig.darkTextTertiary
+                  : NusaConfig.textTertiary),
+          style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark
+                  ? NusaConfig.darkTextSecondary
+                  : NusaConfig.textSecondary),
           dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(12),
           underline: const SizedBox.shrink(),
@@ -967,7 +1457,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 fontWeight: FontWeight.w600,
                 color: sel
                     ? Colors.white
-                    : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                    : (isDark
+                        ? NusaConfig.darkTextSecondary
+                        : NusaConfig.textSecondary),
               )),
         ),
       ),
@@ -1096,7 +1588,7 @@ class _TxCard extends StatelessWidget {
                     ],
                   ]),
                   const SizedBox(height: 4),
-                  Text('$dateStr • ${tx.paymentMethod}',
+                  Text('$dateStr \u2022 ${tx.paymentMethod}',
                       style: TextStyle(fontSize: 13, color: textSec)),
                 ]),
           ),

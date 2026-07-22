@@ -18,7 +18,8 @@ import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 
 class StockScreen extends ConsumerStatefulWidget {
-  const StockScreen({super.key});
+  final bool lowStockOnly;
+  const StockScreen({super.key, this.lowStockOnly = false});
   @override
   ConsumerState<StockScreen> createState() => _StockScreenState();
 }
@@ -30,10 +31,12 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   String _typeFilter = 'in'; // ''=all | 'in' | 'out'
   String _timeFilter = 'Hari ini';
   DateTimeRange? _dateRange;
+  bool _lowStockFilter = false;
 
   @override
   void initState() {
     super.initState();
+    _lowStockFilter = widget.lowStockOnly;
     _load();
   }
 
@@ -56,7 +59,10 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   }
 
   List<Product> get _lowStock =>
-      _products.where((p) => p.stock <= p.minStock).toList();
+      _products.where((p) => p.stock < p.minStock && p.minStock > 0).toList();
+
+  List<Product> get _filteredProducts =>
+      _lowStockFilter ? _lowStock : _products;
 
   List<StockMovement> get _filteredMovements {
     var list = _movements;
@@ -135,6 +141,33 @@ class _StockScreenState extends ConsumerState<StockScreen> {
     );
   }
 
+  // ── Quick Restock from low-stock card ──
+  void _openRestockSheet(Product product) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _RestockSheet(
+        product: product,
+        onRestock: _submitRestock,
+      ),
+    );
+  }
+
+  Future<void> _submitRestock(int productId, int qty, String note) async {
+    final db = ref.read(databaseProvider);
+    final repo = ProductRepository(db);
+    await repo.adjustStock(productId, qty);
+    await db.into(db.stockMovements).insert(StockMovementsCompanion.insert(
+          productId: productId,
+          type: 'in',
+          qty: qty,
+          note: note.isNotEmpty ? Value(note) : const Value.absent(),
+        ));
+    if (mounted) TopToast.success(context, 'Stok berhasil ditambah +$qty');
+    await _load();
+  }
+
   // ── helpers ──
   static String _initials(String name) {
     if (name.isEmpty) return '??';
@@ -149,9 +182,8 @@ class _StockScreenState extends ConsumerState<StockScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ScreenScaffold(
-      'Stok',
+      _lowStockFilter ? 'Stok Menipis' : 'Stok',
       _loading ? const SkeletonList() : _buildBody(),
     );
   }
@@ -161,7 +193,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
     final filtered = _filteredMovements;
     final total = _products.length;
     final menipis =
-        _products.where((p) => p.stock > 0 && p.stock <= p.minStock).length;
+        _products.where((p) => p.stock < p.minStock && p.minStock > 0).length;
     final habis = _products.where((p) => p.stock <= 0).length;
 
     return RefreshIndicator(
@@ -169,6 +201,52 @@ class _StockScreenState extends ConsumerState<StockScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // ── Dismissible low-stock-filter banner ──
+          if (_lowStockFilter)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: NusaConfig.warningSoft,
+                  borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+                  border: Border.all(color: NusaConfig.warning.withValues(alpha: 0.3)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.warning_amber_rounded, size: 20, color: NusaConfig.warningText),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Menampilkan ${_lowStock.length} produk dengan stok menipis',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: NusaConfig.warningText,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() => _lowStockFilter = false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: NusaConfig.warning.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
+                      ),
+                      child: Text(
+                        'Semua Stok',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: NusaConfig.warningText,
+                        ),
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+
           // ── Summary tiles ──
           Row(children: [
             Expanded(
@@ -198,30 +276,32 @@ class _StockScreenState extends ConsumerState<StockScreen> {
           const SizedBox(height: 16),
 
           // ── Quick actions ──
-          Row(children: [
-            Expanded(
-              child: _QuickAction(
-                icon: Icons.add_rounded,
-                label: 'Stok Masuk',
-                color: NusaConfig.accentGreen,
-                onTap: () => _openAdjustSheet('in'),
+          if (!_lowStockFilter) ...[
+            Row(children: [
+              Expanded(
+                child: _QuickAction(
+                  icon: Icons.add_rounded,
+                  label: 'Stok Masuk',
+                  color: NusaConfig.accentGreen,
+                  onTap: () => _openAdjustSheet('in'),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _QuickAction(
-                icon: Icons.remove_rounded,
-                label: 'Stok Keluar',
-                color: NusaConfig.primaryColor,
-                onTap: () => _openAdjustSheet('out'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _QuickAction(
+                  icon: Icons.remove_rounded,
+                  label: 'Stok Keluar',
+                  color: NusaConfig.primaryColor,
+                  onTap: () => _openAdjustSheet('out'),
+                ),
               ),
-            ),
-          ]),
-          const SizedBox(height: 24),
+            ]),
+            const SizedBox(height: 24),
+          ],
 
           // ── Stok Menipis section ──
           _SectionHeader(
-            title: 'Stok Menipis',
+            title: _lowStockFilter ? 'Daftar Stok Menipis' : 'Stok Menipis',
             subtitle: _lowStock.isEmpty
                 ? 'Semua stok aman'
                 : '${_lowStock.length} produk perlu restok',
@@ -240,32 +320,64 @@ class _StockScreenState extends ConsumerState<StockScreen> {
                       child: _LowStockCard(
                         product: p,
                         onTap: () => context.push('/produk/edit/${p.id}'),
+                        onRestock: () => _openRestockSheet(p),
                       ),
                     )),
           const SizedBox(height: 24),
 
+          // ── All products section (only when not filtered) ──
+          if (!_lowStockFilter) ...[
+            _SectionHeader(
+              title: 'Semua Produk',
+              icon: Icons.inventory_2_outlined,
+              subtitle: '$total produk',
+            ),
+            const SizedBox(height: 12),
+            if (_products.isEmpty)
+              const EmptyState(
+                icon: Icons.inventory_2_outlined,
+                message: 'Belum ada produk',
+              )
+            else
+              ..._products.take(20).map((p) {
+                final isLow = p.stock < p.minStock && p.minStock > 0;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _ProductRow(
+                    product: p,
+                    highlightLowStock: isLow,
+                    onTap: () => context.push('/produk/edit/${p.id}'),
+                    onRestock: isLow ? () => _openRestockSheet(p) : null,
+                  ),
+                );
+              }),
+            const SizedBox(height: 24),
+          ],
+
           // ── Aktivitas section ──
-          _SectionHeader(
-            title: 'Aktivitas Stok',
-            icon: Icons.history_rounded,
-            subtitle: '${filtered.length} pergerakan',
-          ),
-          const SizedBox(height: 12),
-          _buildFilterBar(isDark),
-          const SizedBox(height: 12),
-          if (filtered.isEmpty)
-            const EmptyState(
+          if (!_lowStockFilter) ...[
+            _SectionHeader(
+              title: 'Aktivitas Stok',
               icon: Icons.history_rounded,
-              message: 'Belum ada riwayat',
-            )
-          else
-            ...filtered.map((m) {
-              final name = _nameOf(m.productId);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _HistoryCard(movement: m, productName: name),
-              );
-            }),
+              subtitle: '${filtered.length} pergerakan',
+            ),
+            const SizedBox(height: 12),
+            _buildFilterBar(isDark),
+            const SizedBox(height: 12),
+            if (filtered.isEmpty)
+              const EmptyState(
+                icon: Icons.history_rounded,
+                message: 'Belum ada riwayat',
+              )
+            else
+              ...filtered.map((m) {
+                final name = _nameOf(m.productId);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _HistoryCard(movement: m, productName: name),
+                );
+              }),
+          ],
           const SizedBox(height: 8),
         ],
       ),
@@ -689,8 +801,9 @@ class _Segmented extends StatelessWidget {
 class _LowStockCard extends StatelessWidget {
   final Product product;
   final VoidCallback onTap;
+  final VoidCallback? onRestock;
 
-  const _LowStockCard({required this.product, required this.onTap});
+  const _LowStockCard({required this.product, required this.onTap, this.onRestock});
 
   @override
   Widget build(BuildContext context) {
@@ -841,6 +954,38 @@ class _LowStockCard extends StatelessWidget {
                         valueColor: AlwaysStoppedAnimation(barColor),
                         minHeight: 5,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: onRestock,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: NusaConfig.accentGreen.withValues(alpha: isDark ? 0.2 : 0.12),
+                              borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
+                              border: Border.all(color: NusaConfig.accentGreen.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.add_shopping_cart_rounded, size: 14, color: NusaConfig.accentGreen),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Restock',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: NusaConfig.accentGreen,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1404,6 +1549,418 @@ class _AdjustSheetState extends State<_AdjustSheet> {
             const SizedBox(height: 4),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ===========================================
+//  Product row (all products list)
+// ===========================================
+
+class _ProductRow extends StatelessWidget {
+  final Product product;
+  final bool highlightLowStock;
+  final VoidCallback onTap;
+  final VoidCallback? onRestock;
+
+  const _ProductRow({
+    required this.product,
+    required this.highlightLowStock,
+    required this.onTap,
+    this.onRestock,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasImage = product.imagePath != null &&
+        product.imagePath!.isNotEmpty &&
+        File(product.imagePath!).existsSync();
+    final gradient = NusaConfig.catGradientFor(product.category);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+            border: Border.all(
+              color: highlightLowStock
+                  ? NusaConfig.warning.withValues(alpha: 0.4)
+                  : (isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IntrinsicHeight(
+            child: Row(children: [
+              if (highlightLowStock)
+                Container(
+                  width: 4,
+                  decoration: const BoxDecoration(
+                    color: NusaConfig.warning,
+                    borderRadius: BorderRadius.horizontal(
+                      left: Radius.circular(NusaConfig.radiusMD),
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
+                  child: Row(children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
+                      child: SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: hasImage
+                            ? Image.file(File(product.imagePath!), fit: BoxFit.cover)
+                            : Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: gradient,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  _StockScreenState._initials(product.name),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(product.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? NusaConfig.darkTextPrimary
+                                    : NusaConfig.textPrimary,
+                              )),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${product.category}  \u2022  Stok ${product.stock}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? NusaConfig.darkTextTertiary
+                                  : NusaConfig.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (highlightLowStock)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text(
+                          '${product.stock}/${product.minStock}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: NusaConfig.warningText,
+                          ),
+                        ),
+                      ),
+                    if (onRestock != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: GestureDetector(
+                          onTap: onRestock,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: NusaConfig.accentGreen.withValues(alpha: isDark ? 0.2 : 0.12),
+                              borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
+                              border: Border.all(color: NusaConfig.accentGreen.withValues(alpha: 0.3)),
+                            ),
+                            child: const Icon(Icons.add_shopping_cart_rounded, size: 16, color: NusaConfig.accentGreen),
+                          ),
+                        ),
+                      ),
+                    if (!highlightLowStock && onRestock == null)
+                      Icon(Icons.chevron_right, size: 18,
+                          color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                  ]),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ===========================================
+//  Quick Restock bottom sheet
+// ===========================================
+
+class _RestockSheet extends StatefulWidget {
+  final Product product;
+  final Future<void> Function(int productId, int qty, String note) onRestock;
+
+  const _RestockSheet({required this.product, required this.onRestock});
+
+  @override
+  State<_RestockSheet> createState() => _RestockSheetState();
+}
+
+class _RestockSheetState extends State<_RestockSheet> {
+  final _qty = TextEditingController();
+  final _note = TextEditingController();
+  bool _saving = false;
+  int _restockQty = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final needed = (widget.product.minStock - widget.product.stock).clamp(1, 1000);
+    _restockQty = needed;
+    _qty.text = needed.toString();
+  }
+
+  @override
+  void dispose() {
+    _qty.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final n = int.tryParse(_qty.text.trim());
+    if (n == null || n <= 0) {
+      TopToast.error(context, 'Jumlah minimal 1');
+      return;
+    }
+    setState(() => _saving = true);
+    await widget.onRestock(widget.product.id, n, _note.text.trim());
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final product = widget.product;
+    final needed = (product.minStock - product.stock).clamp(0, 1000000);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        10,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: NusaConfig.dividerColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Row(children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: NusaConfig.accentGreen.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.add_shopping_cart_rounded, color: NusaConfig.accentGreen, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Quick Restock',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                ),
+              ),
+            ]),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: NusaConfig.accentGreen.withValues(alpha: isDark ? 0.14 : 0.08),
+                borderRadius: BorderRadius.circular(NusaConfig.radiusMD),
+                border: Border.all(color: NusaConfig.accentGreen.withValues(alpha: 0.25)),
+              ),
+              child: Row(children: [
+                _ProductThumb(product: product, size: 44),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(product.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                          )),
+                      const SizedBox(height: 2),
+                      Row(children: [
+                        Text('Stok saat ini: ${product.stock}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
+                            )),
+                        const SizedBox(width: 8),
+                        Text('Min: ${product.minStock}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: NusaConfig.warningText,
+                            )),
+                      ]),
+                    ],
+                  ),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Jumlah Restock',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _QtyBtn(
+                  icon: Icons.remove_rounded,
+                  onTap: () {
+                    if (_restockQty > 1) {
+                      setState(() {
+                        _restockQty--;
+                        _qty.text = _restockQty.toString();
+                      });
+                    }
+                  },
+                ),
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _qty,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    onChanged: (v) {
+                      final n = int.tryParse(v);
+                      if (n != null) _restockQty = n;
+                    },
+                  ),
+                ),
+                _QtyBtn(
+                  icon: Icons.add_rounded,
+                  onTap: () {
+                    setState(() {
+                      _restockQty++;
+                      _qty.text = _restockQty.toString();
+                    });
+                  },
+                ),
+              ],
+            ),
+            if (needed > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Butuh $needed lagi untuk mencapai stok minimum',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: NusaConfig.warningText,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 16),
+            NusaInput(
+              'Catatan (opsional)',
+              controller: _note,
+            ),
+            const SizedBox(height: 20),
+            NusaButton(
+              'Konfirmasi Restock',
+              onPressed: _saving ? null : _save,
+            ),
+            const SizedBox(height: 4),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QtyBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _QtyBtn({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface2 : NusaConfig.inputFill,
+          borderRadius: BorderRadius.circular(NusaConfig.radiusSM),
+          border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+        ),
+        child: Icon(icon, size: 22, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
       ),
     );
   }

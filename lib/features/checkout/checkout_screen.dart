@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
+import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/customer_repository.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
@@ -284,6 +285,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       // Show receipt as centered dialog (GAS thermal style)
       if (mounted) {
+        final autoPrint = await SecureStore.getAutoPrint();
+        if (!mounted) return;
         await ReceiptSheet.show(
           context,
           sheet: ReceiptSheet.fromCart(
@@ -299,6 +302,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             invoice: invoice,
             dateStr: dateStr,
             pointsUsed: _pointsUsed,
+            autoPrint: autoPrint,
           ),
           onDismiss: () {
             // Return to POS screen after receipt is dismissed

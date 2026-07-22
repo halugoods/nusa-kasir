@@ -4,8 +4,8 @@ abstract class NusaConfig {
   static const String appName = "NUSA";
   static const String brandName = "NUSA";
   static const String appSubtitle = "Aplikasi Kasir untuk Toko Kelontong";
-  static const String appVersion = "1.1.0";
-  static const int appBuildNumber = 43;
+  static const String appVersion = "1.2.0";
+  static const int appBuildNumber = 50;
   static const String githubRepo = "halugoods/nusa-kasir";
   static const String landingPageUrl = "https://nusa-online.vercel.app";
   static const String whatsappOrder = "https://wa.me/6281234567890?text=Halo%2C%20saya%20mau%20beli%20NUSA%20Kasir";
@@ -136,10 +136,10 @@ abstract class NusaConfig {
   static const List<String> roles = ["Owner", "Manager", "Kasir", "Gudang", "Finance"];
   static const List<String> productTypes = ["Regular", "Varian", "Grosir"];
   static const Map<String, List<String>> roleAccess = {
-    "Owner": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet","pesanan_online","cabang","ai_chat"],
-    "Manager": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet","pesanan_online","cabang","ai_chat"],
-    "Kasir": ["home","kasir","produk","stok","transaksi","pelanggan","ai_chat"],
-    "Gudang": ["home","produk","stok","laporan","supplier"],
+    "Owner": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet","pesanan_online","cabang","ai_chat","piutang","shift","stok_opname"],
+    "Manager": ["home","kasir","produk","stok","transaksi","pelanggan","promo","laporan","presensi","karyawan","keuangan","pengaturan","supplier","spreadsheet","pesanan_online","cabang","ai_chat","piutang","shift","stok_opname"],
+    "Kasir": ["home","kasir","produk","stok","transaksi","pelanggan","ai_chat","stok_opname"],
+    "Gudang": ["home","produk","stok","laporan","supplier","stok_opname"],
     "Finance": ["home","transaksi","keuangan","laporan","presensi","karyawan","supplier"],
   };
 
@@ -149,6 +149,6 @@ abstract class NusaConfig {
   /// Menu yang HANYA bisa dibuka Owner (block dengan dialog).
   static const List<String> ownerOnlyScreens = [
     'laporan', 'promo', 'pesanan_online', 'karyawan',
-    'keuangan', 'spreadsheet', 'supplier', 'pengaturan', 'cabang',
+    'keuangan', 'spreadsheet', 'supplier', 'pengaturan', 'cabang', 'piutang',
   ];
 }

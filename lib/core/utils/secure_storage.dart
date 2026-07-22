@@ -61,4 +61,14 @@ class SecureStore {
       _s.read(key: 'nusa_feature_toggles');
   static Future<void> clearFeatureToggles() =>
       _s.delete(key: 'nusa_feature_toggles');
+
+  // -- Printer settings --
+  static Future<void> setAutoPrint(bool v) =>
+      _s.write(key: 'nusa_printer_auto_print', value: v.toString());
+  static Future<bool> getAutoPrint() async =>
+      (await _s.read(key: 'nusa_printer_auto_print')) == 'true';
+  static Future<void> setPaperSize(String v) =>
+      _s.write(key: 'nusa_printer_paper_size', value: v);
+  static Future<String> getPaperSize() async =>
+      (await _s.read(key: 'nusa_printer_paper_size')) ?? '58';
 }

@@ -207,6 +207,21 @@ class CashierSessions extends Table {
   IntColumn get startingCash => integer().withDefault(const Constant(0))();
   IntColumn get branchId => integer().nullable()();
 }
+class ShiftSessions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get employeeId => integer()();
+  IntColumn get cashierSessionId => integer().nullable()();
+  IntColumn get branchId => integer().nullable()();
+  IntColumn get startingCash => integer().withDefault(const Constant(0))();
+  IntColumn get expectedCash => integer().withDefault(const Constant(0))();
+  IntColumn get actualCash => integer().withDefault(const Constant(0))();
+  IntColumn get difference => integer().withDefault(const Constant(0))();
+  TextColumn get notes => text().nullable()();
+  TextColumn get status => text().withDefault(const Constant('Open'))();
+  DateTimeColumn get openedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get closedAt => dateTime().nullable()();
+}
+
 class OnlineOrders extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get invoice => text()();
@@ -224,4 +239,45 @@ class OnlineOrders extends Table {
   TextColumn get status => text().withDefault(const Constant('Online Baru'))();
   TextColumn get processedBy => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+class CustomerDebts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get customerId => integer()();
+  TextColumn get customerName => text()(); // denormalized
+  IntColumn get amount => integer()(); // total utang
+  IntColumn get remainingAmount => integer()(); // sisa yg belum dibayar
+  TextColumn get description => text().nullable()();
+  DateTimeColumn get debtDate => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get dueDate => dateTime().nullable()();
+  TextColumn get status => text().withDefault(const Constant('Belum Lunas'))(); // Belum Lunas | Lunas
+}
+class DebtPayments extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get debtId => integer()();
+  IntColumn get amount => integer()();
+  TextColumn get method => text().withDefault(const Constant('Tunai'))();
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get paidAt => dateTime().withDefault(currentDateAndTime)();
+}
+class StockCounts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().nullable()();
+  TextColumn get status => text().withDefault(const Constant('Draft'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get completedAt => dateTime().nullable()();
+  IntColumn get totalProducts => integer().withDefault(const Constant(0))();
+  IntColumn get matchCount => integer().withDefault(const Constant(0))();
+  IntColumn get diffCount => integer().withDefault(const Constant(0))();
+}
+class StockCountItems extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get countSessionId => integer()();
+  IntColumn get productId => integer()();
+  TextColumn get productName => text()();
+  IntColumn get systemStock => integer()();
+  IntColumn get physicalStock => integer().nullable()();
+  IntColumn get difference => integer().withDefault(const Constant(0))();
+  IntColumn get buyPrice => integer().withDefault(const Constant(0))();
+  IntColumn get sellPrice => integer().withDefault(const Constant(0))();
+  TextColumn get notes => text().nullable()();
 }

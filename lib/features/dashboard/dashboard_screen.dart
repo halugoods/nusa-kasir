@@ -11,6 +11,7 @@ import 'package:nusa_kasir/data/repositories/cashier_session_repository.dart';
 import 'package:nusa_kasir/data/repositories/report_repository.dart';
 import 'package:nusa_kasir/data/repositories/branch_repository.dart';
 import 'package:nusa_kasir/data/repositories/online_order_repository.dart';
+import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/data/repositories/finance_repository.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
@@ -54,6 +55,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String? _lastCashierPhoto;
   List<Employee> _employees = [];
   int _onlinePending = 0;
+  int _lowStockCount = 0;
 
   // Keuangan summary
   int _financeExpense = 0;
@@ -64,16 +66,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     {'id': 'stok', 'label': 'Stok', 'icon': 'inventory'},
     {'id': 'transaksi', 'label': 'Transaksi', 'icon': 'transaction'},
     {'id': 'pelanggan', 'label': 'Pelanggan', 'icon': 'customer'},
+    {'id': 'piutang', 'label': 'Piutang', 'icon': 'debt'},
     {'id': 'promo', 'label': 'Promo', 'icon': 'promotion'},
     {'id': 'pesanan_online', 'label': 'Online', 'icon': 'online'},
     {'id': 'laporan', 'label': 'Laporan', 'icon': 'finance'},
     {'id': 'presensi', 'label': 'Presensi', 'icon': 'notification'},
+    {'id': 'shift', 'label': 'Shift', 'icon': 'shift'},
     {'id': 'karyawan', 'label': 'Karyawan', 'icon': 'employee'},
     {'id': 'keuangan', 'label': 'Keuangan', 'icon': 'finance'},
     {'id': 'spreadsheet', 'label': 'Spreadsheet', 'icon': 'table'},
     {'id': 'supplier', 'label': 'Supplier', 'icon': 'supplier'},
     {'id': 'cabang', 'label': 'Cabang', 'icon': 'branch'},
     {'id': 'ai_chat', 'label': 'AI Chat', 'icon': 'ai'},
+    {'id': 'stok_opname', 'label': 'Stok Opname', 'icon': 'stockcount'},
     {'id': 'pengaturan', 'label': 'Pengaturan', 'icon': 'settings'},
   ];
 
@@ -155,6 +160,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final onlineRepo = OnlineOrderRepository(ref.read(databaseProvider));
     final onlinePending = await onlineRepo.countPending();
 
+    // Load low stock count (stok menipis: stock < minStock && minStock > 0)
+    int lowStockCount = 0;
+    try {
+      final allProducts = await ProductRepository(ref.read(databaseProvider)).getProducts();
+      lowStockCount = allProducts.where((p) => p.stock < p.minStock && p.minStock > 0).length;
+    } catch (_) {}
+
     // Load keuangan summary
     final financeRepo = FinanceRepository(ref.read(databaseProvider));
     final finSummary = await financeRepo.getDashboardSummary();
@@ -172,6 +184,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _avg = formatRupiah(sum['avg'] as int);
         _employees = emps;
         _onlinePending = onlinePending;
+        _lowStockCount = lowStockCount;
         _lastCashierName = lastCashierName;
         _lastCashierRole = lastCashierRole;
         _lastCashierTime = lastCashierTime;
@@ -219,6 +232,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (route == 'presensi') {
       await context.push('/$route');
       if (mounted) await _load();
+    } else if (route == 'stok' && _lowStockCount > 0) {
+      context.push('/stok?lowStock=true');
     } else {
       context.push('/$route');
     }
@@ -736,7 +751,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             icon: item['icon'] as String,
                             access: item['access'] as String,
                             onTap: () => _handleMenuTap(item['id'] as String),
-                            badgeCount: item['id'] == 'pesanan_online' ? _onlinePending : null,
+                            badgeCount: item['id'] == 'pesanan_online' ? _onlinePending : (item['id'] == 'stok' ? _lowStockCount : null),
+                            badgeColor: item['id'] == 'stok' ? NusaConfig.warning : null,
                           );
                         }).toList(),
                       ),
@@ -780,6 +796,7 @@ class _MenuItem extends StatelessWidget {
   final String access;
   final VoidCallback? onTap;
   final int? badgeCount;
+  final Color? badgeColor;
 
   const _MenuItem({
     required this.label,
@@ -787,6 +804,7 @@ class _MenuItem extends StatelessWidget {
     required this.access,
     this.onTap,
     this.badgeCount,
+    this.badgeColor,
   });
 
   static const _iconColors = {
@@ -804,6 +822,9 @@ class _MenuItem extends StatelessWidget {
     'online': Color(0xFF0EA5E9),
     'ai': Color(0xFFD946EF),
     'branch': NusaConfig.accentPurple,
+    'debt': const Color(0xFFF97316),
+    'stockcount': NusaConfig.accentGreen,
+    'shift': const Color(0xFF14B8A6),
   };
 
   @override
@@ -870,7 +891,7 @@ class _MenuItem extends StatelessWidget {
                       child: const Text('🔒', style: TextStyle(fontSize: 7)),
                     ),
                   ),
-                // Online badge (pending count)
+                // Badge (count)
                 if (badgeCount != null && badgeCount! > 0)
                   Positioned(
                     right: -2,
@@ -878,8 +899,8 @@ class _MenuItem extends StatelessWidget {
                     child: Container(
                       width: 20,
                       height: 20,
-                      decoration: const BoxDecoration(
-                        color: NusaConfig.primaryColor,
+                      decoration: BoxDecoration(
+                        color: badgeColor ?? NusaConfig.primaryColor,
                         shape: BoxShape.circle,
                       ),
                       alignment: Alignment.center,
@@ -990,6 +1011,9 @@ class MenuIcon extends StatelessWidget {
     'online': Icons.shopping_cart_outlined,
     'ai': Icons.auto_awesome_outlined,
     'branch': Icons.storefront_outlined,
+    'debt': Icons.handshake_outlined,
+    'shift': Icons.hub_outlined,
+    'stockcount': Icons.assignment_turned_in_outlined,
   };
 
   @override

@@ -33,6 +33,9 @@ import 'package:nusa_kasir/features/online_orders/online_store_setup_screen.dart
 import 'package:nusa_kasir/features/settings/payment_settings_screen.dart';
 import 'package:nusa_kasir/features/ai_assistant/ai_chat_screen.dart';
 import 'package:nusa_kasir/features/toko_online/storefront_screen.dart';
+import 'package:nusa_kasir/features/debts/debt_screen.dart';
+import 'package:nusa_kasir/features/stock_opname/stock_opname_screen.dart';
+import 'package:nusa_kasir/features/shift/shift_screen.dart';
 
 GoRouter buildRouter(String initialLocation) => GoRouter(
       initialLocation: initialLocation,
@@ -79,13 +82,20 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
             pageBuilder: (_, state) => _slidePage(ProductsByCategoryScreen(
                 category: state.pathParameters['category']!))),
         GoRoute(
-            path: '/stok', pageBuilder: (_, __) => _slidePage(const StockScreen())),
+            path: '/stok', pageBuilder: (_, state) => _slidePage(StockScreen(
+                lowStockOnly: state.uri.queryParameters['lowStock'] == 'true'))),
         GoRoute(
             path: '/transaksi',
             pageBuilder: (_, __) => _slidePage(const TransactionsScreen())),
         GoRoute(
             path: '/pelanggan',
             pageBuilder: (_, __) => _slidePage(const CustomersScreen())),
+        GoRoute(
+            path: '/piutang',
+            pageBuilder: (_, __) => _slidePage(const DebtScreen())),
+        GoRoute(
+            path: '/piutang',
+            pageBuilder: (_, __) => _slidePage(const DebtScreen())),
         GoRoute(
             path: '/promo', pageBuilder: (_, __) => _slidePage(const PromoScreen())),
         GoRoute(
@@ -97,6 +107,9 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/presensi',
             pageBuilder: (_, __) => _slidePage(const AttendanceScreen())),
+        GoRoute(
+            path: '/shift',
+            pageBuilder: (_, __) => _slidePage(const ShiftScreen())),
         GoRoute(
             path: '/keuangan',
             pageBuilder: (_, __) => _slidePage(const FinanceScreen())),
@@ -127,6 +140,12 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/pengaturan_pembayaran',
             pageBuilder: (_, __) => _slidePage(const PaymentSettingsScreen())),
+        GoRoute(
+            path: '/stok_opname',
+            pageBuilder: (_, __) => _slidePage(const StockOpnameScreen())),
+        GoRoute(
+            path: '/piutang',
+            pageBuilder: (_, __) => _slidePage(const DebtScreen())),
       ],
     );
 
