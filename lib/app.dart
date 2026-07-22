@@ -34,7 +34,6 @@ import 'package:nusa_kasir/features/settings/payment_settings_screen.dart';
 import 'package:nusa_kasir/features/ai_assistant/ai_chat_screen.dart';
 import 'package:nusa_kasir/features/toko_online/storefront_screen.dart';
 import 'package:nusa_kasir/features/debts/debt_screen.dart';
-import 'package:nusa_kasir/features/stock_opname/stock_opname_screen.dart';
 
 GoRouter buildRouter(String initialLocation) => GoRouter(
       initialLocation: initialLocation,
@@ -133,9 +132,6 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/pengaturan_pembayaran',
             pageBuilder: (_, __) => _slidePage(const PaymentSettingsScreen())),
-        GoRoute(
-            path: '/stok_opname',
-            pageBuilder: (_, __) => _slidePage(const StockOpnameScreen())),
       ],
     );
 

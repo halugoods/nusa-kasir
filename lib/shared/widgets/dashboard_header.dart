@@ -30,16 +30,14 @@ class DashboardHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Left: Logo + NUSA wordmark
+          // Left: Logo + NUSA wordmark (horizontal)
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  Image.asset('assets/images/nusa_logo.png', height: 36, fit: BoxFit.contain),
-                ]),
-                SizedBox(height: 4),
+                Image.asset('assets/images/nusa_logo.png', height: 40, fit: BoxFit.contain),
+                const SizedBox(width: 10),
                 Text(
                   'NUSA',
                   style: TextStyle(

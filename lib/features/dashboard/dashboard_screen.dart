@@ -77,7 +77,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     {'id': 'supplier', 'label': 'Supplier', 'icon': 'supplier'},
     {'id': 'cabang', 'label': 'Cabang', 'icon': 'branch'},
     {'id': 'ai_chat', 'label': 'AI Chat', 'icon': 'ai'},
-    {'id': 'stok_opname', 'label': 'Stok Opname', 'icon': 'stockcount'},
     {'id': 'pengaturan', 'label': 'Pengaturan', 'icon': 'settings'},
   ];
 

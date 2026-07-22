@@ -15,7 +15,8 @@ import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
 
 class StockOpnameScreen extends ConsumerStatefulWidget {
-  const StockOpnameScreen({super.key});
+  final bool embedded;
+  const StockOpnameScreen({super.key, this.embedded = false});
 
   @override
   ConsumerState<StockOpnameScreen> createState() => _StockOpnameScreenState();
@@ -224,6 +225,9 @@ class _StockOpnameScreenState extends ConsumerState<StockOpnameScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (widget.embedded) {
+      return _loading ? const SkeletonList() : _buildBody(isDark);
+    }
     return ScreenScaffold(
       'Stok Opname',
       _loading ? const SkeletonList() : _buildBody(isDark),

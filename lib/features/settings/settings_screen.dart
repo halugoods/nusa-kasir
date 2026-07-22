@@ -138,8 +138,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<bool> _showPinDialog(int employeeId, String name) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final pinChars = List<String>.filled(6, '');
-    final focusNodes = List.generate(6, (_) => FocusNode());
+    final pinCtrl = TextEditingController();
     String? error;
     final result = await showDialog<bool>(
       context: context,
@@ -167,78 +166,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           ]),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            // PIN boxes
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(6, (i) {
-                return Container(
-                  width: 44, height: 56,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  child: TextField(
-                    controller: TextEditingController(text: pinChars[i]),
-                    focusNode: focusNodes[i],
-                    onChanged: (v) {
-                      if (v.length > 1) {
-                        // Paste handling
-                        final chars = v.replaceAll(RegExp(r'[^0-9]'), '').split('');
-                        for (int j = 0; j < 6 && j < chars.length; j++) {
-                          pinChars[j] = chars[j];
-                        }
-                        setSt(() {});
-                        // Move to last filled or next
-                        final lastIdx = chars.length >= 6 ? 5 : chars.length;
-                        if (lastIdx < 6) focusNodes[lastIdx].requestFocus();
-                        return;
-                      }
-                      if (v.isEmpty) {
-                        pinChars[i] = '';
-                        setSt(() {});
-                        return;
-                      }
-                      pinChars[i] = v;
-                      setSt(() {});
-                      if (i < 5) focusNodes[i + 1].requestFocus();
-                    },
-                    onTap: () {
-                      // Select all text so typing replaces it
-                    },
-                    keyboardType: TextInputType.number,
-                    maxLength: 1,
-                    textAlign: TextAlign.center,
-                    obscureText: true,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-                    decoration: InputDecoration(
-                      counterText: '',
-                      filled: true,
-                      fillColor: pinChars[i].isNotEmpty
-                          ? NusaConfig.primaryColor.withValues(alpha: 0.08)
-                          : (isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: error != null ? NusaConfig.primaryColor
-                              : pinChars[i].isNotEmpty ? NusaConfig.primaryColor
-                              : (isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: error != null ? NusaConfig.primaryColor
-                              : pinChars[i].isNotEmpty ? NusaConfig.primaryColor
-                              : (isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 2),
-                      ),
-                    ),
+            TextField(
+              controller: pinCtrl,
+              autofocus: true,
+              obscureText: true,
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: 12),
+              decoration: InputDecoration(
+                counterText: '',
+                filled: true,
+                hintText: '····',
+                hintStyle: TextStyle(fontSize: 28, letterSpacing: 12,
+                    color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                fillColor: isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                    color: error != null ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
                   ),
-                );
-              }),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                    color: error != null ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 2),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              ),
+              onChanged: (_) {
+                if (error != null) setSt(() => error = null);
+              },
             ),
-            // Error
             if (error != null) ...[
               const SizedBox(height: 12),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -253,7 +217,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () async {
-                  final pin = pinChars.join();
+                  final pin = pinCtrl.text;
                   if (pin.length < 4) {
                     setSt(() => error = 'PIN minimal 4 digit');
                     return;
@@ -264,10 +228,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   if (emp != null && emp.pin == pin) {
                     if (ctx.mounted) Navigator.pop(ctx, true);
                   } else {
-                    // Clear all PIN boxes
-                    for (int j = 0; j < 6; j++) { pinChars[j] = ''; }
+                    pinCtrl.clear();
                     setSt(() => error = 'PIN salah — coba lagi');
-                    focusNodes[0].requestFocus();
                   }
                 },
                 style: ElevatedButton.styleFrom(

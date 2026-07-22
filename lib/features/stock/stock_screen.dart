@@ -16,6 +16,7 @@ import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
+import 'package:nusa_kasir/features/stock_opname/stock_opname_screen.dart';
 
 class StockScreen extends ConsumerStatefulWidget {
   final bool lowStockOnly;
@@ -32,6 +33,7 @@ class _StockScreenState extends ConsumerState<StockScreen> {
   String _timeFilter = 'Hari ini';
   DateTimeRange? _dateRange;
   bool _lowStockFilter = false;
+  int _tabIndex = 0; // 0 = Stok, 1 = Opname
 
   @override
   void initState() {
@@ -182,9 +184,50 @@ class _StockScreenState extends ConsumerState<StockScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ScreenScaffold(
       _lowStockFilter ? 'Stok Menipis' : 'Stok',
-      _loading ? const SkeletonList() : _buildBody(),
+      Column(children: [
+        // Tab bar
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(children: [
+            _segBtn('Stok', 0, isDark: isDark),
+            const SizedBox(width: 8),
+            _segBtn('Opname', 1, isDark: isDark),
+          ]),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _tabIndex == 0
+              ? (_loading ? const SkeletonList() : _buildBody())
+              : StockOpnameScreen(key: ValueKey('opname_$_tabIndex'), embedded: true),
+        ),
+      ]),
+    );
+  }
+
+  Widget _segBtn(String label, int idx, {bool isDark = false}) {
+    final sel = idx == _tabIndex;
+    return GestureDetector(
+      onTap: () => setState(() => _tabIndex = idx),
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: sel ? NusaConfig.primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: sel ? Colors.white : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+          ),
+        ),
+      ),
     );
   }
 

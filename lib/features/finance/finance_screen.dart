@@ -57,16 +57,11 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   int _totalPayroll = 0;
   int _totalWasteCost = 0;
   int _runningBalance = 0;
-  String _timeFilter = 'Hari Ini';
-  DateTime? _customFrom;
-  DateTime? _customTo;
+  String _timeFilter = 'Hari ini';
+  DateTimeRange? _dateRange;
   int? _branchFilter;
 
-  static const _timeOptions = ['Hari Ini', '7 Hr', '30 Hr', 'Bln Ini', 'Custom', 'Semua'];
-  static const _timeLabels = {
-    'Hari Ini': 'Hari Ini', '7 Hr': '7 Hari', '30 Hr': '30 Hari',
-    'Bln Ini': 'Bulan Ini', 'Custom': 'Custom', 'Semua': 'Semua',
-  };
+  static const _timeOptions = ['Hari ini', 'Kemarin', 'Minggu ini', 'Bulan ini', 'Tahun ini', 'Semua'];
 
   @override
   void initState() {
@@ -151,48 +146,48 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   }
 
   List<Expense> get _filteredExpenses {
-    final actual = _timeLabels[_timeFilter] ?? _timeFilter;
-    final now = DateTime.now();
-    if (actual == 'Custom' && _customFrom != null && _customTo != null) {
-      final to = _customTo!.add(const Duration(days: 1));
-      return _expenses.where((e) => e.date.isAfter(_customFrom!.subtract(const Duration(days: 1))) && e.date.isBefore(to)).toList();
+    if (_timeFilter == 'custom' && _dateRange != null) {
+      final to = _dateRange!.end.add(const Duration(days: 1));
+      return _expenses.where((e) => !e.date.isBefore(_dateRange!.start) && e.date.isBefore(to)).toList();
     }
-    switch (actual) {
-      case 'Hari Ini':
+    final now = DateTime.now();
+    switch (_timeFilter) {
+      case 'Hari ini':
         final today = DateTime(now.year, now.month, now.day);
-        return _expenses.where((e) => e.date.isAfter(today.subtract(const Duration(days: 1)))).toList();
-      case '7 Hari':
-        return _expenses.where((e) => e.date.isAfter(now.subtract(const Duration(days: 8)))).toList();
-      case '30 Hari':
-        return _expenses.where((e) => e.date.isAfter(now.subtract(const Duration(days: 31)))).toList();
-      case 'Bulan Ini':
-        return _expenses.where((e) => e.date.year == now.year && e.date.month == now.month).toList();
+        return _expenses.where((e) => !e.date.isBefore(today)).toList();
+      case 'Kemarin':
+        final yesterday = DateTime(now.year, now.month, now.day - 1);
+        final today = DateTime(now.year, now.month, now.day);
+        return _expenses.where((e) => !e.date.isBefore(yesterday) && e.date.isBefore(today)).toList();
+      case 'Minggu ini':
+        return _expenses.where((e) => e.date.isAfter(now.subtract(const Duration(days: 7)))).toList();
+      case 'Bulan ini':
+        return _expenses.where((e) => e.date.isAfter(now.subtract(const Duration(days: 30)))).toList();
+      case 'Tahun ini':
+        return _expenses.where((e) => !e.date.isBefore(DateTime(now.year, 1, 1))).toList();
       default:
         return _expenses;
     }
   }
 
-  String _timeLabel() => _timeFilter == 'Custom' && _customFrom != null && _customTo != null
-      ? '${_customFrom!.day}/${_customFrom!.month}–${_customTo!.day}/${_customTo!.month}'
-      : _timeLabels[_timeFilter] ?? _timeFilter;
+  String _timeLabel() => _timeFilter == 'custom' && _dateRange != null
+      ? '${_dateRange!.start.day}/${_dateRange!.start.month}–${_dateRange!.end.day}/${_dateRange!.end.month}'
+      : _timeFilter;
 
   Future<void> _pickDateRange() async {
     final range = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      initialDateRange: _customFrom != null && _customTo != null
-          ? DateTimeRange(start: _customFrom!, end: _customTo!)
-          : null,
+      initialDateRange: _dateRange,
       helpText: 'Pilih Rentang',
       cancelText: 'BATAL',
       confirmText: 'PILIH',
     );
     if (range != null) {
       setState(() {
-        _customFrom = range.start;
-        _customTo = range.end;
-        _timeFilter = 'Custom';
+        _dateRange = range;
+        _timeFilter = 'custom';
       });
     }
   }
@@ -322,43 +317,56 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   Widget _timeDropdown(bool isDark) {
     return Container(
       height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: _timeOptions.contains(_timeFilter) ? _timeFilter : 'Custom',
+          value: _timeFilter == 'custom' ? 'custom' : _timeFilter,
           isDense: true,
-          icon: Icon(Icons.expand_more_rounded, size: 16,
-              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
               color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-          dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           underline: const SizedBox.shrink(),
-          items: _timeOptions.map((o) => DropdownMenuItem(
-            value: o,
-            child: Text(o, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-          )).toList(),
+          icon: Icon(Icons.expand_more_rounded, size: 18,
+              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+          items: [
+            _ddItem('Hari ini'),
+            _ddItem('Kemarin'),
+            _ddItem('Minggu ini'),
+            _ddItem('Bulan ini'),
+            _ddItem('Tahun ini'),
+            _ddItem('Semua'),
+            if (_timeFilter == 'custom' && _dateRange != null)
+              DropdownMenuItem(
+                value: 'custom',
+                enabled: false,
+                child: Text(
+                  _timeLabel(),
+                  style: TextStyle(fontSize: 11, color: NusaConfig.primaryColor, fontWeight: FontWeight.w700),
+                ),
+              ),
+            _ddItem('Pilih Periode'),
+          ],
           onChanged: (v) {
-            if (v == null) return;
-            if (v == 'Custom') {
+            if (v == 'Pilih Periode') {
               _pickDateRange();
-              return;
+            } else {
+              setState(() { _timeFilter = v!; _dateRange = null; });
             }
-            setState(() {
-              _timeFilter = v;
-              _customFrom = null;
-              _customTo = null;
-            });
           },
         ),
       ),
     );
   }
+
+  DropdownMenuItem<String> _ddItem(String label) => DropdownMenuItem(
+        value: label,
+        child: Text(label),
+      );
 
   Widget _branchDropdown(bool isDark) {
     return Container(

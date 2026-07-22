@@ -28,50 +28,36 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   bool _exporting = false;
 
   // Period state
-  String _period = 'Hari Ini';
-  DateTime? _customFrom;
-  DateTime? _customTo;
-  static const _periodOptions = [
-    'Hari Ini',
-    '7 Hr',
-    '30 Hr',
-    'Bln Ini',
-    'Custom',
-    'Semua'
-  ];
-  static const _periodLabels = {
-    'Hari Ini': 'Hari Ini',
-    '7 Hr': '7 Hari',
-    '30 Hr': '30 Hari',
-    'Bln Ini': 'Bulan Ini',
-    'Custom': 'Custom',
-    'Semua': 'Semua',
-  };
+  String _period = 'Hari ini';
+  DateTimeRange? _dateRange;
 
   (DateTime?, DateTime?) _range() {
-    final actual = _periodLabels[_period] ?? _period;
-    if (actual == 'Custom') return (_customFrom, _customTo);
+    if (_period == 'custom' && _dateRange != null) {
+      return (_dateRange!.start, _dateRange!.end);
+    }
     final now = DateTime.now();
-    switch (actual) {
-      case 'Hari Ini':
+    switch (_period) {
+      case 'Hari ini':
         return (DateTime(now.year, now.month, now.day), now);
-      case '7 Hari':
+      case 'Kemarin':
+        final yesterday = DateTime(now.year, now.month, now.day - 1);
+        return (yesterday, yesterday.add(const Duration(days: 1)));
+      case 'Minggu ini':
         return (now.subtract(const Duration(days: 7)), now);
-      case '30 Hari':
+      case 'Bulan ini':
         return (now.subtract(const Duration(days: 30)), now);
-      case 'Bulan Ini':
-        return (DateTime(now.year, now.month, 1), now);
+      case 'Tahun ini':
+        return (DateTime(now.year, 1, 1), now);
       default:
         return (null, null);
     }
   }
 
   String _periodLabel() {
-    final actual = _periodLabels[_period] ?? _period;
-    if (actual == 'Custom' && _customFrom != null && _customTo != null) {
-      return '${_customFrom!.day}/${_customFrom!.month} \u2013 ${_customTo!.day}/${_customTo!.month}/${_customTo!.year}';
+    if (_period == 'custom' && _dateRange != null) {
+      return '${_dateRange!.start.day}/${_dateRange!.start.month} \u2013 ${_dateRange!.end.day}/${_dateRange!.end.month}/${_dateRange!.end.year}';
     }
-    return actual;
+    return _period;
   }
 
   Future<void> _pickDateRange() async {
@@ -79,18 +65,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      initialDateRange: _customFrom != null && _customTo != null
-          ? DateTimeRange(start: _customFrom!, end: _customTo!)
-          : null,
+      initialDateRange: _dateRange,
       helpText: 'Pilih Rentang Tanggal',
       cancelText: 'BATAL',
       confirmText: 'PILIH',
     );
     if (range != null) {
       setState(() {
-        _customFrom = range.start;
-        _customTo = range.end;
-        _period = 'Custom';
+        _dateRange = range;
+        _period = 'custom';
         _refreshKey++;
       });
     }
@@ -1384,14 +1367,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ]),
         ),
         const SizedBox(height: 2),
-        // Date label for custom
-        if (_period == 'Custom')
-          Text(_periodLabel(),
-              style: TextStyle(
-                  fontSize: 12,
-                  color: isDark
-                      ? NusaConfig.darkTextTertiary
-                      : NusaConfig.textTertiary)),
         // Ringkasan Harian card (only for Penjualan tab)
         if (_tab == 0) _ringkasanHarianCard(),
         Expanded(child: _tab == 0 ? _penjualanTab() : _labaRugiTab()),
@@ -1400,19 +1375,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Widget _periodDropdown(bool isDark) {
-    final items = _periodOptions
-        .map((p) => DropdownMenuItem(
-              value: p,
-              child: Text(p,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600)),
-            ))
-        .toList();
-
     return Container(
       height: 36,
-      constraints: const BoxConstraints(maxWidth: 110),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
         borderRadius: BorderRadius.circular(10),
@@ -1421,41 +1386,58 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: _periodOptions.contains(_period) ? _period : 'Custom',
-          isExpanded: true,
+          value: _period == 'custom' ? 'custom' : _period,
           isDense: true,
-          icon: Icon(Icons.expand_more_rounded,
-              size: 18,
-              color: isDark
-                  ? NusaConfig.darkTextTertiary
-                  : NusaConfig.textTertiary),
           style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: isDark
-                  ? NusaConfig.darkTextSecondary
-                  : NusaConfig.textSecondary),
-          dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
+              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
           borderRadius: BorderRadius.circular(12),
           underline: const SizedBox.shrink(),
-          items: items,
+          icon: Icon(Icons.expand_more_rounded,
+              size: 18,
+              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+          items: [
+            _ddItem('Hari ini'),
+            _ddItem('Kemarin'),
+            _ddItem('Minggu ini'),
+            _ddItem('Bulan ini'),
+            _ddItem('Tahun ini'),
+            _ddItem('Semua'),
+            if (_period == 'custom' && _dateRange != null)
+              DropdownMenuItem(
+                value: 'custom',
+                enabled: false,
+                child: Text(
+                  _periodLabel(),
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: NusaConfig.primaryColor,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+            _ddItem('Pilih Periode'),
+          ],
           onChanged: (v) {
-            if (v == null) return;
-            if (v == 'Custom') {
+            if (v == 'Pilih Periode') {
               _pickDateRange();
-              return;
+            } else {
+              setState(() {
+                _period = v!;
+                _dateRange = null;
+                _refreshKey++;
+              });
             }
-            setState(() {
-              _period = v;
-              _customFrom = null;
-              _customTo = null;
-              _refreshKey++;
-            });
           },
         ),
       ),
     );
   }
+
+  DropdownMenuItem<String> _ddItem(String label) => DropdownMenuItem(
+        value: label,
+        child: Text(label),
+      );
 
   Widget _segBtn(String label, int idx, {bool isDark = false}) {
     final sel = idx == _tab;

@@ -362,25 +362,6 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Tooltip(
-                message: 'Ekspor supplier',
-                child: GestureDetector(
-                onTap: _filtered.isNotEmpty ? _showExportOptions : null,
-                child: Container(
-                  height: 46, width: 46,
-                  decoration: BoxDecoration(
-                    color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
-                  ),
-                  child: Icon(Icons.file_download_outlined, size: 20,
-                      color: _filtered.isEmpty
-                          ? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)
-                          : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                ),
-              ),
-              ),
             ]),
           ),
           // Count badge
