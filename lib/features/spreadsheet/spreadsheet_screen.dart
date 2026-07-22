@@ -58,20 +58,27 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
     setState(() => _connecting = true);
 
     try {
-      // 1. Completely disconnect any stale session first.
-      //    A stale session (e.g. from signInSilently) has no Sheets scope
-      //    and will cause authenticatedClient() to return null forever.
-      await _svc!.signOut();
+      // If a previous session exists, disconnect it first to force a clean
+      // sign-in that explicitly asks for Sheets permission.
+      // Only call disconnect if there's an actual signed-in user, otherwise
+      // disconnect() throws and we eat the real error in the outer catch.
+      if (_svc!.isSignedIn) {
+        try {
+          await _svc!.signOut();
+        } catch (_) {
+          // Fine — nothing to disconnect
+        }
+      }
 
-      // 2. Fresh sign-in — this will show the Google consent screen
-      //    that explicitly asks for Spreadsheet permission.
+      // Fresh sign-in — this will show the Google consent screen
+      // that explicitly asks for Spreadsheet permission.
       final account = await _svc!.signIn();
       if (account == null || !mounted) {
         setState(() => _connecting = false);
         return;
       }
 
-      // 3. Verify the token actually has Sheets access
+      // Verify the token actually has Sheets access
       final err = await _svc!.verifyAccess();
       if (err.isNotEmpty && mounted) {
         setState(() => _connecting = false);
@@ -79,7 +86,7 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
         return;
       }
 
-      // 4. Save & restore
+      // Save & restore
       final email = account.email;
       await SecureStore.saveSheetsEmail(email);
       final savedId = await SecureStore.getSheetsId();
