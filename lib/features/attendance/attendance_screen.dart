@@ -437,6 +437,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             if (_tab == 0) ...[
               const SizedBox(width: 8),
               _roleDropdown(isDark),
+            ] else ...[
+              const SizedBox(width: 8),
+              SizedBox(width: 130, child: _segBtnPlaceholder(isDark)),
             ],
           ]),
         ),
@@ -473,6 +476,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       ),
     );
   }
+
+  Widget _segBtnPlaceholder(bool isDark) => Container(
+    height: 36,
+    decoration: BoxDecoration(
+      color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+    ),
+  );
 
   // ── TAB: Hari Ini ─────────────────────────────────────────────────
 
@@ -577,7 +589,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       statusColor = const Color(0xFF9CA3AF);
       statusLabel = 'Selesai';
     } else if (isCheckedIn) {
-      // Check terlambat
       final parts = inTime.split(':');
       final h = int.tryParse(parts.isNotEmpty ? parts[0] : '0') ?? 0;
       final m = parts.length >= 2 ? (int.tryParse(parts[1]) ?? 0) : 0;
@@ -590,19 +601,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       }
     } else {
       statusColor = NusaConfig.primaryColor;
-      statusLabel = 'Belum absen';
+      statusLabel = 'Belum';
     }
 
     return NusaCard(
       Padding(
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // ── Header: Avatar + Name + Status badge ──
           Row(children: [
-            // Avatar — bigger, supports photo
             Container(
-              width: 48, height: 48,
+              width: 44, height: 44,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 color: _avatarCol(e.name).withValues(alpha: 0.15),
                 image: e.photoPath != null && e.photoPath!.isNotEmpty
                     ? DecorationImage(
@@ -614,77 +625,81 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               alignment: Alignment.center,
               child: (e.photoPath == null || e.photoPath!.isEmpty)
                   ? Text(e.name[0].toUpperCase(),
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _avatarCol(e.name)))
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _avatarCol(e.name)))
                   : null,
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Expanded(child: Text(e.name,
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
-                          color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
-                  // Status badge — more prominent
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(statusLabel,
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: statusColor)),
-                  ),
-                ]),
+                Text(e.name,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                        color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                 const SizedBox(height: 2),
                 Row(children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
                     decoration: BoxDecoration(
                       color: NusaConfig.primaryColor.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(e.role, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
                   ),
                   if (hasPhone) ...[
                     const SizedBox(width: 6),
-                    Icon(Icons.phone_android, size: 12, color: const Color(0xFF25D366).withValues(alpha: 0.7)),
-                    const SizedBox(width: 2),
+                    Icon(Icons.phone_android, size: 11, color: const Color(0xFF10B981).withValues(alpha: 0.8)),
+                    const SizedBox(width: 3),
                     Text(e.phone!, style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
                   ],
                 ]),
               ]),
             ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(statusLabel,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: statusColor)),
+            ),
           ]),
-          const SizedBox(height: 10),
-          // Time info — bigger fonts
-          Wrap(spacing: 10, runSpacing: 6, children: [
-            _infoBadge(Icons.login_rounded, 'Masuk', inTime ?? '-',
-                color: inTime != null ? NusaConfig.accentGreen : null, isDark: isDark),
-            _infoBadge(Icons.logout_rounded, 'Pulang', outTime ?? '-',
-                color: outTime != null ? NusaConfig.accentGreen : null, isDark: isDark),
-            _infoBadge(Icons.account_balance_wallet_outlined, 'Kas Awal', pettyCash != null ? formatRupiah(pettyCash) : '-',
-                isDark: isDark),
-            _infoBadge(Icons.monetization_on_outlined, 'Kas Akhir', finalCash != null ? formatRupiah(finalCash) : '-',
-                isDark: isDark),
+          const SizedBox(height: 12),
+          // ── Info grid: 2x2 ──
+          Row(children: [
+            Expanded(child: _infoTile(Icons.login_rounded, 'Masuk', inTime ?? '—',
+                color: inTime != null ? NusaConfig.accentGreen : null, isDark: isDark)),
+            const SizedBox(width: 8),
+            Expanded(child: _infoTile(Icons.logout_rounded, 'Pulang', outTime ?? '—',
+                color: outTime != null ? NusaConfig.accentGreen : null, isDark: isDark)),
           ]),
-          const SizedBox(height: 10),
-          // Action buttons
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: _infoTile(Icons.account_balance_wallet_outlined, 'Kas Awal',
+                pettyCash != null ? formatRupiah(pettyCash) : '—', isDark: isDark)),
+            const SizedBox(width: 8),
+            Expanded(child: _infoTile(Icons.monetization_on_outlined, 'Kas Akhir',
+                finalCash != null ? formatRupiah(finalCash) : '—', isDark: isDark)),
+          ]),
+          const SizedBox(height: 12),
+          // ── Action buttons ──
           Row(children: [
             Expanded(
-              child: _actionBtn(Icons.login_rounded, 'Absen Masuk', NusaConfig.accentGreen,
+              flex: 3,
+              child: _actionBtn(Icons.login_rounded, 'Masuk', NusaConfig.accentGreen,
                   enabled: !isCheckedIn && !isIzin, onTap: () => _showAbsenSheet(e, isCheckIn: true)),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Expanded(
-              child: _actionBtn(Icons.logout_rounded, 'Absen Pulang', const Color(0xFFEF4444),
+              flex: 3,
+              child: _actionBtn(Icons.logout_rounded, 'Pulang', const Color(0xFFEF4444),
                   enabled: isCheckedIn && !isCheckedOut && !isIzin, onTap: () => _showAbsenSheet(e, isCheckIn: false)),
             ),
             if (isOwner && !isCheckedIn && !isIzin) ...[
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               _iconBtn(Icons.event_busy_rounded, 'Izin', () => _showIzinSheet(e)),
             ],
             if (isOwner && hasPhone && !isCheckedIn && !isIzin) ...[
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               _iconBtn(Icons.notifications_active, 'WA', () => _sendWAReminder(e)),
             ],
           ]),
@@ -693,7 +708,33 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     );
   }
 
+  Widget _infoTile(IconData icon, String label, String value, {Color? color, bool isDark = false}) {
+    final borderClr = isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderClr),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 13, color: color ?? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+        ]),
+        const SizedBox(height: 2),
+        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+            color: color ?? (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
+      ]),
+    );
+  }
+
   // ── TAB: Riwayat ─────────────────────────────────────────────────
+
+  // Track which employee calendars are expanded
+  final Set<String> _expandedEmployees = {};
 
   Widget _historyTab(bool isDark) {
     final textPri = isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
@@ -704,7 +745,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     if (_histLoading) return const Center(child: CircularProgressIndicator());
 
-    // Build month options
     final now = DateTime.now();
     final monthOptions = <Map<String, int>>[];
     for (var y = now.year; y >= now.year - 2; y--) {
@@ -714,7 +754,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       }
     }
 
-    // Calculate overall sums
     int totalHadir = 0, totalTerlambat = 0, totalIzin = 0, totalAlpha = 0;
     for (final v in _monthlySummary.values) {
       totalHadir += (v['hadir'] as int?) ?? 0;
@@ -731,7 +770,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          // Month picker — card style
+          // Month picker
           Container(
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -768,18 +807,21 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Overall summary chips — 4 chips only
+          // Summary chips
           if (_monthlySummary.isNotEmpty) ...[
-            Wrap(spacing: 6, runSpacing: 6, children: [
-              _sumChip('$totalHadir Hadir', NusaConfig.accentGreen),
-              _sumChip('$totalTerlambat Terlambat', NusaConfig.accentGold),
-              _sumChip('$totalIzin Izin', const Color(0xFF3B82F6)),
-              _sumChip('$totalAlpha Alpha', NusaConfig.primaryColor),
+            Row(children: [
+              Expanded(child: _sumChip('$totalHadir Hadir', NusaConfig.accentGreen)),
+              const SizedBox(width: 6),
+              Expanded(child: _sumChip('$totalTerlambat Terlambat', NusaConfig.accentGold)),
+              const SizedBox(width: 6),
+              Expanded(child: _sumChip('$totalIzin Izin', const Color(0xFF3B82F6))),
+              const SizedBox(width: 6),
+              Expanded(child: _sumChip('$totalAlpha Alpha', NusaConfig.primaryColor)),
             ]),
             const SizedBox(height: 16),
           ],
 
-          // Employee list with calendar-style attendance
+          // Employee cards
           if (_historyGrouped.isEmpty)
             const EmptyState(icon: Icons.no_accounts_outlined, message: 'Belum ada data presensi bulan ini'),
 
@@ -796,8 +838,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             final ratio = totalHari > 0 ? (hadir + terlambat) / totalHari : 0.0;
             final empRole = emp?.role ?? '';
             final empPhone = emp?.phone;
+            final isExpanded = _expandedEmployees.contains(empName);
 
-            // Build day-by-day map for this employee
             final dayStatus = <int, String>{};
             for (final a in atts) {
               if (a.status == 'Izin' || a.status == 'Sakit') {
@@ -805,7 +847,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               } else if (a.checkOut != null) {
                 dayStatus[a.date.day] = 'hadir';
               } else if (a.checkIn != null) {
-                // Check terlambat
                 final parts = a.checkIn!.split(':');
                 final h = int.tryParse(parts.isNotEmpty ? parts[0] : '0') ?? 0;
                 final m = parts.length >= 2 ? (int.tryParse(parts[1]) ?? 0) : 0;
@@ -818,15 +859,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             }
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 14),
+              margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: surf,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: border),
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // Employee header
+                // ── Header: Avatar + Name + Role + Persentase ──
                 Row(children: [
                   Container(
                     width: 40, height: 40,
@@ -854,10 +895,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                         Text(empRole, style: TextStyle(fontSize: 11, color: textTer)),
                     ]),
                   ),
-                  // Ratio text
-                  Text('${(ratio * 100).toStringAsFixed(0)}%',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
-                          color: ratio >= 0.8 ? NusaConfig.accentGreen : ratio >= 0.5 ? NusaConfig.accentGold : NusaConfig.primaryColor)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: (ratio >= 0.8 ? NusaConfig.accentGreen : ratio >= 0.5 ? NusaConfig.accentGold : NusaConfig.primaryColor).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text('${(ratio * 100).toStringAsFixed(0)}%',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
+                            color: ratio >= 0.8 ? NusaConfig.accentGreen : ratio >= 0.5 ? NusaConfig.accentGold : NusaConfig.primaryColor)),
+                  ),
                   if (empPhone != null && empPhone.isNotEmpty) ...[
                     const SizedBox(width: 6),
                     GestureDetector(
@@ -883,14 +930,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                 ]),
                 const SizedBox(height: 10),
 
-                // Linear progress bar
+                // ── Progress bar + stats ──
                 Row(children: [
                   Expanded(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: ratio.clamp(0.0, 1.0),
-                        backgroundColor: NusaConfig.primaryColor.withValues(alpha: 0.12),
+                        backgroundColor: (isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor),
                         valueColor: AlwaysStoppedAnimation(
                             ratio >= 0.8 ? NusaConfig.accentGreen : ratio >= 0.5 ? NusaConfig.accentGold : NusaConfig.primaryColor),
                         minHeight: 6,
@@ -899,22 +946,47 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   ),
                   const SizedBox(width: 10),
                   Text('$hadir H / $terlambat T / $izin I / $alpha A',
-                      style: TextStyle(fontSize: 11, color: textSec)),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textSec)),
                 ]),
 
-                // Mini calendar grid — current month
+                // ── Expand/collapse calendar ──
                 if (atts.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      if (isExpanded) {
+                        _expandedEmployees.remove(empName);
+                      } else {
+                        _expandedEmployees.add(empName);
+                      }
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 18, color: textTer),
+                        const SizedBox(width: 4),
+                        Text(isExpanded ? 'Sembunyikan Kalender' : 'Lihat Kalender',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSec)),
+                      ]),
+                    ),
+                  ),
+                ],
+
+                // Calendar grid (if expanded)
+                if (isExpanded && atts.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   const Divider(height: 1),
                   const SizedBox(height: 8),
-                  // Day-of-week headers
                   Row(
                     children: ['Sn', 'Sl', 'Rb', 'Km', 'Jm', 'Sb', 'Mn'].map((d) => Expanded(
                       child: Center(child: Text(d, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textTer))),
                     )).toList(),
                   ),
                   const SizedBox(height: 4),
-                  // Calendar grid
                   ..._buildCalendarGrid(_histYear, _histMonth, dayStatus, isDark),
                 ],
               ]),
@@ -1060,16 +1132,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       ),
       child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
-  }
-
-  Widget _infoBadge(IconData icon, String label, String value, {Color? color, bool isDark = false}) {
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 14, color: color ?? (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-      const SizedBox(width: 4),
-      Text(value,
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-              color: color ?? (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary))),
-    ]);
   }
 
   Widget _actionBtn(IconData icon, String label, Color color, {required bool enabled, required VoidCallback onTap}) {

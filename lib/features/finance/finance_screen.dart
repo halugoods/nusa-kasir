@@ -17,6 +17,8 @@ import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 const _expenseCategories = [
   'Operasional', 'Listrik', 'Air', 'Internet', 'Belanja',
@@ -55,8 +57,16 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   int _totalPayroll = 0;
   int _totalWasteCost = 0;
   int _runningBalance = 0;
-  int _periodFilter = 0;
+  String _timeFilter = 'Bulan Ini';
+  DateTime? _customFrom;
+  DateTime? _customTo;
   int? _branchFilter;
+
+  static const _timeOptions = ['Hari Ini', '7 Hr', '30 Hr', 'Bln Ini', 'Custom', 'Semua'];
+  static const _timeLabels = {
+    'Hari Ini': 'Hari Ini', '7 Hr': '7 Hari', '30 Hr': '30 Hari',
+    'Bln Ini': 'Bulan Ini', 'Custom': 'Custom', 'Semua': 'Semua',
+  };
 
   @override
   void initState() {
@@ -141,14 +151,50 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   }
 
   List<Expense> get _filteredExpenses {
+    final actual = _timeLabels[_timeFilter] ?? _timeFilter;
     final now = DateTime.now();
-    if (_periodFilter == 1) {
-      final weekStart = now.subtract(Duration(days: now.weekday - 1));
-      return _expenses.where((e) => e.date.isAfter(weekStart.subtract(const Duration(days: 1)))).toList();
-    } else if (_periodFilter == 0) {
-      return _expenses.where((e) => e.date.year == now.year && e.date.month == now.month).toList();
+    if (actual == 'Custom' && _customFrom != null && _customTo != null) {
+      final to = _customTo!.add(const Duration(days: 1));
+      return _expenses.where((e) => e.date.isAfter(_customFrom!.subtract(const Duration(days: 1))) && e.date.isBefore(to)).toList();
     }
-    return _expenses;
+    switch (actual) {
+      case 'Hari Ini':
+        final today = DateTime(now.year, now.month, now.day);
+        return _expenses.where((e) => e.date.isAfter(today.subtract(const Duration(days: 1)))).toList();
+      case '7 Hari':
+        return _expenses.where((e) => e.date.isAfter(now.subtract(const Duration(days: 8)))).toList();
+      case '30 Hari':
+        return _expenses.where((e) => e.date.isAfter(now.subtract(const Duration(days: 31)))).toList();
+      case 'Bulan Ini':
+        return _expenses.where((e) => e.date.year == now.year && e.date.month == now.month).toList();
+      default:
+        return _expenses;
+    }
+  }
+
+  String _timeLabel() => _timeFilter == 'Custom' && _customFrom != null && _customTo != null
+      ? '${_customFrom!.day}/${_customFrom!.month}–${_customTo!.day}/${_customTo!.month}'
+      : _timeLabels[_timeFilter] ?? _timeFilter;
+
+  Future<void> _pickDateRange() async {
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: _customFrom != null && _customTo != null
+          ? DateTimeRange(start: _customFrom!, end: _customTo!)
+          : null,
+      helpText: 'Pilih Rentang',
+      cancelText: 'BATAL',
+      confirmText: 'PILIH',
+    );
+    if (range != null) {
+      setState(() {
+        _customFrom = range.start;
+        _customTo = range.end;
+        _timeFilter = 'Custom';
+      });
+    }
   }
 
   String _date(DateTime d) {
@@ -213,18 +259,12 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
-              if (_tab == 0) ...[
-                _periodChip('Bln Ini', 0, isDark),
-                const SizedBox(width: 6),
-                _periodChip('Mgu Ini', 1, isDark),
-                const SizedBox(width: 6),
-                _periodChip('Semua', 2, isDark),
-              ],
+              if (_tab == 0) _timeDropdown(isDark),
               const Spacer(),
               if (_branches.length > 1) _branchDropdown(isDark),
               const SizedBox(width: 6),
               GestureDetector(
-                onTap: () => _exportTab(isDark),
+                onTap: () => _showExportOptions(isDark),
                 child: Container(
                   height: 32,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -277,24 +317,43 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     );
   }
 
-  Widget _periodChip(String label, int idx, bool isDark) {
-    final sel = _periodFilter == idx;
-    return GestureDetector(
-      onTap: () => setState(() => _periodFilter = idx),
-      child: Container(
-        height: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: sel ? NusaConfig.primaryColor.withValues(alpha: 0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: sel ? NusaConfig.primaryColor.withValues(alpha: 0.3) : (isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
-          ),
+  Widget _timeDropdown(bool isDark) {
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _timeOptions.contains(_timeFilter) ? _timeFilter : 'Custom',
+          isDense: true,
+          icon: Icon(Icons.expand_more_rounded, size: 16,
+              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+          dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          underline: const SizedBox.shrink(),
+          items: _timeOptions.map((o) => DropdownMenuItem(
+            value: o,
+            child: Text(o, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+          )).toList(),
+          onChanged: (v) {
+            if (v == null) return;
+            if (v == 'Custom') {
+              _pickDateRange();
+              return;
+            }
+            setState(() {
+              _timeFilter = v;
+              _customFrom = null;
+              _customTo = null;
+            });
+          },
         ),
-        child: Text(label,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                color: sel ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))),
       ),
     );
   }
@@ -780,7 +839,56 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
 
   // ── Export ─────────────────────────────────────────────────────
 
-  Future<void> _exportTab(bool isDark) async {
+  void _showExportOptions(bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          _sheetHandle(isDark),
+          const SizedBox(height: 8),
+          Text('Export Data',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+                  color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+          const SizedBox(height: 16),
+          ListTile(
+            leading: Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                color: NusaConfig.accentGreen.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.table_chart, color: NusaConfig.accentGreen, size: 20),
+            ),
+            title: const Text('Export CSV', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            subtitle: const Text('File .csv untuk Excel / spreadsheet', style: TextStyle(fontSize: 12)),
+            onTap: () { Navigator.pop(ctx); _exportCsv(); },
+          ),
+          const SizedBox(height: 4),
+          ListTile(
+            leading: Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                color: NusaConfig.primaryColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.picture_as_pdf, color: NusaConfig.primaryColor, size: 20),
+            ),
+            title: const Text('Export PDF', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            subtitle: const Text('Dokumen PDF siap cetak / share', style: TextStyle(fontSize: 12)),
+            onTap: () { Navigator.pop(ctx); _exportPdf(); },
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _exportCsv() async {
     List<List<dynamic>> rows;
     String name;
     switch (_tab) {
@@ -820,16 +928,109 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
         }
     }
 
-    final csv = const ListToCsvConverter().convert(rows);
-    final dir = await getApplicationDocumentsDirectory();
-    final now = DateTime.now();
-    final stamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
-    final file = File('${dir.path}/${name}_$stamp.csv');
-    await file.writeAsString(csv);
-
-    if (mounted) {
-      TopToast.success(context, 'Diexport ke ${file.path}');
+    try {
+      final csv = const ListToCsvConverter().convert(rows);
+      final dir = await getApplicationDocumentsDirectory();
+      final now = DateTime.now();
+      final stamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final file = File('${dir.path}/${name}_$stamp.csv');
+      await file.writeAsString(csv);
+      if (mounted) TopToast.success(context, 'CSV diexport ke ${file.path}');
+    } catch (e) {
+      if (mounted) TopToast.error(context, 'Gagal export: $e');
     }
+  }
+
+  Future<void> _exportPdf() async {
+    try {
+      final file = await _buildFinancePdf();
+      if (mounted && file != null) {
+        TopToast.success(context, 'PDF diexport ke ${file.path}');
+      }
+    } catch (e) {
+      if (mounted) TopToast.error(context, 'Gagal export PDF: $e');
+    }
+  }
+
+  Future<File?> _buildFinancePdf() async {
+    final pdf = pw.Document(title: 'Laporan Keuangan', author: 'NUSA Kasir');
+    final now = DateTime.now();
+    final tabTitle = _tabs[_tab];
+    final periodLabel = _timeLabel();
+
+    pw.Widget headerCell(String text) => pw.Text(text,
+        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10));
+    pw.Widget cell(String text) => pw.Text(text,
+        style: const pw.TextStyle(fontSize: 10));
+
+    List<pw.TableRow> tableRows;
+
+    switch (_tab) {
+      case 0:
+        tableRows = [pw.TableRow(children: ['Tanggal', 'Kategori', 'Keterangan', 'Jumlah'].map(headerCell).toList())];
+        for (final e in _filteredExpenses) {
+          tableRows.add(pw.TableRow(children: [_date(e.date), e.category, e.description, formatRupiah(e.amount)].map(cell).toList()));
+        }
+        break;
+      case 1:
+        tableRows = [pw.TableRow(children: ['Karyawan', 'Periode', 'Gaji', 'Bonus', 'Potongan', 'Status'].map(headerCell).toList())];
+        for (final p in _payroll) {
+          tableRows.add(pw.TableRow(children: [_empName(p.employeeId), p.period, formatRupiah(p.salary), formatRupiah(p.bonus), formatRupiah(p.deduction), p.status].map(cell).toList()));
+        }
+        break;
+      case 2:
+        tableRows = [pw.TableRow(children: ['Produk', 'Qty', 'Tipe', 'Alasan', 'Tanggal'].map(headerCell).toList())];
+        for (final w in _waste) {
+          tableRows.add(pw.TableRow(children: [_prodName(w.productId), '${w.qty}', w.type, w.reason ?? '', _date(w.date)].map(cell).toList()));
+        }
+        break;
+      case 3:
+        tableRows = [pw.TableRow(children: ['Kategori', 'Jumlah', 'Keterangan', 'Frekuensi', 'Aktif'].map(headerCell).toList())];
+        for (final r in _recurring) {
+          tableRows.add(pw.TableRow(children: [r.category, formatRupiah(r.amount), r.description, r.frequency, r.active ? 'Ya' : 'Tidak'].map(cell).toList()));
+        }
+        break;
+      default:
+        tableRows = [pw.TableRow(children: ['Tanggal', 'Tipe', 'Kategori', 'Keterangan', 'Jumlah', 'Metode'].map(headerCell).toList())];
+        for (final l in _liquidity) {
+          tableRows.add(pw.TableRow(children: [_date(l.date), l.type == 'in' ? 'Masuk' : 'Keluar', l.category, l.description, formatRupiah(l.amount), l.method ?? ''].map(cell).toList()));
+        }
+    }
+
+    pdf.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      build: (ctx) => [
+        pw.Text('Laporan $tabTitle',
+            style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+        pw.Text('Periode: $periodLabel',
+            style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+        pw.SizedBox(height: 16),
+        pw.Table.fromTextArray(
+          headers: [],
+          data: [],
+          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+          cellStyle: const pw.TextStyle(fontSize: 10),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+          cellAlignments: {3: pw.Alignment.centerRight, 4: pw.Alignment.centerRight},
+        ),
+        pw.Table(
+          children: tableRows,
+          border: pw.TableBorder.all(color: PdfColors.grey300),
+          columnWidths: {for (var i = 0; i < (tableRows.isNotEmpty ? tableRows.first.children.length : 4); i++) i: const pw.FlexColumnWidth()},
+        ),
+        pw.SizedBox(height: 24),
+        pw.Divider(),
+        pw.Text('Dicetak otomatis oleh NUSA Kasir • ${now.day}/${now.month}/${now.year}',
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
+      ],
+    ));
+
+    final dir = await getApplicationDocumentsDirectory();
+    final stamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    final fileName = _tabs[_tab].toLowerCase().replaceAll(' ', '_');
+    final file = File('${dir.path}/${fileName}_$stamp.pdf');
+    await file.writeAsBytes(await pdf.save());
+    return file;
   }
 
   // ── Add forms ─────────────────────────────────────────────────

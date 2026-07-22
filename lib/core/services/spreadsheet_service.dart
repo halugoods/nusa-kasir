@@ -6,6 +6,8 @@ import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/data/repositories/report_repository.dart';
 import 'package:nusa_kasir/data/repositories/transaction_repository.dart';
+import 'package:nusa_kasir/data/repositories/finance_repository.dart';
+import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 
 class SpreadsheetService {
   final GoogleSignIn _signIn = GoogleSignIn(
@@ -37,6 +39,7 @@ class SpreadsheetService {
           Sheet(properties: SheetProperties(title: 'Transaksi')),
           Sheet(properties: SheetProperties(title: 'Stok')),
           Sheet(properties: SheetProperties(title: 'Laporan')),
+          Sheet(properties: SheetProperties(title: 'Keuangan')),
         ],
       ));
       return sheet.spreadsheetId;
@@ -127,11 +130,38 @@ class SpreadsheetService {
     } catch (_) { return false; }
   }
 
+  /// Sync keuangan (expenses, payroll, liquidity) to 'Keuangan' sheet.
+  Future<bool> syncKeuangan(String spreadsheetId) async {
+    final api = await _client();
+    if (api == null) return false;
+    try {
+      final repo = FinanceRepository(db);
+      final expenses = await repo.getExpenses();
+      final payroll = await repo.getPayroll();
+      final recurring = await repo.getRecurring();
+      final rows = <List<dynamic>>[
+        ['TIPE', 'KATEGORI', 'KETERANGAN', 'JUMLAH', 'TANGGAL'],
+        // Section: Expenses
+        ...expenses.map((e) => ['Pengeluaran', e.category, e.description, formatRupiah(e.amount), '${e.date.day}/${e.date.month}/${e.date.year}']),
+        // Section: Payroll
+        ...payroll.map((p) => ['Payroll', 'Karyawan ID ${p.employeeId}', p.period, formatRupiah(p.salary + p.bonus - p.deduction), '']),
+        // Section: Recurring
+        ...recurring.where((r) => r.active).map((r) => ['Berulang', r.category, r.description, formatRupiah(r.amount), r.frequency]),
+      ];
+      await api.spreadsheets.values.update(
+        ValueRange(range: 'Keuangan!A1', values: rows), spreadsheetId, 'Keuangan!A1',
+        valueInputOption: 'USER_ENTERED',
+      );
+      return true;
+    } catch (_) { return false; }
+  }
+
   Future<bool> syncAll(String spreadsheetId) async {
     final p = await syncProducts(spreadsheetId);
     final t = await syncTransactions(spreadsheetId);
     final s = await syncStock(spreadsheetId);
     final l = await syncLaporan(spreadsheetId);
-    return p && t && s && l;
+    final k = await syncKeuangan(spreadsheetId);
+    return p && t && s && l && k;
   }
 }
