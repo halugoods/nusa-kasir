@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -138,68 +137,166 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<bool> _showPinDialog(int employeeId, String name) async {
-    final ctrl = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final pinChars = List<String>.filled(6, '');
+    final focusNodes = List.generate(6, (_) => FocusNode());
     String? error;
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(children: [
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+          title: Column(children: [
             Container(
-              width: 40, height: 40,
+              width: 56, height: 56,
               decoration: BoxDecoration(
                 color: NusaConfig.primaryColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.lock_outline, color: NusaConfig.primaryColor, size: 22),
+              child: const Icon(Icons.lock_outline, color: NusaConfig.primaryColor, size: 28),
             ),
-            const SizedBox(width: 12),
-            const Text('Verifikasi PIN', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 16),
+            const Text('Verifikasi PIN', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text('Masukkan PIN $name untuk mengakses pengaturan keamanan',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13,
+                    color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           ]),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('Masukkan PIN $name untuk membuka pengaturan keamanan.',
-                style: const TextStyle(fontSize: 13)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: ctrl,
-              obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.w700),
-              decoration: InputDecoration(
-                counterText: '',
-                errorText: error,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-              ),
+            // PIN boxes
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(6, (i) {
+                return Container(
+                  width: 44, height: 56,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  child: TextField(
+                    controller: TextEditingController(text: pinChars[i]),
+                    focusNode: focusNodes[i],
+                    onChanged: (v) {
+                      if (v.length > 1) {
+                        // Paste handling
+                        final chars = v.replaceAll(RegExp(r'[^0-9]'), '').split('');
+                        for (int j = 0; j < 6 && j < chars.length; j++) {
+                          pinChars[j] = chars[j];
+                        }
+                        setSt(() {});
+                        // Move to last filled or next
+                        final lastIdx = chars.length >= 6 ? 5 : chars.length;
+                        if (lastIdx < 6) focusNodes[lastIdx].requestFocus();
+                        return;
+                      }
+                      if (v.isEmpty) {
+                        pinChars[i] = '';
+                        setSt(() {});
+                        return;
+                      }
+                      pinChars[i] = v;
+                      setSt(() {});
+                      if (i < 5) focusNodes[i + 1].requestFocus();
+                    },
+                    onTap: () {
+                      // Select all text so typing replaces it
+                    },
+                    keyboardType: TextInputType.number,
+                    maxLength: 1,
+                    textAlign: TextAlign.center,
+                    obscureText: true,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                    decoration: InputDecoration(
+                      counterText: '',
+                      filled: true,
+                      fillColor: pinChars[i].isNotEmpty
+                          ? NusaConfig.primaryColor.withValues(alpha: 0.08)
+                          : (isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: error != null ? NusaConfig.primaryColor
+                              : pinChars[i].isNotEmpty ? NusaConfig.primaryColor
+                              : (isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: error != null ? NusaConfig.primaryColor
+                              : pinChars[i].isNotEmpty ? NusaConfig.primaryColor
+                              : (isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 2),
+                      ),
+                    ),
+                  ),
+                );
+              }),
             ),
+            // Error
+            if (error != null) ...[
+              const SizedBox(height: 12),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.error_outline, size: 14, color: NusaConfig.primaryColor),
+                const SizedBox(width: 6),
+                Text(error!, style: const TextStyle(fontSize: 12, color: NusaConfig.primaryColor, fontWeight: FontWeight.w600)),
+              ]),
+            ],
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-            ElevatedButton(
-              onPressed: () async {
-                final pin = ctrl.text.trim();
-                if (pin.isEmpty) {
-                  setSt(() => error = 'PIN tidak boleh kosong');
-                  return;
-                }
-                final repo = AttendanceRepository(ref.read(databaseProvider));
-                final all = await repo.getEmployees();
-                final emp = all.where((e) => e.id == employeeId).firstOrNull;
-                if (emp != null && emp.pin == pin) {
-                  Navigator.pop(ctx, true);
-                } else {
-                  setSt(() => error = 'PIN salah');
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: NusaConfig.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final pin = pinChars.join();
+                  if (pin.length < 4) {
+                    setSt(() => error = 'PIN minimal 4 digit');
+                    return;
+                  }
+                  final repo = AttendanceRepository(ref.read(databaseProvider));
+                  final all = await repo.getEmployees();
+                  final emp = all.where((e) => e.id == employeeId).firstOrNull;
+                  if (emp != null && emp.pin == pin) {
+                    if (ctx.mounted) Navigator.pop(ctx, true);
+                  } else {
+                    // Clear all PIN boxes
+                    for (int j = 0; j < 6; j++) { pinChars[j] = ''; }
+                    setSt(() => error = 'PIN salah — coba lagi');
+                    focusNodes[0].requestFocus();
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: NusaConfig.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.lock_open, size: 20),
+                  SizedBox(width: 8),
+                  Text('Verifikasi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                ]),
               ),
-              child: const Text('Verifikasi'),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  side: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+                ),
+                child: Text('Batal', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600,
+                    color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+              ),
             ),
           ],
         ),
@@ -601,9 +698,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _showReceiptSettings() async {
     final repo = ref.read(settingsRepoProvider);
-    final currentFooter = await repo.getReceiptFooter() ?? '';
+    final headerCtrl = TextEditingController(text: await repo.getReceiptHeader() ?? '');
+    final footerCtrl = TextEditingController(text: await repo.getReceiptFooter() ?? '');
     final currentLogo = await repo.getStoreLogoPath();
-    final footerCtrl = TextEditingController(text: currentFooter);
+    String paperSize = await repo.getReceiptPaperSize();
+    final toggles = await repo.getReceiptToggles();
+    final storeName = await repo.getStoreName();
     if (!mounted) return;
 
     showModalBottomSheet(
@@ -615,6 +715,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         return StatefulBuilder(
           builder: (ctx, setSt) {
             String? logoPath = currentLogo;
+            String? headerText = headerCtrl.text;
+            String paper = paperSize;
+            Map<String, bool> togs = Map.from(toggles);
             return Container(
               decoration: BoxDecoration(
                 color: setDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
@@ -622,15 +725,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               padding: EdgeInsets.only(left: 24, right: 24, top: 16,
                   bottom: MediaQuery.of(ctx).viewInsets.bottom + 40),
-              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              child: SingleChildScrollView(
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Container(margin: const EdgeInsets.symmetric(vertical: 8), width: 40, height: 4,
                   decoration: BoxDecoration(color: setDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
                       borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 12),
-                Text('Pengaturan Struk', style: GoogleFonts.plusJakartaSans(
-                    fontSize: 17, fontWeight: FontWeight.w800,
-                    color: setDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+
+                // Title
+                Row(children: [
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.receipt_long, color: Color(0xFF10B981), size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Pengaturan Struk', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+                      color: setDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+                ]),
                 const SizedBox(height: 20),
+
+                // ── Ukuran Kertas ──
+                Text('Ukuran Kertas', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
+                    color: setDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+                const SizedBox(height: 8),
+                Row(children: [
+                  _paperChip('58mm', paper, setDark, onTap: () => setSt(() => paper = '58mm')),
+                  const SizedBox(width: 10),
+                  _paperChip('80mm', paper, setDark, onTap: () => setSt(() => paper = '80mm')),
+                ]),
+                const SizedBox(height: 20),
+
+                // ── Logo Toko ──
                 Text('Logo Toko', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
                     color: setDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                 const SizedBox(height: 8),
@@ -664,6 +793,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ],
                 const SizedBox(height: 20),
+
+                // ── Header Struk ──
+                Text('Header Struk', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
+                    color: setDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+                const SizedBox(height: 8),
+                NusaInput('Header', controller: headerCtrl, hint: 'Cth: NUSA MART - Cabang Pusat'),
+                const SizedBox(height: 20),
+
+                // ── Footer Struk ──
                 Text('Footer Struk', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
                     color: setDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                 const SizedBox(height: 8),
@@ -684,16 +822,140 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 8),
+                // Footer templates
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  _footerChip('🙏 Terima kasih, ditunggu pesanan selanjutnya!', footerCtrl, setSt),
+                  _footerChip('🔄 Barang yang sudah dibeli tidak dapat ditukar.', footerCtrl, setSt),
+                ]),
                 const SizedBox(height: 20),
+
+                // ── Tampilkan di Struk ──
+                Text('Tampilkan di Struk', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
+                    color: setDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+                const SizedBox(height: 8),
+                _toggleRow('Logo toko', togs['showLogo'] ?? true, setDark, (v) => setSt(() => togs['showLogo'] = v)),
+                _toggleRow('Nama kasir', togs['showCashier'] ?? true, setDark, (v) => setSt(() => togs['showCashier'] = v)),
+                _toggleRow('Nomor invoice', togs['showInvoice'] ?? true, setDark, (v) => setSt(() => togs['showInvoice'] = v)),
+                _toggleRow('Tanggal & jam', togs['showDate'] ?? true, setDark, (v) => setSt(() => togs['showDate'] = v)),
+                _toggleRow('Barcode', togs['showBarcode'] ?? false, setDark, (v) => setSt(() => togs['showBarcode'] = v)),
+                const SizedBox(height: 20),
+
+                // ── Mini Preview ──
+                Text('Preview', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
+                    color: setDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Column(children: [
+                    if (togs['showLogo'] == true && logoPath != null && logoPath!.isNotEmpty)
+                      Padding(padding: const EdgeInsets.only(bottom: 6),
+                        child: Image.file(File(logoPath!), height: 40)),
+                    Text(headerCtrl.text.isNotEmpty ? headerCtrl.text : (storeName.isNotEmpty ? storeName : 'NUSA MART'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1F2937))),
+                    const SizedBox(height: 2),
+                    const Text('────────────────────',
+                        style: TextStyle(fontSize: 9, color: Color(0xFF9CA3AF))),
+                    if (togs['showInvoice'] == true) ...[
+                      const SizedBox(height: 2),
+                      const Text('INV-001 / Kasir: Budi',
+                          style: TextStyle(fontSize: 9, color: Color(0xFF6B7280))),
+                    ],
+                    if (togs['showDate'] == true) ...[
+                      const SizedBox(height: 1),
+                      const Text('22 Jul 2026 14:30',
+                          style: TextStyle(fontSize: 9, color: Color(0xFF6B7280))),
+                    ],
+                    const SizedBox(height: 2),
+                    const Text('────────────────────',
+                        style: TextStyle(fontSize: 9, color: Color(0xFF9CA3AF))),
+                    if (togs['showBarcode'] == true) ...[
+                      const SizedBox(height: 4),
+                      Container(width: double.infinity, height: 24,
+                          color: const Color(0xFF1F2937)),
+                      const SizedBox(height: 2),
+                    ],
+                    const SizedBox(height: 4),
+                    Text(footerCtrl.text.isNotEmpty ? footerCtrl.text : 'Terima kasih!',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 8, color: Color(0xFF6B7280))),
+                  ]),
+                ),
+                const SizedBox(height: 20),
+
+                // Save button
                 NusaButton('Simpan', onPressed: () async {
+                  await repo.setReceiptHeader(headerCtrl.text.trim());
                   await repo.setReceiptFooter(footerCtrl.text.trim());
+                  await repo.setReceiptPaperSize(paper);
+                  await repo.setReceiptToggles(togs);
                   if (mounted) Navigator.pop(ctx);
                 }),
               ]),
+              ),
             );
           },
         );
       },
+    );
+  }
+
+  // ── Receipt helpers ──────────────────────────────────────
+
+  Widget _paperChip(String label, String current, bool isDark, {required VoidCallback onTap}) {
+    final selected = current == label;
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? NusaConfig.primarySoft : (isDark ? NusaConfig.darkSurface2 : const Color(0xFFF3F4F6)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: selected ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor)),
+          ),
+          child: Column(children: [
+            Icon(selected ? Icons.check_circle : Icons.print, size: 20,
+                color: selected ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                color: selected ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _toggleRow(String label, bool value, bool isDark, ValueChanged<bool> onChanged) {
+    return SwitchListTile(
+      title: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      value: value,
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      activeColor: NusaConfig.primaryColor,
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _footerChip(String text, TextEditingController ctrl, StateSetter setSt) {
+    return GestureDetector(
+      onTap: () {
+        ctrl.text = text;
+        setSt(() {});
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: NusaConfig.primarySoft,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(text, style: const TextStyle(fontSize: 11, color: NusaConfig.primaryColor)),
+      ),
     );
   }
 

@@ -11,13 +11,23 @@ class BranchRepository {
     return q.get();
   }
 
-  Future<int> add(String name) async {
-    return db.into(db.branches).insert(BranchesCompanion.insert(name: name));
+  Future<int> add(String name, {String? address, String? phone, String? status}) async {
+    return db.into(db.branches).insert(BranchesCompanion.insert(
+      name: name,
+      address: Value(address),
+      phone: Value(phone),
+      status: Value(status ?? 'Aktif'),
+    ));
   }
 
-  Future<void> update(int id, String name) async {
+  Future<void> update(int id, String name, {String? address, String? phone, String? status}) async {
     await (db.update(db.branches)..where((t) => t.id.equals(id)))
-        .write(BranchesCompanion(name: Value(name)));
+        .write(BranchesCompanion(
+      name: Value(name),
+      address: Value(address),
+      phone: Value(phone),
+      status: Value(status ?? 'Aktif'),
+    ));
   }
 
   Future<void> delete(int id) async {

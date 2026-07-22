@@ -158,6 +158,9 @@ class Suppliers extends Table {
 class Branches extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
+  TextColumn get address => text().nullable()();
+  TextColumn get phone => text().nullable()();
+  TextColumn get status => text().withDefault(const Constant('Aktif'))();
 }
 class Settings extends Table {
   IntColumn get id => integer().withDefault(const Constant(1))();
@@ -182,6 +185,16 @@ class Settings extends Table {
   IntColumn get silverThreshold => integer().withDefault(const Constant(0))();
   IntColumn get goldThreshold => integer().withDefault(const Constant(1000))();
   IntColumn get platinumThreshold => integer().withDefault(const Constant(5000))();
+  // ── QRIS image (replaces qrisString) ──
+  TextColumn get qrisImagePath => text().nullable()();
+  // ── Receipt advanced ──
+  TextColumn get receiptHeader => text().nullable()();
+  TextColumn get receiptPaperSize => text().withDefault(const Constant('58mm'))();
+  BoolColumn get receiptShowLogo => boolean().withDefault(const Constant(true))();
+  BoolColumn get receiptShowCashier => boolean().withDefault(const Constant(true))();
+  BoolColumn get receiptShowInvoice => boolean().withDefault(const Constant(true))();
+  BoolColumn get receiptShowDate => boolean().withDefault(const Constant(true))();
+  BoolColumn get receiptShowBarcode => boolean().withDefault(const Constant(false))();
   @override
   Set<Column> get primaryKey => {id};
 }

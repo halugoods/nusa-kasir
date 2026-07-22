@@ -22,6 +22,7 @@ class EmployeeSessionNotifier extends StateNotifier<EmployeeSession?> {
       employeeId: session.employeeId,
       name: session.name,
       role: session.role,
+      branchId: session.branchId,
       remember: remember,
       savedAt: DateTime.now(),
     );

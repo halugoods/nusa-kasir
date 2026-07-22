@@ -111,6 +111,58 @@ class SettingsRepository {
         .write(SettingsCompanion(receiptFooter: Value(text)));
   }
 
+  // ── QRIS Image (replaces qrisString) ──
+  Future<String?> getQrisImagePath() async =>
+      (await db.select(db.settings).getSingleOrNull())?.qrisImagePath;
+
+  Future<void> setQrisImagePath(String? path) async {
+    await ensureRow();
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(qrisImagePath: Value(path)));
+  }
+
+  // ── Receipt advanced ──
+  Future<String?> getReceiptHeader() async =>
+      (await db.select(db.settings).getSingleOrNull())?.receiptHeader;
+
+  Future<void> setReceiptHeader(String text) async {
+    await ensureRow();
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(receiptHeader: Value(text)));
+  }
+
+  Future<String> getReceiptPaperSize() async =>
+      (await db.select(db.settings).getSingleOrNull())?.receiptPaperSize ?? '58mm';
+
+  Future<void> setReceiptPaperSize(String size) async {
+    await ensureRow();
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(receiptPaperSize: Value(size)));
+  }
+
+  Future<Map<String, bool>> getReceiptToggles() async {
+    final row = await db.select(db.settings).getSingleOrNull();
+    return {
+      'showLogo': row?.receiptShowLogo ?? true,
+      'showCashier': row?.receiptShowCashier ?? true,
+      'showInvoice': row?.receiptShowInvoice ?? true,
+      'showDate': row?.receiptShowDate ?? true,
+      'showBarcode': row?.receiptShowBarcode ?? false,
+    };
+  }
+
+  Future<void> setReceiptToggles(Map<String, bool> toggles) async {
+    await ensureRow();
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(
+      receiptShowLogo: Value(toggles['showLogo'] ?? true),
+      receiptShowCashier: Value(toggles['showCashier'] ?? true),
+      receiptShowInvoice: Value(toggles['showInvoice'] ?? true),
+      receiptShowDate: Value(toggles['showDate'] ?? true),
+      receiptShowBarcode: Value(toggles['showBarcode'] ?? false),
+    ));
+  }
+
   // ── Store logo path ──
   Future<String?> getStoreLogoPath() async =>
       (await db.select(db.settings).getSingleOrNull())?.storeLogoPath;

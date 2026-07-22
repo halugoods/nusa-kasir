@@ -5,6 +5,7 @@ class EmployeeSession {
   final int employeeId;
   final String name;
   final String role;
+  final int? branchId;
   final DateTime savedAt;
   final bool remember;
 
@@ -12,6 +13,7 @@ class EmployeeSession {
     required this.employeeId,
     required this.name,
     required this.role,
+    this.branchId,
     this.remember = false,
     DateTime? savedAt,
   }) : savedAt = savedAt ?? DateTime.now();
@@ -31,6 +33,7 @@ class EmployeeSession {
         employeeId: session.employeeId,
         name: session.name,
         role: session.role,
+        branchId: session.branchId,
         remember: true,
         savedAt: DateTime.now(),
       );
@@ -46,6 +49,7 @@ class EmployeeSession {
         'employeeId': employeeId,
         'name': name,
         'role': role,
+        'branchId': branchId,
         'savedAt': savedAt.toIso8601String(),
         'remember': remember,
       };
@@ -55,6 +59,7 @@ class EmployeeSession {
       employeeId: json['employeeId'] as int,
       name: json['name'] as String,
       role: json['role'] as String,
+      branchId: json['branchId'] as int?,
       remember: json['remember'] == true,
       savedAt: DateTime.parse(json['savedAt'] as String),
     );

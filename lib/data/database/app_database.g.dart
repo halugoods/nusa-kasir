@@ -7624,8 +7624,38 @@ class $BranchesTable extends Branches with TableInfo<$BranchesTable, Branche> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _addressMeta = const VerificationMeta(
+    'address',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name];
+  late final GeneratedColumn<String> address = GeneratedColumn<String>(
+    'address',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Aktif'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, address, phone, status];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -7649,6 +7679,24 @@ class $BranchesTable extends Branches with TableInfo<$BranchesTable, Branche> {
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
+    if (data.containsKey('address')) {
+      context.handle(
+        _addressMeta,
+        address.isAcceptableOrUnknown(data['address']!, _addressMeta),
+      );
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
     return context;
   }
 
@@ -7666,6 +7714,18 @@ class $BranchesTable extends Branches with TableInfo<$BranchesTable, Branche> {
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      address: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address'],
+      ),
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
     );
   }
 
@@ -7678,17 +7738,43 @@ class $BranchesTable extends Branches with TableInfo<$BranchesTable, Branche> {
 class Branche extends DataClass implements Insertable<Branche> {
   final int id;
   final String name;
-  const Branche({required this.id, required this.name});
+  final String? address;
+  final String? phone;
+  final String status;
+  const Branche({
+    required this.id,
+    required this.name,
+    this.address,
+    this.phone,
+    required this.status,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
+    if (!nullToAbsent || address != null) {
+      map['address'] = Variable<String>(address);
+    }
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
+    map['status'] = Variable<String>(status);
     return map;
   }
 
   BranchesCompanion toCompanion(bool nullToAbsent) {
-    return BranchesCompanion(id: Value(id), name: Value(name));
+    return BranchesCompanion(
+      id: Value(id),
+      name: Value(name),
+      address: address == null && nullToAbsent
+          ? const Value.absent()
+          : Value(address),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
+      status: Value(status),
+    );
   }
 
   factory Branche.fromJson(
@@ -7699,6 +7785,9 @@ class Branche extends DataClass implements Insertable<Branche> {
     return Branche(
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
+      address: serializer.fromJson<String?>(json['address']),
+      phone: serializer.fromJson<String?>(json['phone']),
+      status: serializer.fromJson<String>(json['status']),
     );
   }
   @override
@@ -7707,15 +7796,32 @@ class Branche extends DataClass implements Insertable<Branche> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
+      'address': serializer.toJson<String?>(address),
+      'phone': serializer.toJson<String?>(phone),
+      'status': serializer.toJson<String>(status),
     };
   }
 
-  Branche copyWith({int? id, String? name}) =>
-      Branche(id: id ?? this.id, name: name ?? this.name);
+  Branche copyWith({
+    int? id,
+    String? name,
+    Value<String?> address = const Value.absent(),
+    Value<String?> phone = const Value.absent(),
+    String? status,
+  }) => Branche(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    address: address.present ? address.value : this.address,
+    phone: phone.present ? phone.value : this.phone,
+    status: status ?? this.status,
+  );
   Branche copyWithCompanion(BranchesCompanion data) {
     return Branche(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
+      address: data.address.present ? data.address.value : this.address,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      status: data.status.present ? data.status.value : this.status,
     );
   }
 
@@ -7723,42 +7829,77 @@ class Branche extends DataClass implements Insertable<Branche> {
   String toString() {
     return (StringBuffer('Branche(')
           ..write('id: $id, ')
-          ..write('name: $name')
+          ..write('name: $name, ')
+          ..write('address: $address, ')
+          ..write('phone: $phone, ')
+          ..write('status: $status')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name);
+  int get hashCode => Object.hash(id, name, address, phone, status);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Branche && other.id == this.id && other.name == this.name);
+      (other is Branche &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.address == this.address &&
+          other.phone == this.phone &&
+          other.status == this.status);
 }
 
 class BranchesCompanion extends UpdateCompanion<Branche> {
   final Value<int> id;
   final Value<String> name;
+  final Value<String?> address;
+  final Value<String?> phone;
+  final Value<String> status;
   const BranchesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
+    this.address = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.status = const Value.absent(),
   });
   BranchesCompanion.insert({
     this.id = const Value.absent(),
     required String name,
+    this.address = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.status = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Branche> custom({
     Expression<int>? id,
     Expression<String>? name,
+    Expression<String>? address,
+    Expression<String>? phone,
+    Expression<String>? status,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
+      if (address != null) 'address': address,
+      if (phone != null) 'phone': phone,
+      if (status != null) 'status': status,
     });
   }
 
-  BranchesCompanion copyWith({Value<int>? id, Value<String>? name}) {
-    return BranchesCompanion(id: id ?? this.id, name: name ?? this.name);
+  BranchesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String?>? address,
+    Value<String?>? phone,
+    Value<String>? status,
+  }) {
+    return BranchesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      address: address ?? this.address,
+      phone: phone ?? this.phone,
+      status: status ?? this.status,
+    );
   }
 
   @override
@@ -7770,6 +7911,15 @@ class BranchesCompanion extends UpdateCompanion<Branche> {
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
+    if (address.present) {
+      map['address'] = Variable<String>(address.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
     return map;
   }
 
@@ -7777,7 +7927,10 @@ class BranchesCompanion extends UpdateCompanion<Branche> {
   String toString() {
     return (StringBuffer('BranchesCompanion(')
           ..write('id: $id, ')
-          ..write('name: $name')
+          ..write('name: $name, ')
+          ..write('address: $address, ')
+          ..write('phone: $phone, ')
+          ..write('status: $status')
           ..write(')'))
         .toString();
   }
@@ -8015,6 +8168,112 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     requiredDuringInsert: false,
     defaultValue: const Constant(5000),
   );
+  static const VerificationMeta _qrisImagePathMeta = const VerificationMeta(
+    'qrisImagePath',
+  );
+  @override
+  late final GeneratedColumn<String> qrisImagePath = GeneratedColumn<String>(
+    'qris_image_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _receiptHeaderMeta = const VerificationMeta(
+    'receiptHeader',
+  );
+  @override
+  late final GeneratedColumn<String> receiptHeader = GeneratedColumn<String>(
+    'receipt_header',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _receiptPaperSizeMeta = const VerificationMeta(
+    'receiptPaperSize',
+  );
+  @override
+  late final GeneratedColumn<String> receiptPaperSize = GeneratedColumn<String>(
+    'receipt_paper_size',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('58mm'),
+  );
+  static const VerificationMeta _receiptShowLogoMeta = const VerificationMeta(
+    'receiptShowLogo',
+  );
+  @override
+  late final GeneratedColumn<bool> receiptShowLogo = GeneratedColumn<bool>(
+    'receipt_show_logo',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("receipt_show_logo" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _receiptShowCashierMeta =
+      const VerificationMeta('receiptShowCashier');
+  @override
+  late final GeneratedColumn<bool> receiptShowCashier = GeneratedColumn<bool>(
+    'receipt_show_cashier',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("receipt_show_cashier" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _receiptShowInvoiceMeta =
+      const VerificationMeta('receiptShowInvoice');
+  @override
+  late final GeneratedColumn<bool> receiptShowInvoice = GeneratedColumn<bool>(
+    'receipt_show_invoice',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("receipt_show_invoice" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _receiptShowDateMeta = const VerificationMeta(
+    'receiptShowDate',
+  );
+  @override
+  late final GeneratedColumn<bool> receiptShowDate = GeneratedColumn<bool>(
+    'receipt_show_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("receipt_show_date" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _receiptShowBarcodeMeta =
+      const VerificationMeta('receiptShowBarcode');
+  @override
+  late final GeneratedColumn<bool> receiptShowBarcode = GeneratedColumn<bool>(
+    'receipt_show_barcode',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("receipt_show_barcode" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -8037,6 +8296,14 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     silverThreshold,
     goldThreshold,
     platinumThreshold,
+    qrisImagePath,
+    receiptHeader,
+    receiptPaperSize,
+    receiptShowLogo,
+    receiptShowCashier,
+    receiptShowInvoice,
+    receiptShowDate,
+    receiptShowBarcode,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -8200,6 +8467,78 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
       );
     }
+    if (data.containsKey('qris_image_path')) {
+      context.handle(
+        _qrisImagePathMeta,
+        qrisImagePath.isAcceptableOrUnknown(
+          data['qris_image_path']!,
+          _qrisImagePathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_header')) {
+      context.handle(
+        _receiptHeaderMeta,
+        receiptHeader.isAcceptableOrUnknown(
+          data['receipt_header']!,
+          _receiptHeaderMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_paper_size')) {
+      context.handle(
+        _receiptPaperSizeMeta,
+        receiptPaperSize.isAcceptableOrUnknown(
+          data['receipt_paper_size']!,
+          _receiptPaperSizeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_show_logo')) {
+      context.handle(
+        _receiptShowLogoMeta,
+        receiptShowLogo.isAcceptableOrUnknown(
+          data['receipt_show_logo']!,
+          _receiptShowLogoMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_show_cashier')) {
+      context.handle(
+        _receiptShowCashierMeta,
+        receiptShowCashier.isAcceptableOrUnknown(
+          data['receipt_show_cashier']!,
+          _receiptShowCashierMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_show_invoice')) {
+      context.handle(
+        _receiptShowInvoiceMeta,
+        receiptShowInvoice.isAcceptableOrUnknown(
+          data['receipt_show_invoice']!,
+          _receiptShowInvoiceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_show_date')) {
+      context.handle(
+        _receiptShowDateMeta,
+        receiptShowDate.isAcceptableOrUnknown(
+          data['receipt_show_date']!,
+          _receiptShowDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_show_barcode')) {
+      context.handle(
+        _receiptShowBarcodeMeta,
+        receiptShowBarcode.isAcceptableOrUnknown(
+          data['receipt_show_barcode']!,
+          _receiptShowBarcodeMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -8289,6 +8628,38 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.int,
         data['${effectivePrefix}platinum_threshold'],
       )!,
+      qrisImagePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}qris_image_path'],
+      ),
+      receiptHeader: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_header'],
+      ),
+      receiptPaperSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_paper_size'],
+      )!,
+      receiptShowLogo: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}receipt_show_logo'],
+      )!,
+      receiptShowCashier: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}receipt_show_cashier'],
+      )!,
+      receiptShowInvoice: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}receipt_show_invoice'],
+      )!,
+      receiptShowDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}receipt_show_date'],
+      )!,
+      receiptShowBarcode: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}receipt_show_barcode'],
+      )!,
     );
   }
 
@@ -8319,6 +8690,14 @@ class Setting extends DataClass implements Insertable<Setting> {
   final int silverThreshold;
   final int goldThreshold;
   final int platinumThreshold;
+  final String? qrisImagePath;
+  final String? receiptHeader;
+  final String receiptPaperSize;
+  final bool receiptShowLogo;
+  final bool receiptShowCashier;
+  final bool receiptShowInvoice;
+  final bool receiptShowDate;
+  final bool receiptShowBarcode;
   const Setting({
     required this.id,
     required this.storeName,
@@ -8340,6 +8719,14 @@ class Setting extends DataClass implements Insertable<Setting> {
     required this.silverThreshold,
     required this.goldThreshold,
     required this.platinumThreshold,
+    this.qrisImagePath,
+    this.receiptHeader,
+    required this.receiptPaperSize,
+    required this.receiptShowLogo,
+    required this.receiptShowCashier,
+    required this.receiptShowInvoice,
+    required this.receiptShowDate,
+    required this.receiptShowBarcode,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -8386,6 +8773,18 @@ class Setting extends DataClass implements Insertable<Setting> {
     map['silver_threshold'] = Variable<int>(silverThreshold);
     map['gold_threshold'] = Variable<int>(goldThreshold);
     map['platinum_threshold'] = Variable<int>(platinumThreshold);
+    if (!nullToAbsent || qrisImagePath != null) {
+      map['qris_image_path'] = Variable<String>(qrisImagePath);
+    }
+    if (!nullToAbsent || receiptHeader != null) {
+      map['receipt_header'] = Variable<String>(receiptHeader);
+    }
+    map['receipt_paper_size'] = Variable<String>(receiptPaperSize);
+    map['receipt_show_logo'] = Variable<bool>(receiptShowLogo);
+    map['receipt_show_cashier'] = Variable<bool>(receiptShowCashier);
+    map['receipt_show_invoice'] = Variable<bool>(receiptShowInvoice);
+    map['receipt_show_date'] = Variable<bool>(receiptShowDate);
+    map['receipt_show_barcode'] = Variable<bool>(receiptShowBarcode);
     return map;
   }
 
@@ -8433,6 +8832,18 @@ class Setting extends DataClass implements Insertable<Setting> {
       silverThreshold: Value(silverThreshold),
       goldThreshold: Value(goldThreshold),
       platinumThreshold: Value(platinumThreshold),
+      qrisImagePath: qrisImagePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(qrisImagePath),
+      receiptHeader: receiptHeader == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receiptHeader),
+      receiptPaperSize: Value(receiptPaperSize),
+      receiptShowLogo: Value(receiptShowLogo),
+      receiptShowCashier: Value(receiptShowCashier),
+      receiptShowInvoice: Value(receiptShowInvoice),
+      receiptShowDate: Value(receiptShowDate),
+      receiptShowBarcode: Value(receiptShowBarcode),
     );
   }
 
@@ -8462,6 +8873,14 @@ class Setting extends DataClass implements Insertable<Setting> {
       silverThreshold: serializer.fromJson<int>(json['silverThreshold']),
       goldThreshold: serializer.fromJson<int>(json['goldThreshold']),
       platinumThreshold: serializer.fromJson<int>(json['platinumThreshold']),
+      qrisImagePath: serializer.fromJson<String?>(json['qrisImagePath']),
+      receiptHeader: serializer.fromJson<String?>(json['receiptHeader']),
+      receiptPaperSize: serializer.fromJson<String>(json['receiptPaperSize']),
+      receiptShowLogo: serializer.fromJson<bool>(json['receiptShowLogo']),
+      receiptShowCashier: serializer.fromJson<bool>(json['receiptShowCashier']),
+      receiptShowInvoice: serializer.fromJson<bool>(json['receiptShowInvoice']),
+      receiptShowDate: serializer.fromJson<bool>(json['receiptShowDate']),
+      receiptShowBarcode: serializer.fromJson<bool>(json['receiptShowBarcode']),
     );
   }
   @override
@@ -8488,6 +8907,14 @@ class Setting extends DataClass implements Insertable<Setting> {
       'silverThreshold': serializer.toJson<int>(silverThreshold),
       'goldThreshold': serializer.toJson<int>(goldThreshold),
       'platinumThreshold': serializer.toJson<int>(platinumThreshold),
+      'qrisImagePath': serializer.toJson<String?>(qrisImagePath),
+      'receiptHeader': serializer.toJson<String?>(receiptHeader),
+      'receiptPaperSize': serializer.toJson<String>(receiptPaperSize),
+      'receiptShowLogo': serializer.toJson<bool>(receiptShowLogo),
+      'receiptShowCashier': serializer.toJson<bool>(receiptShowCashier),
+      'receiptShowInvoice': serializer.toJson<bool>(receiptShowInvoice),
+      'receiptShowDate': serializer.toJson<bool>(receiptShowDate),
+      'receiptShowBarcode': serializer.toJson<bool>(receiptShowBarcode),
     };
   }
 
@@ -8512,6 +8939,14 @@ class Setting extends DataClass implements Insertable<Setting> {
     int? silverThreshold,
     int? goldThreshold,
     int? platinumThreshold,
+    Value<String?> qrisImagePath = const Value.absent(),
+    Value<String?> receiptHeader = const Value.absent(),
+    String? receiptPaperSize,
+    bool? receiptShowLogo,
+    bool? receiptShowCashier,
+    bool? receiptShowInvoice,
+    bool? receiptShowDate,
+    bool? receiptShowBarcode,
   }) => Setting(
     id: id ?? this.id,
     storeName: storeName ?? this.storeName,
@@ -8537,6 +8972,18 @@ class Setting extends DataClass implements Insertable<Setting> {
     silverThreshold: silverThreshold ?? this.silverThreshold,
     goldThreshold: goldThreshold ?? this.goldThreshold,
     platinumThreshold: platinumThreshold ?? this.platinumThreshold,
+    qrisImagePath: qrisImagePath.present
+        ? qrisImagePath.value
+        : this.qrisImagePath,
+    receiptHeader: receiptHeader.present
+        ? receiptHeader.value
+        : this.receiptHeader,
+    receiptPaperSize: receiptPaperSize ?? this.receiptPaperSize,
+    receiptShowLogo: receiptShowLogo ?? this.receiptShowLogo,
+    receiptShowCashier: receiptShowCashier ?? this.receiptShowCashier,
+    receiptShowInvoice: receiptShowInvoice ?? this.receiptShowInvoice,
+    receiptShowDate: receiptShowDate ?? this.receiptShowDate,
+    receiptShowBarcode: receiptShowBarcode ?? this.receiptShowBarcode,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -8590,6 +9037,30 @@ class Setting extends DataClass implements Insertable<Setting> {
       platinumThreshold: data.platinumThreshold.present
           ? data.platinumThreshold.value
           : this.platinumThreshold,
+      qrisImagePath: data.qrisImagePath.present
+          ? data.qrisImagePath.value
+          : this.qrisImagePath,
+      receiptHeader: data.receiptHeader.present
+          ? data.receiptHeader.value
+          : this.receiptHeader,
+      receiptPaperSize: data.receiptPaperSize.present
+          ? data.receiptPaperSize.value
+          : this.receiptPaperSize,
+      receiptShowLogo: data.receiptShowLogo.present
+          ? data.receiptShowLogo.value
+          : this.receiptShowLogo,
+      receiptShowCashier: data.receiptShowCashier.present
+          ? data.receiptShowCashier.value
+          : this.receiptShowCashier,
+      receiptShowInvoice: data.receiptShowInvoice.present
+          ? data.receiptShowInvoice.value
+          : this.receiptShowInvoice,
+      receiptShowDate: data.receiptShowDate.present
+          ? data.receiptShowDate.value
+          : this.receiptShowDate,
+      receiptShowBarcode: data.receiptShowBarcode.present
+          ? data.receiptShowBarcode.value
+          : this.receiptShowBarcode,
     );
   }
 
@@ -8615,13 +9086,21 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('pointsPerRupiah: $pointsPerRupiah, ')
           ..write('silverThreshold: $silverThreshold, ')
           ..write('goldThreshold: $goldThreshold, ')
-          ..write('platinumThreshold: $platinumThreshold')
+          ..write('platinumThreshold: $platinumThreshold, ')
+          ..write('qrisImagePath: $qrisImagePath, ')
+          ..write('receiptHeader: $receiptHeader, ')
+          ..write('receiptPaperSize: $receiptPaperSize, ')
+          ..write('receiptShowLogo: $receiptShowLogo, ')
+          ..write('receiptShowCashier: $receiptShowCashier, ')
+          ..write('receiptShowInvoice: $receiptShowInvoice, ')
+          ..write('receiptShowDate: $receiptShowDate, ')
+          ..write('receiptShowBarcode: $receiptShowBarcode')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     storeName,
     storeAddress,
@@ -8642,7 +9121,15 @@ class Setting extends DataClass implements Insertable<Setting> {
     silverThreshold,
     goldThreshold,
     platinumThreshold,
-  );
+    qrisImagePath,
+    receiptHeader,
+    receiptPaperSize,
+    receiptShowLogo,
+    receiptShowCashier,
+    receiptShowInvoice,
+    receiptShowDate,
+    receiptShowBarcode,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -8666,7 +9153,15 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.pointsPerRupiah == this.pointsPerRupiah &&
           other.silverThreshold == this.silverThreshold &&
           other.goldThreshold == this.goldThreshold &&
-          other.platinumThreshold == this.platinumThreshold);
+          other.platinumThreshold == this.platinumThreshold &&
+          other.qrisImagePath == this.qrisImagePath &&
+          other.receiptHeader == this.receiptHeader &&
+          other.receiptPaperSize == this.receiptPaperSize &&
+          other.receiptShowLogo == this.receiptShowLogo &&
+          other.receiptShowCashier == this.receiptShowCashier &&
+          other.receiptShowInvoice == this.receiptShowInvoice &&
+          other.receiptShowDate == this.receiptShowDate &&
+          other.receiptShowBarcode == this.receiptShowBarcode);
 }
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
@@ -8690,6 +9185,14 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<int> silverThreshold;
   final Value<int> goldThreshold;
   final Value<int> platinumThreshold;
+  final Value<String?> qrisImagePath;
+  final Value<String?> receiptHeader;
+  final Value<String> receiptPaperSize;
+  final Value<bool> receiptShowLogo;
+  final Value<bool> receiptShowCashier;
+  final Value<bool> receiptShowInvoice;
+  final Value<bool> receiptShowDate;
+  final Value<bool> receiptShowBarcode;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.storeName = const Value.absent(),
@@ -8711,6 +9214,14 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.silverThreshold = const Value.absent(),
     this.goldThreshold = const Value.absent(),
     this.platinumThreshold = const Value.absent(),
+    this.qrisImagePath = const Value.absent(),
+    this.receiptHeader = const Value.absent(),
+    this.receiptPaperSize = const Value.absent(),
+    this.receiptShowLogo = const Value.absent(),
+    this.receiptShowCashier = const Value.absent(),
+    this.receiptShowInvoice = const Value.absent(),
+    this.receiptShowDate = const Value.absent(),
+    this.receiptShowBarcode = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -8733,6 +9244,14 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.silverThreshold = const Value.absent(),
     this.goldThreshold = const Value.absent(),
     this.platinumThreshold = const Value.absent(),
+    this.qrisImagePath = const Value.absent(),
+    this.receiptHeader = const Value.absent(),
+    this.receiptPaperSize = const Value.absent(),
+    this.receiptShowLogo = const Value.absent(),
+    this.receiptShowCashier = const Value.absent(),
+    this.receiptShowInvoice = const Value.absent(),
+    this.receiptShowDate = const Value.absent(),
+    this.receiptShowBarcode = const Value.absent(),
   });
   static Insertable<Setting> custom({
     Expression<int>? id,
@@ -8755,6 +9274,14 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<int>? silverThreshold,
     Expression<int>? goldThreshold,
     Expression<int>? platinumThreshold,
+    Expression<String>? qrisImagePath,
+    Expression<String>? receiptHeader,
+    Expression<String>? receiptPaperSize,
+    Expression<bool>? receiptShowLogo,
+    Expression<bool>? receiptShowCashier,
+    Expression<bool>? receiptShowInvoice,
+    Expression<bool>? receiptShowDate,
+    Expression<bool>? receiptShowBarcode,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -8777,6 +9304,17 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (silverThreshold != null) 'silver_threshold': silverThreshold,
       if (goldThreshold != null) 'gold_threshold': goldThreshold,
       if (platinumThreshold != null) 'platinum_threshold': platinumThreshold,
+      if (qrisImagePath != null) 'qris_image_path': qrisImagePath,
+      if (receiptHeader != null) 'receipt_header': receiptHeader,
+      if (receiptPaperSize != null) 'receipt_paper_size': receiptPaperSize,
+      if (receiptShowLogo != null) 'receipt_show_logo': receiptShowLogo,
+      if (receiptShowCashier != null)
+        'receipt_show_cashier': receiptShowCashier,
+      if (receiptShowInvoice != null)
+        'receipt_show_invoice': receiptShowInvoice,
+      if (receiptShowDate != null) 'receipt_show_date': receiptShowDate,
+      if (receiptShowBarcode != null)
+        'receipt_show_barcode': receiptShowBarcode,
     });
   }
 
@@ -8801,6 +9339,14 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<int>? silverThreshold,
     Value<int>? goldThreshold,
     Value<int>? platinumThreshold,
+    Value<String?>? qrisImagePath,
+    Value<String?>? receiptHeader,
+    Value<String>? receiptPaperSize,
+    Value<bool>? receiptShowLogo,
+    Value<bool>? receiptShowCashier,
+    Value<bool>? receiptShowInvoice,
+    Value<bool>? receiptShowDate,
+    Value<bool>? receiptShowBarcode,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -8823,6 +9369,14 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       silverThreshold: silverThreshold ?? this.silverThreshold,
       goldThreshold: goldThreshold ?? this.goldThreshold,
       platinumThreshold: platinumThreshold ?? this.platinumThreshold,
+      qrisImagePath: qrisImagePath ?? this.qrisImagePath,
+      receiptHeader: receiptHeader ?? this.receiptHeader,
+      receiptPaperSize: receiptPaperSize ?? this.receiptPaperSize,
+      receiptShowLogo: receiptShowLogo ?? this.receiptShowLogo,
+      receiptShowCashier: receiptShowCashier ?? this.receiptShowCashier,
+      receiptShowInvoice: receiptShowInvoice ?? this.receiptShowInvoice,
+      receiptShowDate: receiptShowDate ?? this.receiptShowDate,
+      receiptShowBarcode: receiptShowBarcode ?? this.receiptShowBarcode,
     );
   }
 
@@ -8889,6 +9443,30 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (platinumThreshold.present) {
       map['platinum_threshold'] = Variable<int>(platinumThreshold.value);
     }
+    if (qrisImagePath.present) {
+      map['qris_image_path'] = Variable<String>(qrisImagePath.value);
+    }
+    if (receiptHeader.present) {
+      map['receipt_header'] = Variable<String>(receiptHeader.value);
+    }
+    if (receiptPaperSize.present) {
+      map['receipt_paper_size'] = Variable<String>(receiptPaperSize.value);
+    }
+    if (receiptShowLogo.present) {
+      map['receipt_show_logo'] = Variable<bool>(receiptShowLogo.value);
+    }
+    if (receiptShowCashier.present) {
+      map['receipt_show_cashier'] = Variable<bool>(receiptShowCashier.value);
+    }
+    if (receiptShowInvoice.present) {
+      map['receipt_show_invoice'] = Variable<bool>(receiptShowInvoice.value);
+    }
+    if (receiptShowDate.present) {
+      map['receipt_show_date'] = Variable<bool>(receiptShowDate.value);
+    }
+    if (receiptShowBarcode.present) {
+      map['receipt_show_barcode'] = Variable<bool>(receiptShowBarcode.value);
+    }
     return map;
   }
 
@@ -8914,7 +9492,15 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('pointsPerRupiah: $pointsPerRupiah, ')
           ..write('silverThreshold: $silverThreshold, ')
           ..write('goldThreshold: $goldThreshold, ')
-          ..write('platinumThreshold: $platinumThreshold')
+          ..write('platinumThreshold: $platinumThreshold, ')
+          ..write('qrisImagePath: $qrisImagePath, ')
+          ..write('receiptHeader: $receiptHeader, ')
+          ..write('receiptPaperSize: $receiptPaperSize, ')
+          ..write('receiptShowLogo: $receiptShowLogo, ')
+          ..write('receiptShowCashier: $receiptShowCashier, ')
+          ..write('receiptShowInvoice: $receiptShowInvoice, ')
+          ..write('receiptShowDate: $receiptShowDate, ')
+          ..write('receiptShowBarcode: $receiptShowBarcode')
           ..write(')'))
         .toString();
   }
@@ -16980,9 +17566,21 @@ typedef $$SuppliersTableProcessedTableManager =
       PrefetchHooks Function()
     >;
 typedef $$BranchesTableCreateCompanionBuilder =
-    BranchesCompanion Function({Value<int> id, required String name});
+    BranchesCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<String?> address,
+      Value<String?> phone,
+      Value<String> status,
+    });
 typedef $$BranchesTableUpdateCompanionBuilder =
-    BranchesCompanion Function({Value<int> id, Value<String> name});
+    BranchesCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String?> address,
+      Value<String?> phone,
+      Value<String> status,
+    });
 
 class $$BranchesTableFilterComposer
     extends Composer<_$AppDatabase, $BranchesTable> {
@@ -17000,6 +17598,21 @@ class $$BranchesTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -17022,6 +17635,21 @@ class $$BranchesTableOrderingComposer
     column: $table.name,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$BranchesTableAnnotationComposer
@@ -17038,6 +17666,15 @@ class $$BranchesTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get address =>
+      $composableBuilder(column: $table.address, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
 }
 
 class $$BranchesTableTableManager
@@ -17070,10 +17707,30 @@ class $$BranchesTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
-              }) => BranchesCompanion(id: id, name: name),
+                Value<String?> address = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String> status = const Value.absent(),
+              }) => BranchesCompanion(
+                id: id,
+                name: name,
+                address: address,
+                phone: phone,
+                status: status,
+              ),
           createCompanionCallback:
-              ({Value<int> id = const Value.absent(), required String name}) =>
-                  BranchesCompanion.insert(id: id, name: name),
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<String?> address = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String> status = const Value.absent(),
+              }) => BranchesCompanion.insert(
+                id: id,
+                name: name,
+                address: address,
+                phone: phone,
+                status: status,
+              ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
@@ -17118,6 +17775,14 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> silverThreshold,
       Value<int> goldThreshold,
       Value<int> platinumThreshold,
+      Value<String?> qrisImagePath,
+      Value<String?> receiptHeader,
+      Value<String> receiptPaperSize,
+      Value<bool> receiptShowLogo,
+      Value<bool> receiptShowCashier,
+      Value<bool> receiptShowInvoice,
+      Value<bool> receiptShowDate,
+      Value<bool> receiptShowBarcode,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -17141,6 +17806,14 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> silverThreshold,
       Value<int> goldThreshold,
       Value<int> platinumThreshold,
+      Value<String?> qrisImagePath,
+      Value<String?> receiptHeader,
+      Value<String> receiptPaperSize,
+      Value<bool> receiptShowLogo,
+      Value<bool> receiptShowCashier,
+      Value<bool> receiptShowInvoice,
+      Value<bool> receiptShowDate,
+      Value<bool> receiptShowBarcode,
     });
 
 class $$SettingsTableFilterComposer
@@ -17249,6 +17922,46 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<int> get platinumThreshold => $composableBuilder(
     column: $table.platinumThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get qrisImagePath => $composableBuilder(
+    column: $table.qrisImagePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptHeader => $composableBuilder(
+    column: $table.receiptHeader,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptPaperSize => $composableBuilder(
+    column: $table.receiptPaperSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get receiptShowLogo => $composableBuilder(
+    column: $table.receiptShowLogo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get receiptShowCashier => $composableBuilder(
+    column: $table.receiptShowCashier,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get receiptShowInvoice => $composableBuilder(
+    column: $table.receiptShowInvoice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get receiptShowDate => $composableBuilder(
+    column: $table.receiptShowDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get receiptShowBarcode => $composableBuilder(
+    column: $table.receiptShowBarcode,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -17361,6 +18074,46 @@ class $$SettingsTableOrderingComposer
     column: $table.platinumThreshold,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get qrisImagePath => $composableBuilder(
+    column: $table.qrisImagePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptHeader => $composableBuilder(
+    column: $table.receiptHeader,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptPaperSize => $composableBuilder(
+    column: $table.receiptPaperSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get receiptShowLogo => $composableBuilder(
+    column: $table.receiptShowLogo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get receiptShowCashier => $composableBuilder(
+    column: $table.receiptShowCashier,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get receiptShowInvoice => $composableBuilder(
+    column: $table.receiptShowInvoice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get receiptShowDate => $composableBuilder(
+    column: $table.receiptShowDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get receiptShowBarcode => $composableBuilder(
+    column: $table.receiptShowBarcode,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsTableAnnotationComposer
@@ -17461,6 +18214,46 @@ class $$SettingsTableAnnotationComposer
     column: $table.platinumThreshold,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get qrisImagePath => $composableBuilder(
+    column: $table.qrisImagePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get receiptHeader => $composableBuilder(
+    column: $table.receiptHeader,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get receiptPaperSize => $composableBuilder(
+    column: $table.receiptPaperSize,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get receiptShowLogo => $composableBuilder(
+    column: $table.receiptShowLogo,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get receiptShowCashier => $composableBuilder(
+    column: $table.receiptShowCashier,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get receiptShowInvoice => $composableBuilder(
+    column: $table.receiptShowInvoice,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get receiptShowDate => $composableBuilder(
+    column: $table.receiptShowDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get receiptShowBarcode => $composableBuilder(
+    column: $table.receiptShowBarcode,
+    builder: (column) => column,
+  );
 }
 
 class $$SettingsTableTableManager
@@ -17511,6 +18304,14 @@ class $$SettingsTableTableManager
                 Value<int> silverThreshold = const Value.absent(),
                 Value<int> goldThreshold = const Value.absent(),
                 Value<int> platinumThreshold = const Value.absent(),
+                Value<String?> qrisImagePath = const Value.absent(),
+                Value<String?> receiptHeader = const Value.absent(),
+                Value<String> receiptPaperSize = const Value.absent(),
+                Value<bool> receiptShowLogo = const Value.absent(),
+                Value<bool> receiptShowCashier = const Value.absent(),
+                Value<bool> receiptShowInvoice = const Value.absent(),
+                Value<bool> receiptShowDate = const Value.absent(),
+                Value<bool> receiptShowBarcode = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 storeName: storeName,
@@ -17532,6 +18333,14 @@ class $$SettingsTableTableManager
                 silverThreshold: silverThreshold,
                 goldThreshold: goldThreshold,
                 platinumThreshold: platinumThreshold,
+                qrisImagePath: qrisImagePath,
+                receiptHeader: receiptHeader,
+                receiptPaperSize: receiptPaperSize,
+                receiptShowLogo: receiptShowLogo,
+                receiptShowCashier: receiptShowCashier,
+                receiptShowInvoice: receiptShowInvoice,
+                receiptShowDate: receiptShowDate,
+                receiptShowBarcode: receiptShowBarcode,
               ),
           createCompanionCallback:
               ({
@@ -17555,6 +18364,14 @@ class $$SettingsTableTableManager
                 Value<int> silverThreshold = const Value.absent(),
                 Value<int> goldThreshold = const Value.absent(),
                 Value<int> platinumThreshold = const Value.absent(),
+                Value<String?> qrisImagePath = const Value.absent(),
+                Value<String?> receiptHeader = const Value.absent(),
+                Value<String> receiptPaperSize = const Value.absent(),
+                Value<bool> receiptShowLogo = const Value.absent(),
+                Value<bool> receiptShowCashier = const Value.absent(),
+                Value<bool> receiptShowInvoice = const Value.absent(),
+                Value<bool> receiptShowDate = const Value.absent(),
+                Value<bool> receiptShowBarcode = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 storeName: storeName,
@@ -17576,6 +18393,14 @@ class $$SettingsTableTableManager
                 silverThreshold: silverThreshold,
                 goldThreshold: goldThreshold,
                 platinumThreshold: platinumThreshold,
+                qrisImagePath: qrisImagePath,
+                receiptHeader: receiptHeader,
+                receiptPaperSize: receiptPaperSize,
+                receiptShowLogo: receiptShowLogo,
+                receiptShowCashier: receiptShowCashier,
+                receiptShowInvoice: receiptShowInvoice,
+                receiptShowDate: receiptShowDate,
+                receiptShowBarcode: receiptShowBarcode,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

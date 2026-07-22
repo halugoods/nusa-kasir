@@ -9,6 +9,7 @@ import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
+import 'package:nusa_kasir/data/repositories/branch_repository.dart';
 import 'package:nusa_kasir/data/repositories/role_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
@@ -153,6 +154,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     DateTime? startDate = employee?.startDate;
     String? photoPath = employee?.photoPath;
     String? error;
+    int? branchId = employee?.branchId;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
@@ -160,7 +162,11 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSt) => Container(
+        builder: (ctx, setSt) => FutureBuilder<List<Branche>>(
+          future: BranchRepository(ref.read(databaseProvider)).getAll(),
+          builder: (ctx, snap) {
+            final branches = snap.data ?? [];
+            return Container(
           decoration: BoxDecoration(
             color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -275,6 +281,24 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                   items: _roles,
                   isDark: isDark,
                   onChanged: (v) => setSt(() => role = v!),
+                ),
+                const SizedBox(height: 12),
+                // Branch dropdown
+                _buildDialogDropdown(
+                  label: 'Cabang',
+                  value: branchId != null
+                      ? branches.where((b) => b.id == branchId).map((b) => b.name).firstOrNull ?? 'Semua Cabang'
+                      : 'Semua Cabang',
+                  items: ['Semua Cabang', ...branches.map((b) => b.name)],
+                  isDark: isDark,
+                  onChanged: (v) {
+                    if (v == 'Semua Cabang' || v == null) {
+                      setSt(() => branchId = null);
+                    } else {
+                      final b = branches.where((b) => b.name == v).firstOrNull;
+                      if (b != null) setSt(() => branchId = b.id);
+                    }
+                  },
                 ),
                 const SizedBox(height: 12),
                 // Status dropdown
@@ -407,7 +431,8 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                               photoPath: photoPath,
                               baseSalary: salary,
                               startDate: startDate,
-                              status: status);
+                              status: status,
+                              branchId: branchId);
                         } else {
                           await repo.updateEmployee(
                               id: employee.id, name: name, pin: pin, role: role,
@@ -415,7 +440,8 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                               photoPath: photoPath,
                               baseSalary: salary,
                               startDate: startDate,
-                              status: status);
+                              status: status,
+                              branchId: branchId);
                         }
                         if (mounted) Navigator.of(context).pop();
                         _load();
@@ -436,9 +462,11 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
               ],
             ),
           ),
-        ),
-      ),
-    );
+        ); // return Container
+          }, // FutureBuilder builder
+        ), // FutureBuilder
+      ), // StatefulBuilder builder
+    ); // showModalBottomSheet
   }
 
   Widget _buildDialogDropdown({

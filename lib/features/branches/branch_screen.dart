@@ -1,24 +1,14 @@
-﻿import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/branch_repository.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
-
-/// Local extended branch info (address/phone/status are not in DB schema).
-class _BranchInfo {
-  final String address;
-  final String phone;
-  final String status; // 'Aktif' or 'Tutup'
-  const _BranchInfo({required this.address, required this.phone, required this.status});
-}
 
 class BranchScreen extends ConsumerStatefulWidget {
   const BranchScreen({super.key});
@@ -31,9 +21,6 @@ class _BranchScreenState extends ConsumerState<BranchScreen> {
   bool _loading = true;
   final _searchCtrl = TextEditingController();
   String _query = '';
-
-  // Mock branch info since not in DB
-  final _mockInfo = <int, _BranchInfo>{};
 
   @override
   void initState() {
@@ -51,82 +38,171 @@ class _BranchScreenState extends ConsumerState<BranchScreen> {
   Future<void> _load() async {
     final repo = BranchRepository(ref.read(databaseProvider));
     final list = await repo.getAll();
-    // Generate mock info for each branch that doesn't have one
-    final rng = Random(42);
-    for (final b in list) {
-      _mockInfo.putIfAbsent(b.id, () {
-        final streets = ['Jl. Merdeka No.${b.id * 7}', 'Jl. Sudirman No.${b.id * 3 + 2}', 'Jl. Ahmad Yani No.${b.id * 5}'];
-        final phones = ['08${100000000 + b.id * 123456}'];
-        final status = rng.nextDouble() > 0.25 ? 'Aktif' : 'Tutup';
-        return _BranchInfo(address: streets[b.id % streets.length], phone: phones[0], status: status);
-      });
-    }
     if (mounted) setState(() { _list = list; _loading = false; });
   }
 
   List<Branche> get _filtered => _query.isEmpty
       ? _list
-      : _list.where((b) => b.name.toLowerCase().contains(_query)).toList();
+      : _list.where((b) => b.name.toLowerCase().contains(_query)
+          || (b.address?.toLowerCase().contains(_query) ?? false)).toList();
 
   void _showForm({Branche? existing}) {
-    final isEdit = existing != null;
-    final info = existing != null ? _mockInfo[existing.id] : null;
-    final ctrl = TextEditingController(text: existing?.name ?? '');
-    final addrCtrl = TextEditingController(text: info?.address ?? '');
-    final phoneCtrl = TextEditingController(text: info?.phone ?? '');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final nameCtrl = TextEditingController(text: existing?.name ?? '');
+    final addrCtrl = TextEditingController(text: existing?.address ?? '');
+    final phoneCtrl = TextEditingController(text: existing?.phone ?? '');
+    String status = existing?.status ?? 'Aktif';
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isEdit ? 'Edit Cabang' : 'Tambah Cabang'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              NusaInput('Nama cabang', controller: ctrl),
-              const SizedBox(height: 12),
-              NusaInput('Alamat', controller: addrCtrl),
-              const SizedBox(height: 12),
-              NusaInput('Telepon', controller: phoneCtrl, type: TextInputType.phone),
-            ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 10, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Header
+                Row(children: [
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      color: NusaConfig.accentPurple.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.storefront, color: NusaConfig.accentPurple, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    existing == null ? 'Tambah Cabang' : 'Edit Cabang',
+                    style: TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700,
+                      color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 16),
+                NusaInput('Nama Cabang', controller: nameCtrl, hint: 'Cth: Cabang Pusat'),
+                const SizedBox(height: 12),
+                NusaInput('Alamat', controller: addrCtrl, hint: 'Cth: Jl. Merdeka No. 10'),
+                const SizedBox(height: 12),
+                NusaInput('Telepon', controller: phoneCtrl, hint: 'Cth: 08123456789', type: TextInputType.phone),
+                const SizedBox(height: 16),
+                // Status chip selector
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Status',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                ),
+                const SizedBox(height: 8),
+                Row(children: [
+                  _statusChip('Aktif', status, NusaConfig.accentGreen, isDark,
+                      onTap: () => setSt(() => status = 'Aktif')),
+                  const SizedBox(width: 10),
+                  _statusChip('Tutup', status, const Color(0xFF9CA3AF), isDark,
+                      onTap: () => setSt(() => status = 'Tutup')),
+                ]),
+                const SizedBox(height: 24),
+                // Action buttons
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        side: BorderSide(color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder),
+                      ),
+                      child: Text('Batal', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600,
+                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final name = nameCtrl.text.trim();
+                        if (name.isEmpty) return;
+                        final repo = BranchRepository(ref.read(databaseProvider));
+                        if (existing == null) {
+                          await repo.add(name,
+                            address: addrCtrl.text.trim().isEmpty ? null : addrCtrl.text.trim(),
+                            phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+                            status: status,
+                          );
+                        } else {
+                          await repo.update(existing.id, name,
+                            address: addrCtrl.text.trim().isEmpty ? null : addrCtrl.text.trim(),
+                            phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+                            status: status,
+                          );
+                        }
+                        if (mounted) Navigator.of(context).pop();
+                        _load();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: NusaConfig.primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(existing == null ? 'Tambah' : 'Simpan',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ]),
+                if (existing != null) ...[
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _confirmDelete(existing);
+                    },
+                    child: const Text('Hapus Cabang', style: TextStyle(color: NusaConfig.primaryColor)),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
-        actions: [
-          if (isEdit)
-            TextButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                _confirmDelete(existing);
-              },
-              child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-            ),
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Batal')),
-          NusaButton(isEdit ? 'Simpan' : 'Tambah', fullWidth: false,
-              onPressed: () async {
-                final name = ctrl.text.trim();
-                if (name.isEmpty) return;
-                final repo = BranchRepository(ref.read(databaseProvider));
-                if (isEdit) {
-                  await repo.update(existing.id, name);
-                  _mockInfo[existing.id] = _BranchInfo(
-                    address: addrCtrl.text.trim(),
-                    phone: phoneCtrl.text.trim(),
-                    status: _mockInfo[existing.id]?.status ?? 'Aktif',
-                  );
-                } else {
-                  final id = await repo.add(name);
-                  _mockInfo[id] = _BranchInfo(
-                    address: addrCtrl.text.trim(),
-                    phone: phoneCtrl.text.trim(),
-                    status: 'Aktif',
-                  );
-                }
-                Navigator.of(ctx).pop();
-                _load();
-              }),
-        ],
+      ),
+    );
+  }
+
+  Widget _statusChip(String label, String current, Color color, bool isDark, {required VoidCallback onTap}) {
+    final selected = current == label;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.12) : (isDark ? NusaConfig.darkSurface2 : const Color(0xFFF3F4F6)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? color : (isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 8, height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 8),
+          Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: selected ? color : NusaConfig.textSecondary)),
+        ]),
       ),
     );
   }
@@ -136,19 +212,16 @@ class _BranchScreenState extends ConsumerState<BranchScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Cabang'),
-        content: Text('Hapus "${b.name}"?'),
+        content: Text('Hapus "${b.name}"? Data cabang tidak bisa dikembalikan.'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Batal')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Batal')),
           TextButton(
             onPressed: () async {
               await BranchRepository(ref.read(databaseProvider)).delete(b.id);
-              _mockInfo.remove(b.id);
               Navigator.of(ctx).pop();
               _load();
             },
-            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+            child: const Text('Hapus', style: TextStyle(color: NusaConfig.primaryColor)),
           ),
         ],
       ),
@@ -198,74 +271,91 @@ class _BranchScreenState extends ConsumerState<BranchScreen> {
                           separatorBuilder: (_, __) => const SizedBox(height: 12),
                           itemBuilder: (_, i) {
                             final b = filtered[i];
-                            final info = _mockInfo[b.id];
-                            final isActive = info?.status == 'Aktif';
+                            final isActive = b.status == 'Aktif';
                             return GestureDetector(
                               onTap: () => _showForm(existing: b),
                               child: Container(
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(16),
-                                  border: const Border(
+                                  border: Border(
                                     left: BorderSide(
-                                      color: NusaConfig.accentPurple,
+                                      color: isActive ? NusaConfig.accentGreen : const Color(0xFF9CA3AF),
                                       width: 4,
                                     ),
                                   ),
                                 ),
                                 child: NusaCard(
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          color: NusaConfig.accentPurple.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(12),
+                                  Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 44,
+                                          height: 44,
+                                          decoration: BoxDecoration(
+                                            color: (isActive ? NusaConfig.accentGreen : const Color(0xFF9CA3AF)).withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Icon(
+                                            Icons.storefront,
+                                            color: isActive ? NusaConfig.accentGreen : const Color(0xFF9CA3AF),
+                                            size: 22,
+                                          ),
                                         ),
-                                        child: const Icon(
-                                          Icons.storefront,
-                                          color: NusaConfig.accentPurple,
-                                          size: 22,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(b.name,
-                                                style: const TextStyle(
-                                                    fontSize: 16, fontWeight: FontWeight.w600)),
-                                            if (info != null) ...[
-                                              const SizedBox(height: 4),
-                                              Text(info.address,
-                                                  style: TextStyle(
-                                                      fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(b.name,
+                                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                                              if (b.address != null && b.address!.isNotEmpty) ...[
+                                                const SizedBox(height: 4),
+                                                Row(children: [
+                                                  Icon(Icons.location_on_outlined, size: 13,
+                                                      color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                                                  const SizedBox(width: 4),
+                                                  Flexible(child: Text(b.address!,
+                                                      style: TextStyle(fontSize: 13,
+                                                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                                                      maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                                ]),
+                                              ],
+                                              if (b.phone != null && b.phone!.isNotEmpty) ...[
+                                                const SizedBox(height: 2),
+                                                Row(children: [
+                                                  Icon(Icons.phone_outlined, size: 13,
+                                                      color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                                                  const SizedBox(width: 4),
+                                                  Text(b.phone!,
+                                                      style: TextStyle(fontSize: 13,
+                                                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                                                ]),
+                                              ],
                                             ],
-                                          ],
+                                          ),
                                         ),
-                                      ),
-                                      if (info != null)
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
                                             color: isActive
                                                 ? NusaConfig.accentGreen.withValues(alpha: 0.12)
-                                                : NusaConfig.textTertiary.withValues(alpha: 0.15),
+                                                : const Color(0xFF9CA3AF).withValues(alpha: 0.15),
                                             borderRadius: BorderRadius.circular(10),
                                           ),
                                           child: Text(
-                                            info.status,
+                                            b.status,
                                             style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: isActive ? NusaConfig.accentGreen : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                                              fontSize: 12, fontWeight: FontWeight.w600,
+                                              color: isActive ? NusaConfig.accentGreen : NusaConfig.textSecondary,
                                             ),
                                           ),
                                         ),
-                                      const SizedBox(width: 4),
-                                      Icon(Icons.chevron_right, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-                                    ],
+                                        const SizedBox(width: 4),
+                                        Icon(Icons.chevron_right,
+                                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -278,7 +368,10 @@ class _BranchScreenState extends ConsumerState<BranchScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
-        label: const Text('Tambah Cabang'),
+        label: const Text('Tambah Cabang', style: TextStyle(fontWeight: FontWeight.w600)),
+        backgroundColor: NusaConfig.primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 4,
         onPressed: () => _showForm(),
       ),
     );

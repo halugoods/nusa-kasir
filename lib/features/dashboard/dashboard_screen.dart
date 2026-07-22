@@ -100,6 +100,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       await _checkAttendance(session.employeeId);
     }
     await _load();
+
+    // Fix: reload photoPath from DB (not stale session data)
+    if (session != null && mounted) {
+      try {
+        final attRepo = AttendanceRepository(ref.read(databaseProvider));
+        final emp = await attRepo.getEmployee(session.employeeId);
+        if (emp != null && mounted) {
+          setState(() => _currentPhotoPath = emp.photoPath);
+        }
+      } catch (_) {}
+    }
+
+    // Auto-scope branch from session
+    if (session?.branchId != null && mounted) {
+      final branchRepo = BranchRepository(ref.read(databaseProvider));
+      final branch = await branchRepo.byId(session!.branchId!);
+      if (branch != null && mounted) {
+        setState(() => _activeBranch = branch);
+        ref.read(activeBranchProvider.notifier).state = branch;
+      }
+    }
   }
 
   Future<void> _checkAttendance(int employeeId) async {
@@ -174,7 +195,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       setState(() {
         _storeName = name.isNotEmpty ? name : 'NUSA';
         _branches = branches;
-        if (branches.isNotEmpty && _activeBranch == null) {
+        // Only auto-set first branch if session didn't already scope
+        if (branches.isNotEmpty && _activeBranch == null && ref.read(employeeSessionProvider)?.branchId == null) {
           _activeBranch = branches.first;
           ref.read(activeBranchProvider.notifier).state = branches.first;
         }
@@ -192,6 +214,127 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _financeIncome = finSummary['totalIncome'] ?? 0;
       });
     }
+  }
+
+  // ── Branch Picker ──────────────────────────────────────────────
+
+  void _showBranchPicker() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            width: 40, height: 4,
+            decoration: BoxDecoration(
+              color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                color: NusaConfig.accentPurple.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.store, color: NusaConfig.accentPurple, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Text('Pilih Cabang', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          ]),
+          const SizedBox(height: 4),
+          // "Semua Cabang" option
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+            leading: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: NusaConfig.accentGreen.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.layers, color: NusaConfig.accentGreen, size: 20),
+            ),
+            title: const Text('Semua Cabang',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+            subtitle: const Text('Lihat data dari seluruh cabang',
+                style: TextStyle(fontSize: 12)),
+            trailing: _activeBranch == null
+                ? const Icon(Icons.check_circle, color: NusaConfig.accentGreen, size: 22)
+                : null,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            onTap: () {
+              setState(() => _activeBranch = null);
+              ref.read(activeBranchProvider.notifier).state = null;
+              Navigator.pop(ctx);
+            },
+          ),
+          const SizedBox(height: 4),
+          // Branch list
+          ..._branches.map((b) {
+            final active = _activeBranch?.id == b.id;
+            return ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: (active ? NusaConfig.accentPurple : const Color(0xFF9CA3AF)).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.storefront,
+                    color: active ? NusaConfig.accentPurple : const Color(0xFF9CA3AF), size: 20),
+              ),
+              title: Text(b.name,
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15,
+                      color: active ? NusaConfig.accentPurple : null)),
+              subtitle: b.address != null && b.address!.isNotEmpty
+                  ? Text(b.address!, style: const TextStyle(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis)
+                  : null,
+              trailing: active
+                  ? const Icon(Icons.check_circle, color: NusaConfig.accentPurple, size: 22)
+                  : null,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onTap: () {
+                setState(() => _activeBranch = b);
+                ref.read(activeBranchProvider.notifier).state = b;
+                Navigator.pop(ctx);
+              },
+            );
+          }),
+          const SizedBox(height: 8),
+          // Kelola Cabang button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.push('/cabang');
+              },
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Kelola Cabang',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: NusaConfig.accentPurple,
+                side: const BorderSide(color: NusaConfig.accentPurple),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+        ]),
+      ),
+    );
   }
 
   // ── Menu navigation with RBAC guard ────────────────────────────────
@@ -330,6 +473,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       employeeId: emp.id,
       name: emp.name,
       role: emp.role,
+      branchId: emp.branchId,
       remember: result.remember,
     );
     ref.read(employeeSessionProvider.notifier).login(session, remember: result.remember);
@@ -337,6 +481,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     // Touch session
     ref.read(employeeSessionProvider.notifier).touch();
+
+    // Auto-scope to employee's assigned branch
+    if (emp.branchId != null) {
+      final branchRepo = BranchRepository(ref.read(databaseProvider));
+      final branch = await branchRepo.byId(emp.branchId!);
+      if (branch != null && mounted) {
+        setState(() => _activeBranch = branch);
+        ref.read(activeBranchProvider.notifier).state = branch;
+      }
+    }
 
     // Auto check-in if not yet checked in today
     try {
@@ -625,80 +779,45 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               onBellTap: () {},
             ),
 
-            // Branch selector
-            if (_branches.length > 1)
+            // Branch selector — bottom sheet picker
+            if (_branches.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => context.push('/cabang'),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.store,
-                              size: 16, color: NusaConfig.primaryColor),
-                          const SizedBox(width: 6),
-                          Text(
-                            _activeBranch?.name ?? 'Semua Cabang',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: NusaConfig.primaryColor,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.keyboard_arrow_down,
-                              size: 18, color: NusaConfig.primaryColor),
-                        ],
+                child: GestureDetector(
+                  onTap: () => _showBranchPicker(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: _branches.map((b) {
-                            final active = _activeBranch?.id == b.id;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() => _activeBranch = b);
-                                ref
-                                    .read(activeBranchProvider.notifier)
-                                    .state = b;
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 6),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: active
-                                      ? NusaConfig.primarySoft
-                                      : Theme.of(context).colorScheme.surface,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: active
-                                        ? NusaConfig.primaryColor
-                                        : NusaConfig.dividerColor,
-                                  ),
-                                ),
-                                child: Text(
-                                  b.name,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: active
-                                        ? NusaConfig.primaryColor
-                                        : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                    child: Row(children: [
+                      Icon(Icons.store, size: 18, color: NusaConfig.accentPurple.withValues(alpha: 0.8)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _activeBranch?.name ?? 'Semua Cabang',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                              color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
                         ),
                       ),
-                    ),
-                  ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: NusaConfig.accentPurple.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text('${_branches.length} cabang',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: NusaConfig.accentPurple)),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(Icons.expand_more, size: 20,
+                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                    ]),
+                  ),
                 ),
               ),
 
