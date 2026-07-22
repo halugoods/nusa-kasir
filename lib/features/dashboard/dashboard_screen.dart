@@ -72,6 +72,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     {'id': 'keuangan', 'label': 'Keuangan', 'icon': 'finance'},
     {'id': 'spreadsheet', 'label': 'Spreadsheet', 'icon': 'table'},
     {'id': 'supplier', 'label': 'Supplier', 'icon': 'supplier'},
+    {'id': 'cabang', 'label': 'Cabang', 'icon': 'branch'},
     {'id': 'ai_chat', 'label': 'AI Chat', 'icon': 'ai'},
     {'id': 'pengaturan', 'label': 'Pengaturan', 'icon': 'settings'},
   ];
@@ -802,6 +803,7 @@ class _MenuItem extends StatelessWidget {
     'employee': NusaConfig.accentPurple,
     'online': Color(0xFF0EA5E9),
     'ai': Color(0xFFD946EF),
+    'branch': NusaConfig.accentPurple,
   };
 
   @override
@@ -987,6 +989,7 @@ class MenuIcon extends StatelessWidget {
     'employee': Icons.people_alt_outlined,
     'online': Icons.shopping_cart_outlined,
     'ai': Icons.auto_awesome_outlined,
+    'branch': Icons.storefront_outlined,
   };
 
   @override

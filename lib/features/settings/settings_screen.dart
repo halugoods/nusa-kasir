@@ -46,7 +46,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   static const _allFeatures = [
     'produk', 'stok', 'transaksi', 'pelanggan', 'promo',
     'pesanan_online', 'laporan', 'presensi', 'karyawan',
-    'keuangan', 'spreadsheet', 'supplier', 'ai_chat', 'pengaturan',
+    'keuangan', 'spreadsheet', 'supplier', 'cabang', 'ai_chat', 'pengaturan',
   ];
 
   static const _featureLabels = {
@@ -54,7 +54,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     'pelanggan': 'Pelanggan', 'promo': 'Promo', 'pesanan_online': 'Pesanan Online',
     'laporan': 'Laporan', 'presensi': 'Presensi', 'karyawan': 'Karyawan',
     'keuangan': 'Keuangan', 'spreadsheet': 'Spreadsheet', 'supplier': 'Supplier',
-    'ai_chat': 'AI Chat', 'pengaturan': 'Pengaturan',
+    'cabang': 'Cabang', 'ai_chat': 'AI Chat', 'pengaturan': 'Pengaturan',
   };
 
   static const _featureIcons = {
@@ -64,7 +64,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     'laporan': Icons.paid_outlined, 'presensi': Icons.fingerprint,
     'karyawan': Icons.people_outline, 'keuangan': Icons.account_balance_wallet_outlined,
     'spreadsheet': Icons.table_chart_outlined, 'supplier': Icons.local_shipping_outlined,
-    'ai_chat': Icons.smart_toy_outlined, 'pengaturan': Icons.settings_outlined,
+    'cabang': Icons.storefront_outlined, 'ai_chat': Icons.smart_toy_outlined,
+    'pengaturan': Icons.settings_outlined,
   };
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/services/spreadsheet_service.dart';
@@ -199,31 +200,96 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
   }
 
   void _showApiSetupDialog() {
+    // Direct link to enable Sheets API in Google Cloud Console
+    // Uses the Firebase project ID from google-services.json
+    const projectId = 'nusa-kasir-hgds-36c2f';
+    const sheetsApiEnableUrl =
+        'https://console.cloud.google.com/apis/library/sheets.googleapis.com'
+        '?project=$projectId';
+
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(children: [
           Icon(Icons.info_outline, color: NusaConfig.accentGold, size: 24),
           SizedBox(width: 10),
           Expanded(child: Text('Google Sheets API', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
         ]),
-        content: const Text(
-          'API belum diaktifkan untuk project ini.\n\n'
-          'Langkah perbaikan:\n'
-          '1. Buka console.cloud.google.com\n'
-          '2. Pilih project Firebase Anda\n'
-          '3. APIs & Services → Library\n'
-          '4. Cari "Google Sheets API" → Enable\n'
-          '5. Tunggu 1-2 menit, lalu coba lagi\n\n'
-          'Hubungi developer jika butuh bantuan.',
-          style: TextStyle(fontSize: 13, height: 1.5),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text(
+              'Google Sheets API belum diaktifkan untuk project Firebase Anda.',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: NusaConfig.accentGold.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: NusaConfig.accentGold.withValues(alpha: 0.25)),
+              ),
+              child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Icon(Icons.lightbulb_outline, size: 18, color: NusaConfig.accentGold),
+                  SizedBox(width: 6),
+                  Text('1-Klik Setup', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: NusaConfig.accentGold)),
+                ]),
+                SizedBox(height: 4),
+                Text(
+                  'Tombol di bawah akan membuka halaman Google Cloud Console\n'
+                  'langsung ke Google Sheets API. Klik ENABLE, lalu tunggu 1-2 menit.',
+                  style: TextStyle(fontSize: 12, height: 1.5),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Manual:',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              '1. console.cloud.google.com\n'
+              '2. Pilih project "nusa-kasir-hgds-36c2f"\n'
+              '3. APIs & Services → Library\n'
+              '4. Cari "Google Sheets API" → Enable\n'
+              '5. Tunggu 1-2 menit, lalu coba lagi',
+              style: TextStyle(fontSize: 12, height: 1.7),
+            ),
+          ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tutup')),
+          const SizedBox(width: 4),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _openUrl(sheetsApiEnableUrl);
+            },
+            icon: const Icon(Icons.open_in_browser, size: 18),
+            label: const Text('Buka Google Cloud Console'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1A73E8),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  void _openUrl(String url) {
+    try {
+      launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('[Spreadsheet] Gagal buka URL: $e');
+    }
   }
 
   Future<void> _syncTab(String tab) async {
