@@ -60,10 +60,9 @@ class SpreadsheetService {
   Future<String?> findOrCreate(String email) async {
     final api = await _client();
     if (api == null) return null;
+    final shortName = email.split('@').first;
+    final title = 'NUSA Kasir - $shortName';
     try {
-      // Use email prefix as sheet name for uniqueness
-      final shortName = email.split('@').first;
-      final title = 'NUSA Kasir - $shortName';
       final sheet = await api.spreadsheets.create(Spreadsheet(
         properties: SpreadsheetProperties(title: title),
         sheets: [
@@ -81,8 +80,9 @@ class SpreadsheetService {
       ));
       return sheet.spreadsheetId;
     } catch (e) {
-      debugPrint('[Spreadsheet] findOrCreate failed: $e');
-      return null;
+      debugPrint('[Spreadsheet] findOrCreate API call failed: $e');
+      // Re-throw so the caller can show a meaningful message
+      rethrow;
     }
   }
 

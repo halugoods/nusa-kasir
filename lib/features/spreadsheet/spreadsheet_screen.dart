@@ -40,12 +40,36 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
 
   Future<void> _init() async {
     _svc = SpreadsheetService(ref.read(databaseProvider));
-    // Only restore saved IDs — DO NOT call signInSilently() here,
-    // it restores a session WITHOUT Sheets API scope, which breaks
-    // authenticatedClient() for the rest of the app session.
     final savedEmail = await SecureStore.getSheetsEmail();
     final savedSheetId = await SecureStore.getSheetsId();
 
+    // Try silent restore (no popup). Only works if user previously signed in
+    // AND granted Sheets scope. If the restored token lacks Sheets scope,
+    // we clear and ask for re-login — never keep a bad session.
+    if (savedEmail != null) {
+      try {
+        final account = await _svc!.signInSilently();
+        if (account != null) {
+          final accessErr = await _svc!.verifyAccess();
+          if (accessErr.isEmpty) {
+            // Good session — restore
+            if (mounted) {
+              setState(() {
+                _userEmail = account.email;
+                _spreadsheetId = savedSheetId;
+              });
+            }
+            return;
+          }
+          // Session restored but no Sheets scope — clear it
+          debugPrint('[Spreadsheet] silent session lacks Sheets scope, clearing');
+        }
+      } catch (e) {
+        debugPrint('[Spreadsheet] signInSilently threw: $e');
+      }
+    }
+
+    // Fallback: show saved email but no active session
     if (savedEmail != null && mounted) {
       setState(() {
         _userEmail = savedEmail;
@@ -107,7 +131,9 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
   }
 
   Future<void> _signOut() async {
-    await _svc!.signOut();
+    try {
+      await _svc!.signOut();
+    } catch (_) {}
     await SecureStore.clearSheetsTokens();
     await SecureStore.clearSheetsEmail();
     await SecureStore.clearSheetsId();
@@ -137,7 +163,8 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
       if (verifyErr.isNotEmpty) {
         if (mounted) {
           setState(() => _connecting = false);
-          TopToast.error(context, verifyErr);
+          TopToast.error(context, 'Sesi login kadaluarsa — silakan login ulang');
+          _signIn();
         }
         return;
       }
@@ -159,7 +186,15 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _connecting = false);
-        TopToast.error(context, 'Gagal membuat spreadsheet — coba login ulang');
+        final msg = e.toString();
+        if (msg.contains('apiNotEnabled') || msg.contains('403')) {
+          TopToast.error(context, 'Google Sheets API belum diaktifkan.\n'
+              'Buka Google Cloud Console > APIs & Services > Enable Sheets API.');
+        } else if (msg.contains('quota') || msg.contains('429')) {
+          TopToast.error(context, 'Kuota Google Sheets tercapai. Coba beberapa saat lagi.');
+        } else {
+          TopToast.error(context, 'Gagal membuat spreadsheet.\n$msg');
+        }
       }
     }
   }
