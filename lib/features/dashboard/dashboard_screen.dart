@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/core/auth/employee_session.dart';
@@ -40,6 +41,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _currentName = '';
   String _currentRole = '';
   int? _currentEmployeeId;
+  String? _currentPhotoPath;
 
   // Attendance tracking
   bool _hasCheckedIn = false;
@@ -49,6 +51,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String? _lastCashierName;
   String _lastCashierRole = '';
   String _lastCashierTime = '';
+  String? _lastCashierPhoto;
   List<Employee> _employees = [];
   int _onlinePending = 0;
 
@@ -126,6 +129,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     String? lastCashierName;
     String lastCashierRole = '';
     String lastCashierTime = '';
+    String? lastCashierPhoto;
     if (lastSession != null) {
       final emp = emps.cast<Employee?>().firstWhere(
             (e) => e!.id == lastSession.employeeId,
@@ -134,6 +138,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (emp != null) {
         lastCashierName = emp.name;
         lastCashierRole = emp.role;
+        lastCashierPhoto = emp.photoPath;
         final t = lastSession.openedAt;
         lastCashierTime =
             '${t.hour.toString().padLeft(2, '0')}:'
@@ -169,6 +174,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _lastCashierName = lastCashierName;
         _lastCashierRole = lastCashierRole;
         _lastCashierTime = lastCashierTime;
+        _lastCashierPhoto = lastCashierPhoto;
         _financeExpense = finSummary['totalExpense'] ?? 0;
         _financeIncome = finSummary['totalIncome'] ?? 0;
       });
@@ -328,6 +334,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       _currentName = emp.name;
       _currentRole = emp.role;
       _currentEmployeeId = emp.id;
+      _currentPhotoPath = emp.photoPath;
       TopToast.success(context, 'Halo, ${emp.name}! ðŸ‘‹');
     }
   }
@@ -450,43 +457,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     itemBuilder: (_, i) {
                       final e = _employees[i];
                       final checkedIn = checkedInMap[e.id] ?? false;
+                      final hasPhoto = e.photoPath != null && e.photoPath!.isNotEmpty && File(e.photoPath!).existsSync();
                       return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor:
-                              NusaConfig.primaryColor.withValues(alpha: 0.12),
-                          child: Stack(
-                            children: [
-                              Center(
-                                child: Text(
-                                  e.name[0].toUpperCase(),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: NusaConfig.primaryColor,
-                                  ),
-                                ),
-                              ),
-                              // Attendance reminder badge
-                              if (!checkedIn)
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    width: 14,
-                                    height: 14,
-                                    decoration: BoxDecoration(
-                                      color: NusaConfig.accentGold,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white, width: 1.5),
-                                    ),
-                                    child: const Icon(
-                                      Icons.warning_amber_rounded,
-                                      size: 8,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                            ],
+                        leading: Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: NusaConfig.primaryColor.withValues(alpha: 0.12),
+                            image: hasPhoto
+                                ? DecorationImage(image: FileImage(File(e.photoPath!)), fit: BoxFit.cover)
+                                : null,
                           ),
+                          alignment: Alignment.center,
+                          child: !hasPhoto
+                              ? Text(e.name[0].toUpperCase(), style: TextStyle(fontWeight: FontWeight.w700, color: NusaConfig.primaryColor))
+                              : Stack(children: [
+                                  // Attendance badge
+                                  if (!checkedIn)
+                                    Positioned(right: 0, bottom: 0,
+                                      child: Container(
+                                        width: 14, height: 14,
+                                        decoration: BoxDecoration(color: NusaConfig.accentGold, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
+                                        child: const Icon(Icons.warning_amber_rounded, size: 8, color: Colors.white),
+                                      ),
+                                    ),
+                                ]),
                         ),
                         title: Row(
                           children: [
@@ -569,24 +564,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     // Build card props
     String initials, userName, roleText, attendanceText;
+    String? cardPhoto;
     if (_currentName.isNotEmpty) {
       initials = _currentName[0].toUpperCase();
       userName = _currentName;
       roleText = _currentRole;
+      cardPhoto = _currentPhotoPath;
       attendanceText = _hasCheckedIn
           ? 'Hadir • $_checkInTime'
-          : '⚠ï¸  Belum absen hari ini — buka kasir untuk absen otomatis';
+          : '⚠️  Belum absen hari ini — buka kasir untuk absen otomatis';
     } else if (_lastCashierName != null) {
       initials = _lastCashierName!.isNotEmpty
           ? _lastCashierName![0].toUpperCase()
           : '?';
       userName = _lastCashierName!;
       roleText = _lastCashierRole;
+      cardPhoto = _lastCashierPhoto;
       attendanceText = 'Kasir terakhir • $_lastCashierTime';
     } else {
       initials = '?';
       userName = 'Belum ada sesi kasir';
       roleText = '';
+      cardPhoto = null;
       attendanceText = 'Buka Kasir untuk memulai';
     }
 
@@ -691,6 +690,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     children: [
                       // Profile card
                       ProfileStatsCard(
+                        photoPath: cardPhoto,
                         initials: initials,
                         userName: userName,
                         role: roleText,

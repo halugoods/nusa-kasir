@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:csv/csv.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -11,6 +13,9 @@ import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 class SuppliersScreen extends ConsumerStatefulWidget {
   const SuppliersScreen({super.key});
@@ -27,7 +32,7 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
   @override
   void initState() {
     super.initState();
-    _searchC.addListener(() => setState(() => _query = _searchC.text));
+    _searchC.addListener(_onSearchChanged);
     _load();
   }
 
@@ -37,9 +42,15 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
     super.dispose();
   }
 
+  void _onSearchChanged() => setState(() => _query = _searchC.text);
+
   List<Supplier> get _filtered => _query.isEmpty
       ? _list
-      : _list.where((s) => s.name.toLowerCase().contains(_query.toLowerCase()) || (s.phone?.contains(_query) ?? false)).toList();
+      : _list.where((s) =>
+          s.name.toLowerCase().contains(_query.toLowerCase()) ||
+          (s.phone?.contains(_query) ?? false) ||
+          (s.contactPerson?.toLowerCase().contains(_query.toLowerCase()) ?? false)
+      ).toList();
 
   Future<void> _load() async {
     final repo = SupplierRepository(ref.read(databaseProvider));
@@ -54,64 +65,155 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
     final addrC = TextEditingController(text: existing?.address ?? '');
     final cpC = TextEditingController(text: existing?.contactPerson ?? '');
     final noteC = TextEditingController(text: existing?.note ?? '');
+    String? error;
 
-    showDialog(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(isEdit ? 'Edit Supplier' : 'Tambah Supplier'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              NusaInput('Nama', controller: nameC),
-              const SizedBox(height: 12),
-              NusaInput('Telepon', controller: phoneC, type: TextInputType.phone),
-              const SizedBox(height: 12),
-              NusaInput('Alamat', controller: addrC),
-              const SizedBox(height: 12),
-              NusaInput('Kontak Person', controller: cpC),
-              const SizedBox(height: 12),
-              NusaInput('Catatan', controller: noteC),
-            ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20, 10, 20,
+            MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Header with icon
+                Row(children: [
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      color: NusaConfig.primaryColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.local_shipping_outlined,
+                        color: NusaConfig.primaryColor, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(isEdit ? 'Edit Supplier' : 'Tambah Supplier',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                      )),
+                ]),
+                const SizedBox(height: 16),
+                NusaInput('Nama', controller: nameC, hint: 'Cth: PT Maju Jaya'),
+                const SizedBox(height: 12),
+                NusaInput('Telepon', controller: phoneC, type: TextInputType.phone, hint: 'Cth: 08123456789',
+                    prefixIcon: Icon(Icons.phone, size: 18,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                const SizedBox(height: 12),
+                NusaInput('Alamat', controller: addrC, hint: 'Cth: Jl. Merdeka No. 10',
+                    prefixIcon: Icon(Icons.location_on_outlined, size: 18,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                const SizedBox(height: 12),
+                NusaInput('Kontak Person', controller: cpC, hint: 'Cth: Bapak Budi',
+                    prefixIcon: Icon(Icons.person_outline, size: 18,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                const SizedBox(height: 12),
+                NusaInput('Catatan', controller: noteC, hint: 'Cth: Supplier bahan baku',
+                    prefixIcon: Icon(Icons.notes_outlined, size: 18,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(error!, style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13)),
+                ],
+                const SizedBox(height: 20),
+                // Action buttons
+                Row(children: [
+                  if (isEdit)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _confirmDelete(existing);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: NusaConfig.primaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Hapus', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  if (isEdit) const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text('Batal', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final name = nameC.text.trim();
+                        if (name.isEmpty) {
+                          setSt(() => error = 'Nama wajib diisi');
+                          return;
+                        }
+                        final repo = SupplierRepository(ref.read(databaseProvider));
+                        if (isEdit) {
+                          await repo.updateSupplier(existing.id,
+                              name: name,
+                              phone: phoneC.text.trim(),
+                              address: addrC.text.trim(),
+                              contactPerson: cpC.text.trim(),
+                              note: noteC.text.trim());
+                        } else {
+                          await repo.addSupplier(
+                            name: name,
+                            phone: phoneC.text.trim(),
+                            address: addrC.text.trim(),
+                            contactPerson: cpC.text.trim(),
+                            note: noteC.text.trim(),
+                          );
+                        }
+                        if (mounted) Navigator.of(context).pop();
+                        _load();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: NusaConfig.primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(isEdit ? 'Simpan' : 'Tambah',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
           ),
         ),
-        actions: [
-          if (isEdit)
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _confirmDelete(existing);
-              },
-              child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-            ),
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Batal')),
-          NusaButton(isEdit ? 'Simpan' : 'Tambah', fullWidth: false,
-              onPressed: () async {
-            final name = nameC.text.trim();
-            if (name.isEmpty) return;
-            final repo = SupplierRepository(ref.read(databaseProvider));
-            if (isEdit) {
-              await repo.updateSupplier(existing.id,
-                  name: name,
-                  phone: phoneC.text.trim(),
-                  address: addrC.text.trim(),
-                  contactPerson: cpC.text.trim(),
-                  note: noteC.text.trim());
-            } else {
-              await repo.addSupplier(
-                name: name,
-                phone: phoneC.text.trim(),
-                address: addrC.text.trim(),
-                contactPerson: cpC.text.trim(),
-                note: noteC.text.trim(),
-              );
-            }
-            if (mounted) Navigator.of(context).pop();
-            _load();
-          }),
-        ],
       ),
     );
   }
@@ -120,21 +222,99 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Hapus Supplier'),
-        content: Text('Yakin hapus "${s.name}"?'),
+        content: Text('Yakin hapus "${s.name}"?\nTindakan ini tidak dapat dibatalkan.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Batal')),
-          NusaButton('Hapus', fullWidth: false, onPressed: () async {
-            final repo = SupplierRepository(ref.read(databaseProvider));
-            await repo.deleteSupplier(s.id);
-            if (mounted) Navigator.of(context).pop();
-            _load();
-          }),
+          TextButton(
+            onPressed: () async {
+              final repo = SupplierRepository(ref.read(databaseProvider));
+              await repo.deleteSupplier(s.id);
+              if (mounted) { Navigator.of(context).pop(); TopToast.success(context, 'Supplier dihapus'); }
+              _load();
+            },
+            style: TextButton.styleFrom(foregroundColor: NusaConfig.primaryColor),
+            child: const Text('Hapus'),
+          ),
         ],
       ),
     );
+  }
+
+  // ── Export ─────────────────────────────────────────────────────
+
+  void _showExportOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(NusaConfig.spaceLG),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Text('Ekspor Data Supplier', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: NusaConfig.spaceMD),
+            ListTile(
+              leading: Icon(Icons.table_chart_outlined, color: NusaConfig.accentGreen),
+              title: const Text('Ekspor CSV (Excel)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              subtitle: const Text('File spreadsheet, bisa dibuka di Excel', style: TextStyle(fontSize: 12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(NusaConfig.radiusMD)),
+              tileColor: NusaConfig.accentGreen.withValues(alpha: 0.06),
+              onTap: () { Navigator.pop(context); _exportCSV(); },
+            ),
+            const SizedBox(height: NusaConfig.spaceXS),
+            ListTile(
+              leading: Icon(Icons.picture_as_pdf_outlined, color: NusaConfig.primaryColor),
+              title: const Text('Ekspor PDF', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Dokumen PDF siap cetak', style: TextStyle(fontSize: 12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(NusaConfig.radiusMD)),
+              tileColor: NusaConfig.primaryColor.withValues(alpha: 0.06),
+              onTap: () { Navigator.pop(context); _exportPDF(); },
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportCSV() async {
+    try {
+      final rows = <List<String>>[
+        ['Nama', 'Telepon', 'Alamat', 'Kontak Person', 'Catatan'],
+      ];
+      for (final s in _list) {
+        rows.add([s.name, s.phone ?? '', s.address ?? '', s.contactPerson ?? '', s.note ?? '']);
+      }
+      final csv = const ListToCsvConverter().convert(rows);
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/supplier_nusa_${DateTime.now().millisecondsSinceEpoch}.csv');
+      await file.writeAsString(csv);
+      await Share.shareXFiles([XFile(file.path)], text: 'Daftar Supplier NUSA Kasir');
+    } catch (e) {
+      if (mounted) TopToast.error(context, 'Gagal ekspor CSV');
+    }
+  }
+
+  Future<void> _exportPDF() async {
+    try {
+      final buf = StringBuffer('DAFTAR SUPPLIER - NUSA KASIR\n');
+      buf.writeln('=' * 60);
+      buf.writeln('Nama | Telepon | Alamat | Kontak Person | Catatan');
+      buf.writeln('-' * 60);
+      for (final s in _list) {
+        buf.writeln('${s.name} | ${s.phone ?? '-'} | ${s.address ?? '-'} | ${s.contactPerson ?? '-'} | ${s.note ?? '-'}');
+      }
+      buf.writeln('=' * 60);
+      buf.writeln('Total: ${_list.length} supplier');
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/supplier_nusa_${DateTime.now().millisecondsSinceEpoch}.txt');
+      await file.writeAsString(buf.toString());
+      await Share.shareXFiles([XFile(file.path)], text: 'Daftar Supplier NUSA Kasir');
+    } catch (e) {
+      if (mounted) TopToast.error(context, 'Gagal ekspor PDF');
+    }
   }
 
   @override
@@ -144,23 +324,65 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
       'Supplier',
       Column(
         children: [
+          // Search + Export row
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: TextField(
-              controller: _searchC,
-              decoration: InputDecoration(
-                hintText: 'Cari supplier...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(children: [
+              Expanded(
+                child: NusaInput(
+                  'Cari supplier...',
+                  controller: _searchC,
+                  hint: 'Cari supplier...',
+                  prefixIcon: Icon(Icons.search, size: 20,
+                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                  suffixIcon: _query.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () => _searchC.clear(),
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: Icon(Icons.clear_rounded, size: 18,
+                                color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                          ),
+                        )
+                      : null,
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
               ),
-            ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _filtered.isNotEmpty ? _showExportOptions : null,
+                child: Container(
+                  height: 46, width: 46,
+                  decoration: BoxDecoration(
+                    color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+                  ),
+                  child: Icon(Icons.file_download_outlined, size: 20,
+                      color: _filtered.isEmpty
+                          ? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)
+                          : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                ),
+              ),
+            ]),
           ),
+          // Count badge
+          if (!_loading)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(children: [
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: NusaConfig.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(NusaConfig.radiusFull),
+                  ),
+                  child: Text('${_filtered.length} supplier',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
+                ),
+              ]),
+            ),
+          const SizedBox(height: 4),
           Expanded(
             child: _loading
                 ? const SkeletonList()
@@ -168,23 +390,27 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                     ? const EmptyState(
                         icon: Icons.local_shipping_outlined,
                         message: 'Belum ada supplier',
+                        actionLabel: 'Tambah Supplier',
+                        onAction: null,
                       )
                     : RefreshIndicator(
                         onRefresh: _load,
                         child: _filtered.isEmpty
                             ? ListView(
-                                children: const [
-                                  SizedBox(height: 80),
+                                children: [
+                                  const SizedBox(height: 80),
                                   EmptyState(
                                     icon: Icons.search_off,
                                     message: 'Supplier tidak ditemukan',
+                                    onAction: () { _searchC.clear(); },
+                                    actionLabel: 'Reset Pencarian',
                                   ),
                                 ],
                               )
                             : ListView.separated(
-                                padding: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
                                 itemCount: _filtered.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                                separatorBuilder: (_, __) => const SizedBox(height: 10),
                                 itemBuilder: (_, i) => _SupplierTile(
                                   supplier: _filtered[i],
                                   onTap: () => _showForm(existing: _filtered[i]),
@@ -210,7 +436,10 @@ class _SupplierTile extends StatelessWidget {
   final VoidCallback onTap;
   const _SupplierTile({required this.supplier, required this.onTap});
 
-  static const _avatarColors = [Colors.blue, Colors.green, Colors.orange, Colors.purple, Colors.teal];
+  static const _avatarColors = [
+    Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFFF59E0B),
+    Color(0xFF8B5CF6), Color(0xFFEC4899), Color(0xFF06B6D4),
+  ];
 
   Color _avatarColor() => _avatarColors[supplier.name.hashCode.abs() % _avatarColors.length];
 
@@ -232,57 +461,68 @@ class _SupplierTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPri = isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
+    final textSec = isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
+    final textTer = isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary;
     final hasPhone = supplier.phone != null && supplier.phone!.isNotEmpty;
-    return InkWell(
+
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: NusaCard(
-        Row(
-          children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: _avatarColor(),
-              child: Text(
-                supplier.name.isNotEmpty ? supplier.name[0].toUpperCase() : '?',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
-              ),
+      child: NusaCard(Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(children: [
+          Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              color: _avatarColor().withValues(alpha: 0.12),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(supplier.name,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  if (hasPhone)
-                    Text(supplier.phone!,
-                        style: TextStyle(
-                            fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                  if (supplier.contactPerson != null &&
-                      supplier.contactPerson!.isNotEmpty)
-                    Text('CP: ${supplier.contactPerson}',
-                        style: TextStyle(
-                            fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                ],
-              ),
+            alignment: Alignment.center,
+            child: Text(
+              supplier.name.isNotEmpty ? supplier.name[0].toUpperCase() : '?',
+              style: TextStyle(color: _avatarColor(), fontWeight: FontWeight.w700, fontSize: 20),
             ),
-            if (hasPhone)
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.phone_outlined, color: NusaConfig.primaryColor),
-                onSelected: (v) {
-                  if (v == 'tel') _launchPhone(supplier.phone!);
-                  if (v == 'wa') _launchWhatsApp(supplier.phone!);
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'tel', child: Text('Telepon')),
-                  const PopupMenuItem(value: 'wa', child: Text('WhatsApp')),
-                ],
-              ),
-          ],
-        ),
-      ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(supplier.name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textPri)),
+              if (hasPhone)
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Text(supplier.phone!, style: TextStyle(fontSize: 13, color: textSec)),
+                ),
+              if (supplier.contactPerson != null && supplier.contactPerson!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text('CP: ${supplier.contactPerson}', style: TextStyle(fontSize: 13, color: textSec)),
+                ),
+              if (supplier.address != null && supplier.address!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Row(children: [
+                    Icon(Icons.location_on_outlined, size: 13, color: textTer),
+                    const SizedBox(width: 3),
+                    Expanded(child: Text(supplier.address!, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: textTer))),
+                  ]),
+                ),
+            ]),
+          ),
+          if (hasPhone)
+            PopupMenuButton<String>(
+              icon: Icon(Icons.phone_outlined, size: 20, color: NusaConfig.primaryColor),
+              onSelected: (v) {
+                if (v == 'tel') _launchPhone(supplier.phone!);
+                if (v == 'wa') _launchWhatsApp(supplier.phone!);
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'tel', child: Text('Telepon')),
+                const PopupMenuItem(value: 'wa', child: Text('WhatsApp')),
+              ],
+            ),
+        ]),
+      )),
     );
   }
 }

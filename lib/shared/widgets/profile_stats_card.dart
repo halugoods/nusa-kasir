@@ -1,15 +1,18 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 
 /// Red gradient profile card — DISPLAY ONLY.
 /// Shows who opened the cashier last (no action buttons).
 ///
 /// Fields:
+///   - photoPath: employee profile photo
 ///   - initials: avatar initials of last cashier
 ///   - userName: last cashier name
 ///   - role: role + branch
 ///   - attendanceStatus: "Kasir terakhir • [jam]" or "Belum ada sesi kasir"
 class ProfileStatsCard extends StatelessWidget {
+  final String? photoPath;
   final String initials;
   final String userName;
   final String role;
@@ -22,6 +25,7 @@ class ProfileStatsCard extends StatelessWidget {
 
   const ProfileStatsCard({
     super.key,
+    this.photoPath,
     this.initials = '?',
     this.userName = 'Belum ada sesi kasir',
     this.role = '',
@@ -104,6 +108,7 @@ class ProfileStatsCard extends StatelessWidget {
   }
 
   Widget _buildTopRow() {
+    final hasPhoto = photoPath != null && photoPath!.isNotEmpty && File(photoPath!).existsSync();
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -117,16 +122,21 @@ class ProfileStatsCard extends StatelessWidget {
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.25),
             ),
+            image: hasPhoto
+                ? DecorationImage(image: FileImage(File(photoPath!)), fit: BoxFit.cover)
+                : null,
           ),
           alignment: Alignment.center,
-          child: Text(
-            initials,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
+          child: hasPhoto
+              ? null
+              : Text(
+                  initials,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
         ),
         const SizedBox(width: 12),
 

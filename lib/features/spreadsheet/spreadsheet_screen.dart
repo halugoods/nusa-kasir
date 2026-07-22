@@ -63,26 +63,16 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
     if (account != null && mounted) {
       final email = account.email;
       await SecureStore.saveSheetsEmail(email);
+      // Restore spreadsheet ID if exists (no auto-create)
+      final savedId = await SecureStore.getSheetsId();
       setState(() {
         _userEmail = email;
+        _spreadsheetId = (savedId != null && savedId.isNotEmpty) ? savedId : null;
         _connecting = false;
       });
-      // Auto-try find/create spreadsheet
-      await _autoFindSheet(email);
     } else {
       if (mounted) setState(() => _connecting = false);
     }
-  }
-
-  Future<void> _autoFindSheet(String email) async {
-    // Try restore existing spreadsheet ID
-    final savedId = await SecureStore.getSheetsId();
-    if (savedId != null && savedId.isNotEmpty) {
-      setState(() => _spreadsheetId = savedId);
-      return;
-    }
-    // Auto-create new spreadsheet
-    await _createSheet();
   }
 
   Future<void> _signOut() async {
@@ -102,20 +92,30 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
   Future<void> _createSheet() async {
     final email = _userEmail;
     if (email.isEmpty) return;
+    if (_svc == null) {
+      TopToast.error(context, 'Gagal terhubung ke Google, silakan login ulang');
+      return;
+    }
     setState(() => _connecting = true);
-    final id = await _svc!.findOrCreate(email);
-    if (id != null && mounted) {
-      await SecureStore.saveSheetsId(id);
-      setState(() {
-        _spreadsheetId = id;
-        _connecting = false;
-      });
-      TopToast.success(context, 'Spreadsheet dibuat — otomatis sinkron semua data...');
-      // Auto-sync all after create
-      _syncAll();
-    } else if (mounted) {
-      setState(() => _connecting = false);
-      TopToast.error(context, 'Gagal membuat spreadsheet');
+    try {
+      final id = await _svc!.findOrCreate(email);
+      if (id != null && mounted) {
+        await SecureStore.saveSheetsId(id);
+        setState(() {
+          _spreadsheetId = id;
+          _connecting = false;
+        });
+        TopToast.success(context, 'Spreadsheet dibuat — otomatis sinkron semua data...');
+        _syncAll();
+      } else if (mounted) {
+        setState(() => _connecting = false);
+        TopToast.error(context, 'Gagal membuat spreadsheet — coba login ulang');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _connecting = false);
+        TopToast.error(context, 'Gagal membuat spreadsheet — coba login ulang');
+      }
     }
   }
 

@@ -439,7 +439,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               _roleDropdown(isDark),
             ] else ...[
               const SizedBox(width: 8),
-              SizedBox(width: 130, child: _segBtnPlaceholder(isDark)),
+              SizedBox(width: 130, child: _monthDropdown(isDark)),
             ],
           ]),
         ),
@@ -485,6 +485,56 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
     ),
   );
+
+  Widget _monthDropdown(bool isDark) {
+    final now = DateTime.now();
+    final monthOptions = <Map<String, int>>[];
+    for (var y = now.year; y >= now.year - 2; y--) {
+      final endM = y == now.year ? now.month : 12;
+      for (var m = endM; m >= 1; m--) {
+        monthOptions.add({'year': y, 'month': m});
+      }
+    }
+    final monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    final textSec = isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
+    final textTer = isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary;
+    final textPri = isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
+
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<Map<String, int>>(
+          value: monthOptions.firstWhere(
+            (o) => o['year'] == _histYear && o['month'] == _histMonth,
+            orElse: () => monthOptions.first,
+          ),
+          isExpanded: true,
+          isDense: true,
+          icon: Icon(Icons.expand_more_rounded, size: 16, color: textTer),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textSec),
+          dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          underline: const SizedBox.shrink(),
+          items: monthOptions.map((o) => DropdownMenuItem(
+            value: o,
+            child: Text('${monthNames[o['month']!]} ${o['year']}',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textPri)),
+          )).toList(),
+          onChanged: (v) {
+            if (v == null) return;
+            setState(() { _histYear = v['year']!; _histMonth = v['month']!; });
+            _loadHistory();
+          },
+        ),
+      ),
+    );
+  }
 
   // ── TAB: Hari Ini ─────────────────────────────────────────────────
 
@@ -745,15 +795,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     if (_histLoading) return const Center(child: CircularProgressIndicator());
 
-    final now = DateTime.now();
-    final monthOptions = <Map<String, int>>[];
-    for (var y = now.year; y >= now.year - 2; y--) {
-      final endM = y == now.year ? now.month : 12;
-      for (var m = endM; m >= 1; m--) {
-        monthOptions.add({'year': y, 'month': m});
-      }
-    }
-
     int totalHadir = 0, totalTerlambat = 0, totalIzin = 0, totalAlpha = 0;
     for (final v in _monthlySummary.values) {
       totalHadir += (v['hadir'] as int?) ?? 0;
@@ -770,41 +811,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          // Month picker
-          Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: surf,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: border),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<Map<String, int>>(
-                value: monthOptions.firstWhere(
-                  (o) => o['year'] == _histYear && o['month'] == _histMonth,
-                  orElse: () => monthOptions.first,
-                ),
-                isExpanded: true,
-                isDense: true,
-                icon: Icon(Icons.expand_more_rounded, size: 18, color: textTer),
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSec),
-                dropdownColor: isDark ? NusaConfig.darkSurface : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                underline: const SizedBox.shrink(),
-                items: monthOptions.map((o) => DropdownMenuItem(
-                  value: o,
-                  child: Text('${monthNames[o['month']!]} ${o['year']}',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textPri)),
-                )).toList(),
-                onChanged: (v) {
-                  if (v == null) return;
-                  setState(() { _histYear = v['year']!; _histMonth = v['month']!; });
-                  _loadHistory();
-                },
-              ),
-            ),
-          ),
           const SizedBox(height: 12),
 
           // Summary chips
@@ -945,7 +951,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text('$hadir H / $terlambat T / $izin I / $alpha A',
+                  Text('Hadir: $hadir  •  Terlambat: $terlambat  •  Izin: $izin  •  Alpha: $alpha',
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textSec)),
                 ]),
 
@@ -982,7 +988,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                   const Divider(height: 1),
                   const SizedBox(height: 8),
                   Row(
-                    children: ['Sn', 'Sl', 'Rb', 'Km', 'Jm', 'Sb', 'Mn'].map((d) => Expanded(
+                    children: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((d) => Expanded(
                       child: Center(child: Text(d, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textTer))),
                     )).toList(),
                   ),

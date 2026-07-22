@@ -279,54 +279,64 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                     hint: 'Cth: 2500000'),
                 const SizedBox(height: 12),
                 // Start date picker
-                GestureDetector(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: ctx,
-                      initialDate: startDate ?? DateTime.now(),
-                      firstDate: DateTime(2015),
-                      lastDate: DateTime.now(),
-                      helpText: 'Tanggal Mulai Kerja',
-                      cancelText: 'BATAL',
-                      confirmText: 'PILIH',
-                    );
-                    if (picked != null) setSt(() => startDate = picked);
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder,
-                      ),
-                    ),
-                    child: Row(children: [
-                      Icon(Icons.calendar_today_rounded, size: 18,
-                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          startDate != null
-                              ? DateFormat('dd MMM yyyy', 'id').format(startDate!)
-                              : 'Tanggal Mulai Kerja (opsional)',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: startDate != null
-                                ? (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)
-                                : (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Tanggal Mulai Kerja',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: ctx,
+                          initialDate: startDate ?? DateTime.now(),
+                          firstDate: DateTime(2015),
+                          lastDate: DateTime.now(),
+                          helpText: 'Tanggal Mulai Kerja',
+                          cancelText: 'BATAL',
+                          confirmText: 'PILIH',
+                        );
+                        if (picked != null) setSt(() => startDate = picked);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder,
                           ),
                         ),
+                        child: Row(children: [
+                          Icon(Icons.calendar_today_rounded, size: 18,
+                              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              startDate != null
+                                  ? DateFormat('dd MMM yyyy', 'id').format(startDate!)
+                                  : 'Pilih tanggal (opsional)',
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: startDate != null
+                                    ? (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)
+                                    : (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                              ),
+                            ),
+                          ),
+                          if (startDate != null)
+                            GestureDetector(
+                              onTap: () => setSt(() => startDate = null),
+                              child: Icon(Icons.close, size: 18,
+                                  color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                            ),
+                        ]),
                       ),
-                      if (startDate != null)
-                        GestureDetector(
-                          onTap: () => setSt(() => startDate = null),
-                          child: Icon(Icons.close, size: 18,
-                              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                        ),
-                    ]),
-                  ),
+                    ),
+                  ],
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 8),

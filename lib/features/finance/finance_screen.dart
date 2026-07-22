@@ -57,7 +57,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   int _totalPayroll = 0;
   int _totalWasteCost = 0;
   int _runningBalance = 0;
-  String _timeFilter = 'Bulan Ini';
+  String _timeFilter = 'Hari Ini';
   DateTime? _customFrom;
   DateTime? _customTo;
   int? _branchFilter;
@@ -259,24 +259,26 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
-              if (_tab == 0) _timeDropdown(isDark),
               const Spacer(),
-              if (_branches.length > 1) _branchDropdown(isDark),
-              const SizedBox(width: 6),
+              if (_branches.length > 1) ...[
+                _branchDropdown(isDark),
+                const SizedBox(width: 6),
+              ],
+              if (_tab == 0) ...[
+                _timeDropdown(isDark),
+                const SizedBox(width: 6),
+              ],
               GestureDetector(
                 onTap: () => _showExportOptions(isDark),
                 child: Container(
-                  height: 32,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  height: 36, width: 36,
                   decoration: BoxDecoration(
-                    color: NusaConfig.accentGreen.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+                    color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
                   ),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.download_rounded, size: 16, color: NusaConfig.accentGreen),
-                    SizedBox(width: 4),
-                    Text('Export', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: NusaConfig.accentGreen)),
-                  ]),
+                  child: Icon(Icons.file_download_outlined, size: 18,
+                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                 ),
               ),
             ]),
@@ -319,11 +321,11 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
 
   Widget _timeDropdown(bool isDark) {
     return Container(
-      height: 32,
+      height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
       ),
       child: DropdownButtonHideUnderline(
@@ -842,48 +844,32 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   void _showExportOptions(bool isDark) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(NusaConfig.spaceLG),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Text('Ekspor Data Keuangan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: NusaConfig.spaceMD),
+            ListTile(
+              leading: Icon(Icons.table_chart_outlined, color: NusaConfig.accentGreen),
+              title: const Text('Ekspor CSV (Excel)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              subtitle: const Text('File spreadsheet, bisa dibuka di Excel', style: TextStyle(fontSize: 12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(NusaConfig.radiusMD)),
+              tileColor: NusaConfig.accentGreen.withValues(alpha: 0.06),
+              onTap: () { Navigator.pop(ctx); _exportCsv(); },
+            ),
+            const SizedBox(height: NusaConfig.spaceXS),
+            ListTile(
+              leading: Icon(Icons.picture_as_pdf_outlined, color: NusaConfig.primaryColor),
+              title: const Text('Ekspor PDF', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Dokumen PDF siap cetak', style: TextStyle(fontSize: 12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(NusaConfig.radiusMD)),
+              tileColor: NusaConfig.primaryColor.withValues(alpha: 0.06),
+              onTap: () { Navigator.pop(ctx); _exportPdf(); },
+            ),
+          ]),
         ),
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          _sheetHandle(isDark),
-          const SizedBox(height: 8),
-          Text('Export Data',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
-                  color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
-          const SizedBox(height: 16),
-          ListTile(
-            leading: Container(
-              width: 38, height: 38,
-              decoration: BoxDecoration(
-                color: NusaConfig.accentGreen.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.table_chart, color: NusaConfig.accentGreen, size: 20),
-            ),
-            title: const Text('Export CSV', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-            subtitle: const Text('File .csv untuk Excel / spreadsheet', style: TextStyle(fontSize: 12)),
-            onTap: () { Navigator.pop(ctx); _exportCsv(); },
-          ),
-          const SizedBox(height: 4),
-          ListTile(
-            leading: Container(
-              width: 38, height: 38,
-              decoration: BoxDecoration(
-                color: NusaConfig.primaryColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.picture_as_pdf, color: NusaConfig.primaryColor, size: 20),
-            ),
-            title: const Text('Export PDF', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-            subtitle: const Text('Dokumen PDF siap cetak / share', style: TextStyle(fontSize: 12)),
-            onTap: () { Navigator.pop(ctx); _exportPdf(); },
-          ),
-        ]),
       ),
     );
   }
