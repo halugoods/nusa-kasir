@@ -20,6 +20,7 @@ import 'package:nusa_kasir/shared/widgets/dashboard_header.dart';
 import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/profile_stats_card.dart';
+import 'package:nusa_kasir/shared/services/biometric_service.dart';
 
 // ignore_for_file: use_build_context_synchronously
 
@@ -98,6 +99,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       // Check attendance for today
       await _checkAttendance(session.employeeId);
     }
+
     await _load();
 
     // Fix: reload photoPath from DB (not stale session data)
@@ -109,6 +111,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           setState(() => _currentPhotoPath = emp.photoPath);
         }
       } catch (_) {}
+    }
+
+    // Biometric auto-unlock for Owner
+    if (session != null &&
+        session.role == 'Owner' &&
+        !session.isExpired &&
+        mounted) {
+      final enabled = await BiometricService.isEnabled();
+      if (enabled) {
+        final ok = await BiometricService.authenticate(
+          reason: 'Gunakan sidik jari untuk masuk sebagai Owner',
+        );
+        if (!ok) {
+          // Fingerprint failed — logout & show login screen
+          ref.read(employeeSessionProvider.notifier).logout();
+          if (mounted) {
+            context.go('/login');
+            return;
+          }
+        }
+      }
     }
 
     // Auto-scope branch from session

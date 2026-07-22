@@ -82,6 +82,7 @@ class Employees extends Table {
   TextColumn get photoPath => text().nullable()();
   IntColumn get baseSalary => integer().nullable()();
   DateTimeColumn get startDate => dateTime().nullable()();
+  TextColumn get nfcTag => text().nullable()();   // NFC tag hash for tap-to-login
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 class Attendance extends Table {

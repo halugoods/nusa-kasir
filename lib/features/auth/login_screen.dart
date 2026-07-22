@@ -10,8 +10,9 @@ import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/pin_input.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
+import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 
-/// POST-SETUP login: user enters their personal PIN to authenticate.
+/// POST-SETUP login: user enters their personal PIN or taps an NFC tag.
 ///
 /// Queries the local Employees table instead of using a hardcoded map.
 class LoginScreen extends ConsumerStatefulWidget {
@@ -25,6 +26,87 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _error;
   bool _loading = false;
   bool _remember = false;
+  bool _nfcScanning = false;
+  bool _nfcAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkNfc();
+  }
+
+  @override
+  void dispose() {
+    NfcTagService.stopSession();
+    super.dispose();
+  }
+
+  Future<void> _checkNfc() async {
+    final available = await NfcTagService.isAvailable();
+    if (mounted) setState(() => _nfcAvailable = available);
+  }
+
+  /// Start NFC scanning for tap-to-login.
+  Future<void> _startNfcLogin() async {
+    if (_loading) return;
+
+    setState(() {
+      _nfcScanning = true;
+      _error = null;
+    });
+
+    final employeeId = await NfcTagService.readEmployeeTag();
+
+    if (!mounted) return;
+    setState(() => _nfcScanning = false);
+
+    if (employeeId == null) {
+      // Tag not recognized or user cancelled — silently return to PIN
+      return;
+    }
+
+    // Perform NFC-based login
+    await _loginWithEmployeeId(employeeId);
+  }
+
+  Future<void> _loginWithEmployeeId(int employeeId) async {
+    setState(() => _loading = true);
+
+    try {
+      final db = ref.read(databaseProvider);
+      final repo = AttendanceRepository(db);
+      final emp = await repo.getEmployee(employeeId);
+
+      if (emp == null) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _error = 'Karyawan tidak ditemukan';
+          });
+        }
+        return;
+      }
+
+      final session = EmployeeSession(
+        employeeId: emp.id,
+        name: emp.name,
+        role: emp.role,
+        remember: _remember,
+      );
+      ref.read(employeeSessionProvider.notifier).login(session, remember: _remember);
+      ref.read(authProvider.notifier).state = emp.role;
+
+      final name = await ref.read(settingsRepoProvider).getStoreName();
+      if (mounted) context.go(name.isEmpty ? '/onboarding' : '/home');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Terjadi kesalahan';
+        });
+      }
+    }
+  }
 
   Future<void> _submit() async {
     final pin = _pinKey.currentState?.text ?? '';
@@ -81,11 +163,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ScreenScaffold(
@@ -106,10 +183,112 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Masukkan PIN karyawan kamu',
+              _nfcAvailable ? 'Tap kartu NFC atau masukkan PIN' : 'Masukkan PIN karyawan kamu',
               style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
             ),
-            const SizedBox(height: 24),
+
+            // ── NFC Tap Area ────────────────────────────────────
+            if (_nfcAvailable) ...[
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: _nfcScanning ? null : _startNfcLogin,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: _nfcScanning
+                          ? NusaConfig.accentPurple
+                          : isDark
+                              ? NusaConfig.darkBorder
+                              : NusaConfig.borderColor,
+                      width: _nfcScanning ? 2 : 1,
+                    ),
+                    color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+                  ),
+                  child: Column(
+                    children: [
+                      _nfcScanning
+                          ? SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: NusaConfig.accentPurple,
+                              ),
+                            )
+                          : Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: NusaConfig.accentPurple.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.nfc,
+                                size: 28,
+                                color: NusaConfig.accentPurple,
+                              ),
+                            ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _nfcScanning ? 'Mendeteksi...' : 'Tempelkan Kartu NFC',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: _nfcScanning
+                              ? NusaConfig.accentPurple
+                              : isDark
+                                  ? NusaConfig.darkTextPrimary
+                                  : NusaConfig.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _nfcScanning ? 'Dekatkan kartu ke belakang HP' : 'Login cepat tanpa PIN',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 1,
+                      color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'atau',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      height: 1,
+                      color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // ── PIN Input ───────────────────────────────────────
+            if (!_nfcAvailable) const SizedBox(height: 24),
             PinInput(
               key: _pinKey,
               autoSubmit: false,

@@ -23,6 +23,8 @@ import 'package:nusa_kasir/data/repositories/role_repository.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
+import 'package:nusa_kasir/core/auth/employee_session.dart';
+import 'package:nusa_kasir/shared/services/biometric_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -38,6 +40,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _checkingUpdate = false;
   UpdateInfo? _updateInfo;
   bool _backingUp = false;
+
+  // Fingerprint
+  bool _fingerprintEnabled = false;
 
   // Feature toggles — all true by default
   Map<String, bool> _featureToggles = {};
@@ -106,6 +111,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ref.read(themeModeProvider.notifier).state = _themeMode;
       // Sync feature toggles to provider (used by dashboard)
       ref.read(featureTogglesProvider.notifier).state = Map.from(toggles);
+
+      // Load fingerprint state
+      _fingerprintEnabled = await BiometricService.isEnabled();
+
       setState(() {});
     }
   }
@@ -242,6 +251,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       action();
     } else {
       TopToast.error(context, 'PIN salah — akses ditolak');
+    }
+  }
+
+  /// Toggle fingerprint login for Owner. Requires PIN verification first.
+  Future<void> _toggleFingerprint(bool isDark, EmployeeSession session) async {
+    // Only Owner
+    if (session.role != 'Owner') {
+      TopToast.info(context, 'Hanya Owner yang bisa mengatur fingerprint');
+      return;
+    }
+
+    // Verify PIN before toggling
+    final ok = await _showPinDialog(session.employeeId, session.name);
+    if (!ok) {
+      TopToast.error(context, 'Verifikasi PIN gagal');
+      return;
+    }
+
+    final newVal = !_fingerprintEnabled;
+
+    if (newVal) {
+      // Check hardware availability
+      final hwOk = await BiometricService.isHardwareAvailable();
+      if (!hwOk) {
+        if (mounted) {
+          TopToast.error(context, 'Device tidak mendukung fingerprint');
+        }
+        return;
+      }
+
+      await BiometricService.enable();
+    } else {
+      await BiometricService.disable();
+    }
+
+    if (mounted) {
+      setState(() => _fingerprintEnabled = newVal);
+      TopToast.success(context, newVal ? 'Fingerprint diaktifkan' : 'Fingerprint dinonaktifkan');
     }
   }
 
@@ -1077,6 +1124,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final session = ref.watch(employeeSessionProvider);
 
     return ScreenScaffold('Pengaturan',
       SingleChildScrollView(
@@ -1184,6 +1232,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
             ]),
           ),
+
+          // Fingerprint — Owner only
+          if (session?.role == 'Owner') ...[
+            const SizedBox(height: 12),
+            _menuRow(
+              icon: Icons.fingerprint, iconColor: NusaConfig.accentPurple,
+              title: 'Login Fingerprint',
+              subtitle: _fingerprintEnabled ? 'Aktif — akses cepat pakai sidik jari' : 'Aktifkan akses cepat Owner',
+              isDark: isDark,
+              onTap: () => _toggleFingerprint(isDark, session!),
+              trailing: Switch(
+                value: _fingerprintEnabled,
+                activeColor: NusaConfig.accentPurple,
+                onChanged: (v) => _toggleFingerprint(isDark, session!),
+              ),
+            ),
+          ],
 
           const SizedBox(height: 24),
 

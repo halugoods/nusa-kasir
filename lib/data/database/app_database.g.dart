@@ -3541,6 +3541,15 @@ class $EmployeesTable extends Employees
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _nfcTagMeta = const VerificationMeta('nfcTag');
+  @override
+  late final GeneratedColumn<String> nfcTag = GeneratedColumn<String>(
+    'nfc_tag',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3565,6 +3574,7 @@ class $EmployeesTable extends Employees
     photoPath,
     baseSalary,
     startDate,
+    nfcTag,
     createdAt,
   ];
   @override
@@ -3642,6 +3652,12 @@ class $EmployeesTable extends Employees
         startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
       );
     }
+    if (data.containsKey('nfc_tag')) {
+      context.handle(
+        _nfcTagMeta,
+        nfcTag.isAcceptableOrUnknown(data['nfc_tag']!, _nfcTagMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3697,6 +3713,10 @@ class $EmployeesTable extends Employees
         DriftSqlType.dateTime,
         data['${effectivePrefix}start_date'],
       ),
+      nfcTag: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nfc_tag'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -3721,6 +3741,7 @@ class Employee extends DataClass implements Insertable<Employee> {
   final String? photoPath;
   final int? baseSalary;
   final DateTime? startDate;
+  final String? nfcTag;
   final DateTime createdAt;
   const Employee({
     required this.id,
@@ -3733,6 +3754,7 @@ class Employee extends DataClass implements Insertable<Employee> {
     this.photoPath,
     this.baseSalary,
     this.startDate,
+    this.nfcTag,
     required this.createdAt,
   });
   @override
@@ -3759,6 +3781,9 @@ class Employee extends DataClass implements Insertable<Employee> {
     }
     if (!nullToAbsent || startDate != null) {
       map['start_date'] = Variable<DateTime>(startDate);
+    }
+    if (!nullToAbsent || nfcTag != null) {
+      map['nfc_tag'] = Variable<String>(nfcTag);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -3788,6 +3813,9 @@ class Employee extends DataClass implements Insertable<Employee> {
       startDate: startDate == null && nullToAbsent
           ? const Value.absent()
           : Value(startDate),
+      nfcTag: nfcTag == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nfcTag),
       createdAt: Value(createdAt),
     );
   }
@@ -3808,6 +3836,7 @@ class Employee extends DataClass implements Insertable<Employee> {
       photoPath: serializer.fromJson<String?>(json['photoPath']),
       baseSalary: serializer.fromJson<int?>(json['baseSalary']),
       startDate: serializer.fromJson<DateTime?>(json['startDate']),
+      nfcTag: serializer.fromJson<String?>(json['nfcTag']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -3825,6 +3854,7 @@ class Employee extends DataClass implements Insertable<Employee> {
       'photoPath': serializer.toJson<String?>(photoPath),
       'baseSalary': serializer.toJson<int?>(baseSalary),
       'startDate': serializer.toJson<DateTime?>(startDate),
+      'nfcTag': serializer.toJson<String?>(nfcTag),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -3840,6 +3870,7 @@ class Employee extends DataClass implements Insertable<Employee> {
     Value<String?> photoPath = const Value.absent(),
     Value<int?> baseSalary = const Value.absent(),
     Value<DateTime?> startDate = const Value.absent(),
+    Value<String?> nfcTag = const Value.absent(),
     DateTime? createdAt,
   }) => Employee(
     id: id ?? this.id,
@@ -3852,6 +3883,7 @@ class Employee extends DataClass implements Insertable<Employee> {
     photoPath: photoPath.present ? photoPath.value : this.photoPath,
     baseSalary: baseSalary.present ? baseSalary.value : this.baseSalary,
     startDate: startDate.present ? startDate.value : this.startDate,
+    nfcTag: nfcTag.present ? nfcTag.value : this.nfcTag,
     createdAt: createdAt ?? this.createdAt,
   );
   Employee copyWithCompanion(EmployeesCompanion data) {
@@ -3868,6 +3900,7 @@ class Employee extends DataClass implements Insertable<Employee> {
           ? data.baseSalary.value
           : this.baseSalary,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      nfcTag: data.nfcTag.present ? data.nfcTag.value : this.nfcTag,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -3885,6 +3918,7 @@ class Employee extends DataClass implements Insertable<Employee> {
           ..write('photoPath: $photoPath, ')
           ..write('baseSalary: $baseSalary, ')
           ..write('startDate: $startDate, ')
+          ..write('nfcTag: $nfcTag, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3902,6 +3936,7 @@ class Employee extends DataClass implements Insertable<Employee> {
     photoPath,
     baseSalary,
     startDate,
+    nfcTag,
     createdAt,
   );
   @override
@@ -3918,6 +3953,7 @@ class Employee extends DataClass implements Insertable<Employee> {
           other.photoPath == this.photoPath &&
           other.baseSalary == this.baseSalary &&
           other.startDate == this.startDate &&
+          other.nfcTag == this.nfcTag &&
           other.createdAt == this.createdAt);
 }
 
@@ -3932,6 +3968,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
   final Value<String?> photoPath;
   final Value<int?> baseSalary;
   final Value<DateTime?> startDate;
+  final Value<String?> nfcTag;
   final Value<DateTime> createdAt;
   const EmployeesCompanion({
     this.id = const Value.absent(),
@@ -3944,6 +3981,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     this.photoPath = const Value.absent(),
     this.baseSalary = const Value.absent(),
     this.startDate = const Value.absent(),
+    this.nfcTag = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   EmployeesCompanion.insert({
@@ -3957,6 +3995,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     this.photoPath = const Value.absent(),
     this.baseSalary = const Value.absent(),
     this.startDate = const Value.absent(),
+    this.nfcTag = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        pin = Value(pin),
@@ -3972,6 +4011,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     Expression<String>? photoPath,
     Expression<int>? baseSalary,
     Expression<DateTime>? startDate,
+    Expression<String>? nfcTag,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -3985,6 +4025,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
       if (photoPath != null) 'photo_path': photoPath,
       if (baseSalary != null) 'base_salary': baseSalary,
       if (startDate != null) 'start_date': startDate,
+      if (nfcTag != null) 'nfc_tag': nfcTag,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -4000,6 +4041,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     Value<String?>? photoPath,
     Value<int?>? baseSalary,
     Value<DateTime?>? startDate,
+    Value<String?>? nfcTag,
     Value<DateTime>? createdAt,
   }) {
     return EmployeesCompanion(
@@ -4013,6 +4055,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
       photoPath: photoPath ?? this.photoPath,
       baseSalary: baseSalary ?? this.baseSalary,
       startDate: startDate ?? this.startDate,
+      nfcTag: nfcTag ?? this.nfcTag,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -4050,6 +4093,9 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     if (startDate.present) {
       map['start_date'] = Variable<DateTime>(startDate.value);
     }
+    if (nfcTag.present) {
+      map['nfc_tag'] = Variable<String>(nfcTag.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -4069,6 +4115,7 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
           ..write('photoPath: $photoPath, ')
           ..write('baseSalary: $baseSalary, ')
           ..write('startDate: $startDate, ')
+          ..write('nfcTag: $nfcTag, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -15434,6 +15481,7 @@ typedef $$EmployeesTableCreateCompanionBuilder =
       Value<String?> photoPath,
       Value<int?> baseSalary,
       Value<DateTime?> startDate,
+      Value<String?> nfcTag,
       Value<DateTime> createdAt,
     });
 typedef $$EmployeesTableUpdateCompanionBuilder =
@@ -15448,6 +15496,7 @@ typedef $$EmployeesTableUpdateCompanionBuilder =
       Value<String?> photoPath,
       Value<int?> baseSalary,
       Value<DateTime?> startDate,
+      Value<String?> nfcTag,
       Value<DateTime> createdAt,
     });
 
@@ -15507,6 +15556,11 @@ class $$EmployeesTableFilterComposer
 
   ColumnFilters<DateTime> get startDate => $composableBuilder(
     column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nfcTag => $composableBuilder(
+    column: $table.nfcTag,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15575,6 +15629,11 @@ class $$EmployeesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get nfcTag => $composableBuilder(
+    column: $table.nfcTag,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -15622,6 +15681,9 @@ class $$EmployeesTableAnnotationComposer
   GeneratedColumn<DateTime> get startDate =>
       $composableBuilder(column: $table.startDate, builder: (column) => column);
 
+  GeneratedColumn<String> get nfcTag =>
+      $composableBuilder(column: $table.nfcTag, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -15664,6 +15726,7 @@ class $$EmployeesTableTableManager
                 Value<String?> photoPath = const Value.absent(),
                 Value<int?> baseSalary = const Value.absent(),
                 Value<DateTime?> startDate = const Value.absent(),
+                Value<String?> nfcTag = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => EmployeesCompanion(
                 id: id,
@@ -15676,6 +15739,7 @@ class $$EmployeesTableTableManager
                 photoPath: photoPath,
                 baseSalary: baseSalary,
                 startDate: startDate,
+                nfcTag: nfcTag,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -15690,6 +15754,7 @@ class $$EmployeesTableTableManager
                 Value<String?> photoPath = const Value.absent(),
                 Value<int?> baseSalary = const Value.absent(),
                 Value<DateTime?> startDate = const Value.absent(),
+                Value<String?> nfcTag = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => EmployeesCompanion.insert(
                 id: id,
@@ -15702,6 +15767,7 @@ class $$EmployeesTableTableManager
                 photoPath: photoPath,
                 baseSalary: baseSalary,
                 startDate: startDate,
+                nfcTag: nfcTag,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

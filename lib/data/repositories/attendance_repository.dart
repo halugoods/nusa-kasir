@@ -79,6 +79,21 @@ class AttendanceRepository {
   Future<void> deleteEmployee(int id) =>
       (db.delete(db.employees)..where((t) => t.id.equals(id))).go();
 
+  /// Find employee by their NFC tag hash (for tap-to-login).
+  Future<Employee?> getByNfcTag(String tagHash) =>
+      (db.select(db.employees)..where((t) => t.nfcTag.equals(tagHash)))
+          .getSingleOrNull();
+
+  /// Store the NFC tag hash for an employee.
+  Future<void> setNfcTag(int employeeId, String tagHash) =>
+      (db.update(db.employees)..where((t) => t.id.equals(employeeId)))
+          .write(EmployeesCompanion(nfcTag: Value(tagHash)));
+
+  /// Remove the NFC tag assignment from an employee.
+  Future<void> clearNfcTag(int employeeId) =>
+      (db.update(db.employees)..where((t) => t.id.equals(employeeId)))
+          .write(EmployeesCompanion(nfcTag: const Value.absent()));
+
   // ---- Attendance ----
   Future<AttendanceData?> getToday(int employeeId) async {
     final now = DateTime.now();

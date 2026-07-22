@@ -15,6 +15,7 @@ import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
+import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _avatarColors = [
@@ -382,6 +383,17 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                       style: const TextStyle(
                           color: NusaConfig.primaryColor, fontSize: 13)),
                 ],
+                const SizedBox(height: 16),
+
+                // ── NFC Tag Registration ──
+                _NfcRegisterButton(
+                  isDark: isDark,
+                  employeeId: employee?.id,
+                  onRegistered: (tagHash) {
+                    // NFC tag registered — reload will pick up the tag
+                  },
+                ),
+
                 const SizedBox(height: 20),
                 // Action buttons
                 Row(children: [
@@ -780,6 +792,156 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
         label: const Text('Tambah Karyawan',
             style: TextStyle(fontWeight: FontWeight.w600)),
         onPressed: () => _showForm(),
+      ),
+    );
+  }
+}
+
+// ── NFC Tag Registration Widget ───────────────────────────────────────
+
+class _NfcRegisterButton extends StatefulWidget {
+  final bool isDark;
+  final int? employeeId;
+  final void Function(String tagHash)? onRegistered;
+
+  const _NfcRegisterButton({
+    required this.isDark,
+    this.employeeId,
+    this.onRegistered,
+  });
+
+  @override
+  State<_NfcRegisterButton> createState() => _NfcRegisterButtonState();
+}
+
+class _NfcRegisterButtonState extends State<_NfcRegisterButton> {
+  bool _writing = false;
+  bool _done = false;
+  String? _error;
+
+  Future<void> _startWrite() async {
+    setState(() {
+      _writing = true;
+      _error = null;
+    });
+
+    if (widget.employeeId == null) {
+      // Employee not saved yet — show message to save first
+      setState(() {
+        _writing = false;
+        _error = 'Simpan karyawan dulu, lalu daftarkan NFC';
+      });
+      return;
+    }
+
+    final ok = await NfcTagService.writeEmployeeTag(widget.employeeId!);
+
+    if (mounted) {
+      setState(() {
+        _writing = false;
+        if (ok) {
+          _done = true;
+          widget.onRegistered?.call('nfc_registered');
+        } else {
+          _error = 'Gagal menulis tag. Coba lagi.';
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = _done
+        ? NusaConfig.accentGreen
+        : widget.isDark
+            ? NusaConfig.darkBorder
+            : NusaConfig.borderColor;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+        color: widget.isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
+      ),
+      child: Row(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _done
+                  ? NusaConfig.accentGreen.withValues(alpha: 0.12)
+                  : NusaConfig.accentPurple.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.center,
+            child: _writing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  )
+                : Icon(
+                    _done ? Icons.check_circle : Icons.nfc,
+                    size: 22,
+                    color: _done ? NusaConfig.accentGreen : NusaConfig.accentPurple,
+                  ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _done ? 'NFC Tag Terdaftar ✅' : 'Daftarkan NFC Tag',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: _done
+                        ? NusaConfig.accentGreen
+                        : widget.isDark
+                            ? NusaConfig.darkTextPrimary
+                            : NusaConfig.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _error ?? (_done ? 'Karyawan bisa login dengan tap kartu' : 'Tempelkan kartu NFC untuk daftar'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _error != null
+                        ? NusaConfig.primaryColor
+                        : widget.isDark
+                            ? NusaConfig.darkTextSecondary
+                            : NusaConfig.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!_done)
+            GestureDetector(
+              onTap: _writing ? null : _startWrite,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: NusaConfig.accentPurple,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Daftarkan',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

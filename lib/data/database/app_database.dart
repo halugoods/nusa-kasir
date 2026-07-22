@@ -14,7 +14,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.test() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -105,6 +105,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(settings, settings.receiptShowInvoice);
         await m.addColumn(settings, settings.receiptShowDate);
         await m.addColumn(settings, settings.receiptShowBarcode);
+      }
+      if (from < 20) {
+        await m.addColumn(employees, employees.nfcTag);
       }
     },
   );
