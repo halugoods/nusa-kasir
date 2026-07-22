@@ -93,6 +93,8 @@ class Attendance extends Table {
   IntColumn get pettyCash => integer().nullable()();
   IntColumn get finalCash => integer().nullable()();
   TextColumn get status => text().nullable()();
+  IntColumn get expectedCash => integer().nullable()();
+  TextColumn get shiftNotes => text().nullable()();
 }
 class Expenses extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -207,21 +209,6 @@ class CashierSessions extends Table {
   IntColumn get startingCash => integer().withDefault(const Constant(0))();
   IntColumn get branchId => integer().nullable()();
 }
-class ShiftSessions extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get employeeId => integer()();
-  IntColumn get cashierSessionId => integer().nullable()();
-  IntColumn get branchId => integer().nullable()();
-  IntColumn get startingCash => integer().withDefault(const Constant(0))();
-  IntColumn get expectedCash => integer().withDefault(const Constant(0))();
-  IntColumn get actualCash => integer().withDefault(const Constant(0))();
-  IntColumn get difference => integer().withDefault(const Constant(0))();
-  TextColumn get notes => text().nullable()();
-  TextColumn get status => text().withDefault(const Constant('Open'))();
-  DateTimeColumn get openedAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get closedAt => dateTime().nullable()();
-}
-
 class OnlineOrders extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get invoice => text()();

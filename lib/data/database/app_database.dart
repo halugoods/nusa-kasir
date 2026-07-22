@@ -9,12 +9,12 @@ part 'app_database.g.dart';
 @DriftDatabase(tables: [Categories, Products, StockMovements, Transactions, Customers, Promos,
   Employees, Attendance, Expenses, ExpenseCategories, RecurringExpenses, Payroll, Waste,
   Liquidity, Suppliers, Branches, Settings, ActivationsLocal, SyncQueue, CashierSessions,
-  OnlineOrders, CustomerDebts, DebtPayments, ShiftSessions, StockCounts, StockCountItems])
+  OnlineOrders, CustomerDebts, DebtPayments, StockCounts, StockCountItems])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.test() : super(NativeDatabase.memory());
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,11 +82,16 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(debtPayments);
       }
       if (from < 16) {
-        await m.createTable(shiftSessions);
+        // ShiftSessions was added in v16 but has been removed & merged into Presensi
+        // (columns now in attendance table via v18 migration below)
       }
       if (from < 17) {
         await m.createTable(stockCounts);
         await m.createTable(stockCountItems);
+      }
+      if (from < 18) {
+        await m.addColumn(attendance, attendance.expectedCash);
+        await m.addColumn(attendance, attendance.shiftNotes);
       }
     },
   );

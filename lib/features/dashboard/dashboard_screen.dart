@@ -71,7 +71,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     {'id': 'pesanan_online', 'label': 'Online', 'icon': 'online'},
     {'id': 'laporan', 'label': 'Laporan', 'icon': 'finance'},
     {'id': 'presensi', 'label': 'Presensi', 'icon': 'notification'},
-    {'id': 'shift', 'label': 'Shift', 'icon': 'shift'},
     {'id': 'karyawan', 'label': 'Karyawan', 'icon': 'employee'},
     {'id': 'keuangan', 'label': 'Keuangan', 'icon': 'finance'},
     {'id': 'spreadsheet', 'label': 'Spreadsheet', 'icon': 'table'},
@@ -824,7 +823,6 @@ class _MenuItem extends StatelessWidget {
     'branch': NusaConfig.accentPurple,
     'debt': const Color(0xFFF97316),
     'stockcount': NusaConfig.accentGreen,
-    'shift': const Color(0xFF14B8A6),
   };
 
   @override
@@ -1012,7 +1010,6 @@ class MenuIcon extends StatelessWidget {
     'ai': Icons.auto_awesome_outlined,
     'branch': Icons.storefront_outlined,
     'debt': Icons.handshake_outlined,
-    'shift': Icons.hub_outlined,
     'stockcount': Icons.assignment_turned_in_outlined,
   };
 

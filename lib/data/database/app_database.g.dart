@@ -4168,6 +4168,28 @@ class $AttendanceTable extends Attendance
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _expectedCashMeta = const VerificationMeta(
+    'expectedCash',
+  );
+  @override
+  late final GeneratedColumn<int> expectedCash = GeneratedColumn<int>(
+    'expected_cash',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _shiftNotesMeta = const VerificationMeta(
+    'shiftNotes',
+  );
+  @override
+  late final GeneratedColumn<String> shiftNotes = GeneratedColumn<String>(
+    'shift_notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4178,6 +4200,8 @@ class $AttendanceTable extends Attendance
     pettyCash,
     finalCash,
     status,
+    expectedCash,
+    shiftNotes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4238,6 +4262,21 @@ class $AttendanceTable extends Attendance
         status.isAcceptableOrUnknown(data['status']!, _statusMeta),
       );
     }
+    if (data.containsKey('expected_cash')) {
+      context.handle(
+        _expectedCashMeta,
+        expectedCash.isAcceptableOrUnknown(
+          data['expected_cash']!,
+          _expectedCashMeta,
+        ),
+      );
+    }
+    if (data.containsKey('shift_notes')) {
+      context.handle(
+        _shiftNotesMeta,
+        shiftNotes.isAcceptableOrUnknown(data['shift_notes']!, _shiftNotesMeta),
+      );
+    }
     return context;
   }
 
@@ -4279,6 +4318,14 @@ class $AttendanceTable extends Attendance
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       ),
+      expectedCash: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_cash'],
+      ),
+      shiftNotes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}shift_notes'],
+      ),
     );
   }
 
@@ -4297,6 +4344,8 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
   final int? pettyCash;
   final int? finalCash;
   final String? status;
+  final int? expectedCash;
+  final String? shiftNotes;
   const AttendanceData({
     required this.id,
     required this.employeeId,
@@ -4306,6 +4355,8 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     this.pettyCash,
     this.finalCash,
     this.status,
+    this.expectedCash,
+    this.shiftNotes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4327,6 +4378,12 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     }
     if (!nullToAbsent || status != null) {
       map['status'] = Variable<String>(status);
+    }
+    if (!nullToAbsent || expectedCash != null) {
+      map['expected_cash'] = Variable<int>(expectedCash);
+    }
+    if (!nullToAbsent || shiftNotes != null) {
+      map['shift_notes'] = Variable<String>(shiftNotes);
     }
     return map;
   }
@@ -4351,6 +4408,12 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       status: status == null && nullToAbsent
           ? const Value.absent()
           : Value(status),
+      expectedCash: expectedCash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expectedCash),
+      shiftNotes: shiftNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shiftNotes),
     );
   }
 
@@ -4368,6 +4431,8 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       pettyCash: serializer.fromJson<int?>(json['pettyCash']),
       finalCash: serializer.fromJson<int?>(json['finalCash']),
       status: serializer.fromJson<String?>(json['status']),
+      expectedCash: serializer.fromJson<int?>(json['expectedCash']),
+      shiftNotes: serializer.fromJson<String?>(json['shiftNotes']),
     );
   }
   @override
@@ -4382,6 +4447,8 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       'pettyCash': serializer.toJson<int?>(pettyCash),
       'finalCash': serializer.toJson<int?>(finalCash),
       'status': serializer.toJson<String?>(status),
+      'expectedCash': serializer.toJson<int?>(expectedCash),
+      'shiftNotes': serializer.toJson<String?>(shiftNotes),
     };
   }
 
@@ -4394,6 +4461,8 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     Value<int?> pettyCash = const Value.absent(),
     Value<int?> finalCash = const Value.absent(),
     Value<String?> status = const Value.absent(),
+    Value<int?> expectedCash = const Value.absent(),
+    Value<String?> shiftNotes = const Value.absent(),
   }) => AttendanceData(
     id: id ?? this.id,
     employeeId: employeeId ?? this.employeeId,
@@ -4403,6 +4472,8 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     pettyCash: pettyCash.present ? pettyCash.value : this.pettyCash,
     finalCash: finalCash.present ? finalCash.value : this.finalCash,
     status: status.present ? status.value : this.status,
+    expectedCash: expectedCash.present ? expectedCash.value : this.expectedCash,
+    shiftNotes: shiftNotes.present ? shiftNotes.value : this.shiftNotes,
   );
   AttendanceData copyWithCompanion(AttendanceCompanion data) {
     return AttendanceData(
@@ -4416,6 +4487,12 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
       pettyCash: data.pettyCash.present ? data.pettyCash.value : this.pettyCash,
       finalCash: data.finalCash.present ? data.finalCash.value : this.finalCash,
       status: data.status.present ? data.status.value : this.status,
+      expectedCash: data.expectedCash.present
+          ? data.expectedCash.value
+          : this.expectedCash,
+      shiftNotes: data.shiftNotes.present
+          ? data.shiftNotes.value
+          : this.shiftNotes,
     );
   }
 
@@ -4429,7 +4506,9 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
           ..write('checkOut: $checkOut, ')
           ..write('pettyCash: $pettyCash, ')
           ..write('finalCash: $finalCash, ')
-          ..write('status: $status')
+          ..write('status: $status, ')
+          ..write('expectedCash: $expectedCash, ')
+          ..write('shiftNotes: $shiftNotes')
           ..write(')'))
         .toString();
   }
@@ -4444,6 +4523,8 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
     pettyCash,
     finalCash,
     status,
+    expectedCash,
+    shiftNotes,
   );
   @override
   bool operator ==(Object other) =>
@@ -4456,7 +4537,9 @@ class AttendanceData extends DataClass implements Insertable<AttendanceData> {
           other.checkOut == this.checkOut &&
           other.pettyCash == this.pettyCash &&
           other.finalCash == this.finalCash &&
-          other.status == this.status);
+          other.status == this.status &&
+          other.expectedCash == this.expectedCash &&
+          other.shiftNotes == this.shiftNotes);
 }
 
 class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
@@ -4468,6 +4551,8 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
   final Value<int?> pettyCash;
   final Value<int?> finalCash;
   final Value<String?> status;
+  final Value<int?> expectedCash;
+  final Value<String?> shiftNotes;
   const AttendanceCompanion({
     this.id = const Value.absent(),
     this.employeeId = const Value.absent(),
@@ -4477,6 +4562,8 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     this.pettyCash = const Value.absent(),
     this.finalCash = const Value.absent(),
     this.status = const Value.absent(),
+    this.expectedCash = const Value.absent(),
+    this.shiftNotes = const Value.absent(),
   });
   AttendanceCompanion.insert({
     this.id = const Value.absent(),
@@ -4487,6 +4574,8 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     this.pettyCash = const Value.absent(),
     this.finalCash = const Value.absent(),
     this.status = const Value.absent(),
+    this.expectedCash = const Value.absent(),
+    this.shiftNotes = const Value.absent(),
   }) : employeeId = Value(employeeId);
   static Insertable<AttendanceData> custom({
     Expression<int>? id,
@@ -4497,6 +4586,8 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     Expression<int>? pettyCash,
     Expression<int>? finalCash,
     Expression<String>? status,
+    Expression<int>? expectedCash,
+    Expression<String>? shiftNotes,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4507,6 +4598,8 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
       if (pettyCash != null) 'petty_cash': pettyCash,
       if (finalCash != null) 'final_cash': finalCash,
       if (status != null) 'status': status,
+      if (expectedCash != null) 'expected_cash': expectedCash,
+      if (shiftNotes != null) 'shift_notes': shiftNotes,
     });
   }
 
@@ -4519,6 +4612,8 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     Value<int?>? pettyCash,
     Value<int?>? finalCash,
     Value<String?>? status,
+    Value<int?>? expectedCash,
+    Value<String?>? shiftNotes,
   }) {
     return AttendanceCompanion(
       id: id ?? this.id,
@@ -4529,6 +4624,8 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
       pettyCash: pettyCash ?? this.pettyCash,
       finalCash: finalCash ?? this.finalCash,
       status: status ?? this.status,
+      expectedCash: expectedCash ?? this.expectedCash,
+      shiftNotes: shiftNotes ?? this.shiftNotes,
     );
   }
 
@@ -4559,6 +4656,12 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (expectedCash.present) {
+      map['expected_cash'] = Variable<int>(expectedCash.value);
+    }
+    if (shiftNotes.present) {
+      map['shift_notes'] = Variable<String>(shiftNotes.value);
+    }
     return map;
   }
 
@@ -4572,7 +4675,9 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
           ..write('checkOut: $checkOut, ')
           ..write('pettyCash: $pettyCash, ')
           ..write('finalCash: $finalCash, ')
-          ..write('status: $status')
+          ..write('status: $status, ')
+          ..write('expectedCash: $expectedCash, ')
+          ..write('shiftNotes: $shiftNotes')
           ..write(')'))
         .toString();
   }
@@ -11863,711 +11968,6 @@ class DebtPaymentsCompanion extends UpdateCompanion<DebtPayment> {
   }
 }
 
-class $ShiftSessionsTable extends ShiftSessions
-    with TableInfo<$ShiftSessionsTable, ShiftSession> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $ShiftSessionsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-    'id',
-    aliasedName,
-    false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
-  );
-  static const VerificationMeta _employeeIdMeta = const VerificationMeta(
-    'employeeId',
-  );
-  @override
-  late final GeneratedColumn<int> employeeId = GeneratedColumn<int>(
-    'employee_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _cashierSessionIdMeta = const VerificationMeta(
-    'cashierSessionId',
-  );
-  @override
-  late final GeneratedColumn<int> cashierSessionId = GeneratedColumn<int>(
-    'cashier_session_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _branchIdMeta = const VerificationMeta(
-    'branchId',
-  );
-  @override
-  late final GeneratedColumn<int> branchId = GeneratedColumn<int>(
-    'branch_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _startingCashMeta = const VerificationMeta(
-    'startingCash',
-  );
-  @override
-  late final GeneratedColumn<int> startingCash = GeneratedColumn<int>(
-    'starting_cash',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _expectedCashMeta = const VerificationMeta(
-    'expectedCash',
-  );
-  @override
-  late final GeneratedColumn<int> expectedCash = GeneratedColumn<int>(
-    'expected_cash',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _actualCashMeta = const VerificationMeta(
-    'actualCash',
-  );
-  @override
-  late final GeneratedColumn<int> actualCash = GeneratedColumn<int>(
-    'actual_cash',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _differenceMeta = const VerificationMeta(
-    'difference',
-  );
-  @override
-  late final GeneratedColumn<int> difference = GeneratedColumn<int>(
-    'difference',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
-  @override
-  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
-    'notes',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
-  @override
-  late final GeneratedColumn<String> status = GeneratedColumn<String>(
-    'status',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('Open'),
-  );
-  static const VerificationMeta _openedAtMeta = const VerificationMeta(
-    'openedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> openedAt = GeneratedColumn<DateTime>(
-    'opened_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
-  );
-  static const VerificationMeta _closedAtMeta = const VerificationMeta(
-    'closedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> closedAt = GeneratedColumn<DateTime>(
-    'closed_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    employeeId,
-    cashierSessionId,
-    branchId,
-    startingCash,
-    expectedCash,
-    actualCash,
-    difference,
-    notes,
-    status,
-    openedAt,
-    closedAt,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'shift_sessions';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<ShiftSession> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('employee_id')) {
-      context.handle(
-        _employeeIdMeta,
-        employeeId.isAcceptableOrUnknown(data['employee_id']!, _employeeIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_employeeIdMeta);
-    }
-    if (data.containsKey('cashier_session_id')) {
-      context.handle(
-        _cashierSessionIdMeta,
-        cashierSessionId.isAcceptableOrUnknown(
-          data['cashier_session_id']!,
-          _cashierSessionIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('branch_id')) {
-      context.handle(
-        _branchIdMeta,
-        branchId.isAcceptableOrUnknown(data['branch_id']!, _branchIdMeta),
-      );
-    }
-    if (data.containsKey('starting_cash')) {
-      context.handle(
-        _startingCashMeta,
-        startingCash.isAcceptableOrUnknown(
-          data['starting_cash']!,
-          _startingCashMeta,
-        ),
-      );
-    }
-    if (data.containsKey('expected_cash')) {
-      context.handle(
-        _expectedCashMeta,
-        expectedCash.isAcceptableOrUnknown(
-          data['expected_cash']!,
-          _expectedCashMeta,
-        ),
-      );
-    }
-    if (data.containsKey('actual_cash')) {
-      context.handle(
-        _actualCashMeta,
-        actualCash.isAcceptableOrUnknown(data['actual_cash']!, _actualCashMeta),
-      );
-    }
-    if (data.containsKey('difference')) {
-      context.handle(
-        _differenceMeta,
-        difference.isAcceptableOrUnknown(data['difference']!, _differenceMeta),
-      );
-    }
-    if (data.containsKey('notes')) {
-      context.handle(
-        _notesMeta,
-        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
-      );
-    }
-    if (data.containsKey('status')) {
-      context.handle(
-        _statusMeta,
-        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
-      );
-    }
-    if (data.containsKey('opened_at')) {
-      context.handle(
-        _openedAtMeta,
-        openedAt.isAcceptableOrUnknown(data['opened_at']!, _openedAtMeta),
-      );
-    }
-    if (data.containsKey('closed_at')) {
-      context.handle(
-        _closedAtMeta,
-        closedAt.isAcceptableOrUnknown(data['closed_at']!, _closedAtMeta),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  ShiftSession map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return ShiftSession(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}id'],
-      )!,
-      employeeId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}employee_id'],
-      )!,
-      cashierSessionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}cashier_session_id'],
-      ),
-      branchId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}branch_id'],
-      ),
-      startingCash: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}starting_cash'],
-      )!,
-      expectedCash: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}expected_cash'],
-      )!,
-      actualCash: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}actual_cash'],
-      )!,
-      difference: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}difference'],
-      )!,
-      notes: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}notes'],
-      ),
-      status: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}status'],
-      )!,
-      openedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}opened_at'],
-      )!,
-      closedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}closed_at'],
-      ),
-    );
-  }
-
-  @override
-  $ShiftSessionsTable createAlias(String alias) {
-    return $ShiftSessionsTable(attachedDatabase, alias);
-  }
-}
-
-class ShiftSession extends DataClass implements Insertable<ShiftSession> {
-  final int id;
-  final int employeeId;
-  final int? cashierSessionId;
-  final int? branchId;
-  final int startingCash;
-  final int expectedCash;
-  final int actualCash;
-  final int difference;
-  final String? notes;
-  final String status;
-  final DateTime openedAt;
-  final DateTime? closedAt;
-  const ShiftSession({
-    required this.id,
-    required this.employeeId,
-    this.cashierSessionId,
-    this.branchId,
-    required this.startingCash,
-    required this.expectedCash,
-    required this.actualCash,
-    required this.difference,
-    this.notes,
-    required this.status,
-    required this.openedAt,
-    this.closedAt,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['employee_id'] = Variable<int>(employeeId);
-    if (!nullToAbsent || cashierSessionId != null) {
-      map['cashier_session_id'] = Variable<int>(cashierSessionId);
-    }
-    if (!nullToAbsent || branchId != null) {
-      map['branch_id'] = Variable<int>(branchId);
-    }
-    map['starting_cash'] = Variable<int>(startingCash);
-    map['expected_cash'] = Variable<int>(expectedCash);
-    map['actual_cash'] = Variable<int>(actualCash);
-    map['difference'] = Variable<int>(difference);
-    if (!nullToAbsent || notes != null) {
-      map['notes'] = Variable<String>(notes);
-    }
-    map['status'] = Variable<String>(status);
-    map['opened_at'] = Variable<DateTime>(openedAt);
-    if (!nullToAbsent || closedAt != null) {
-      map['closed_at'] = Variable<DateTime>(closedAt);
-    }
-    return map;
-  }
-
-  ShiftSessionsCompanion toCompanion(bool nullToAbsent) {
-    return ShiftSessionsCompanion(
-      id: Value(id),
-      employeeId: Value(employeeId),
-      cashierSessionId: cashierSessionId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(cashierSessionId),
-      branchId: branchId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(branchId),
-      startingCash: Value(startingCash),
-      expectedCash: Value(expectedCash),
-      actualCash: Value(actualCash),
-      difference: Value(difference),
-      notes: notes == null && nullToAbsent
-          ? const Value.absent()
-          : Value(notes),
-      status: Value(status),
-      openedAt: Value(openedAt),
-      closedAt: closedAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(closedAt),
-    );
-  }
-
-  factory ShiftSession.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return ShiftSession(
-      id: serializer.fromJson<int>(json['id']),
-      employeeId: serializer.fromJson<int>(json['employeeId']),
-      cashierSessionId: serializer.fromJson<int?>(json['cashierSessionId']),
-      branchId: serializer.fromJson<int?>(json['branchId']),
-      startingCash: serializer.fromJson<int>(json['startingCash']),
-      expectedCash: serializer.fromJson<int>(json['expectedCash']),
-      actualCash: serializer.fromJson<int>(json['actualCash']),
-      difference: serializer.fromJson<int>(json['difference']),
-      notes: serializer.fromJson<String?>(json['notes']),
-      status: serializer.fromJson<String>(json['status']),
-      openedAt: serializer.fromJson<DateTime>(json['openedAt']),
-      closedAt: serializer.fromJson<DateTime?>(json['closedAt']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'employeeId': serializer.toJson<int>(employeeId),
-      'cashierSessionId': serializer.toJson<int?>(cashierSessionId),
-      'branchId': serializer.toJson<int?>(branchId),
-      'startingCash': serializer.toJson<int>(startingCash),
-      'expectedCash': serializer.toJson<int>(expectedCash),
-      'actualCash': serializer.toJson<int>(actualCash),
-      'difference': serializer.toJson<int>(difference),
-      'notes': serializer.toJson<String?>(notes),
-      'status': serializer.toJson<String>(status),
-      'openedAt': serializer.toJson<DateTime>(openedAt),
-      'closedAt': serializer.toJson<DateTime?>(closedAt),
-    };
-  }
-
-  ShiftSession copyWith({
-    int? id,
-    int? employeeId,
-    Value<int?> cashierSessionId = const Value.absent(),
-    Value<int?> branchId = const Value.absent(),
-    int? startingCash,
-    int? expectedCash,
-    int? actualCash,
-    int? difference,
-    Value<String?> notes = const Value.absent(),
-    String? status,
-    DateTime? openedAt,
-    Value<DateTime?> closedAt = const Value.absent(),
-  }) => ShiftSession(
-    id: id ?? this.id,
-    employeeId: employeeId ?? this.employeeId,
-    cashierSessionId: cashierSessionId.present
-        ? cashierSessionId.value
-        : this.cashierSessionId,
-    branchId: branchId.present ? branchId.value : this.branchId,
-    startingCash: startingCash ?? this.startingCash,
-    expectedCash: expectedCash ?? this.expectedCash,
-    actualCash: actualCash ?? this.actualCash,
-    difference: difference ?? this.difference,
-    notes: notes.present ? notes.value : this.notes,
-    status: status ?? this.status,
-    openedAt: openedAt ?? this.openedAt,
-    closedAt: closedAt.present ? closedAt.value : this.closedAt,
-  );
-  ShiftSession copyWithCompanion(ShiftSessionsCompanion data) {
-    return ShiftSession(
-      id: data.id.present ? data.id.value : this.id,
-      employeeId: data.employeeId.present
-          ? data.employeeId.value
-          : this.employeeId,
-      cashierSessionId: data.cashierSessionId.present
-          ? data.cashierSessionId.value
-          : this.cashierSessionId,
-      branchId: data.branchId.present ? data.branchId.value : this.branchId,
-      startingCash: data.startingCash.present
-          ? data.startingCash.value
-          : this.startingCash,
-      expectedCash: data.expectedCash.present
-          ? data.expectedCash.value
-          : this.expectedCash,
-      actualCash: data.actualCash.present
-          ? data.actualCash.value
-          : this.actualCash,
-      difference: data.difference.present
-          ? data.difference.value
-          : this.difference,
-      notes: data.notes.present ? data.notes.value : this.notes,
-      status: data.status.present ? data.status.value : this.status,
-      openedAt: data.openedAt.present ? data.openedAt.value : this.openedAt,
-      closedAt: data.closedAt.present ? data.closedAt.value : this.closedAt,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('ShiftSession(')
-          ..write('id: $id, ')
-          ..write('employeeId: $employeeId, ')
-          ..write('cashierSessionId: $cashierSessionId, ')
-          ..write('branchId: $branchId, ')
-          ..write('startingCash: $startingCash, ')
-          ..write('expectedCash: $expectedCash, ')
-          ..write('actualCash: $actualCash, ')
-          ..write('difference: $difference, ')
-          ..write('notes: $notes, ')
-          ..write('status: $status, ')
-          ..write('openedAt: $openedAt, ')
-          ..write('closedAt: $closedAt')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    id,
-    employeeId,
-    cashierSessionId,
-    branchId,
-    startingCash,
-    expectedCash,
-    actualCash,
-    difference,
-    notes,
-    status,
-    openedAt,
-    closedAt,
-  );
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ShiftSession &&
-          other.id == this.id &&
-          other.employeeId == this.employeeId &&
-          other.cashierSessionId == this.cashierSessionId &&
-          other.branchId == this.branchId &&
-          other.startingCash == this.startingCash &&
-          other.expectedCash == this.expectedCash &&
-          other.actualCash == this.actualCash &&
-          other.difference == this.difference &&
-          other.notes == this.notes &&
-          other.status == this.status &&
-          other.openedAt == this.openedAt &&
-          other.closedAt == this.closedAt);
-}
-
-class ShiftSessionsCompanion extends UpdateCompanion<ShiftSession> {
-  final Value<int> id;
-  final Value<int> employeeId;
-  final Value<int?> cashierSessionId;
-  final Value<int?> branchId;
-  final Value<int> startingCash;
-  final Value<int> expectedCash;
-  final Value<int> actualCash;
-  final Value<int> difference;
-  final Value<String?> notes;
-  final Value<String> status;
-  final Value<DateTime> openedAt;
-  final Value<DateTime?> closedAt;
-  const ShiftSessionsCompanion({
-    this.id = const Value.absent(),
-    this.employeeId = const Value.absent(),
-    this.cashierSessionId = const Value.absent(),
-    this.branchId = const Value.absent(),
-    this.startingCash = const Value.absent(),
-    this.expectedCash = const Value.absent(),
-    this.actualCash = const Value.absent(),
-    this.difference = const Value.absent(),
-    this.notes = const Value.absent(),
-    this.status = const Value.absent(),
-    this.openedAt = const Value.absent(),
-    this.closedAt = const Value.absent(),
-  });
-  ShiftSessionsCompanion.insert({
-    this.id = const Value.absent(),
-    required int employeeId,
-    this.cashierSessionId = const Value.absent(),
-    this.branchId = const Value.absent(),
-    this.startingCash = const Value.absent(),
-    this.expectedCash = const Value.absent(),
-    this.actualCash = const Value.absent(),
-    this.difference = const Value.absent(),
-    this.notes = const Value.absent(),
-    this.status = const Value.absent(),
-    this.openedAt = const Value.absent(),
-    this.closedAt = const Value.absent(),
-  }) : employeeId = Value(employeeId);
-  static Insertable<ShiftSession> custom({
-    Expression<int>? id,
-    Expression<int>? employeeId,
-    Expression<int>? cashierSessionId,
-    Expression<int>? branchId,
-    Expression<int>? startingCash,
-    Expression<int>? expectedCash,
-    Expression<int>? actualCash,
-    Expression<int>? difference,
-    Expression<String>? notes,
-    Expression<String>? status,
-    Expression<DateTime>? openedAt,
-    Expression<DateTime>? closedAt,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (employeeId != null) 'employee_id': employeeId,
-      if (cashierSessionId != null) 'cashier_session_id': cashierSessionId,
-      if (branchId != null) 'branch_id': branchId,
-      if (startingCash != null) 'starting_cash': startingCash,
-      if (expectedCash != null) 'expected_cash': expectedCash,
-      if (actualCash != null) 'actual_cash': actualCash,
-      if (difference != null) 'difference': difference,
-      if (notes != null) 'notes': notes,
-      if (status != null) 'status': status,
-      if (openedAt != null) 'opened_at': openedAt,
-      if (closedAt != null) 'closed_at': closedAt,
-    });
-  }
-
-  ShiftSessionsCompanion copyWith({
-    Value<int>? id,
-    Value<int>? employeeId,
-    Value<int?>? cashierSessionId,
-    Value<int?>? branchId,
-    Value<int>? startingCash,
-    Value<int>? expectedCash,
-    Value<int>? actualCash,
-    Value<int>? difference,
-    Value<String?>? notes,
-    Value<String>? status,
-    Value<DateTime>? openedAt,
-    Value<DateTime?>? closedAt,
-  }) {
-    return ShiftSessionsCompanion(
-      id: id ?? this.id,
-      employeeId: employeeId ?? this.employeeId,
-      cashierSessionId: cashierSessionId ?? this.cashierSessionId,
-      branchId: branchId ?? this.branchId,
-      startingCash: startingCash ?? this.startingCash,
-      expectedCash: expectedCash ?? this.expectedCash,
-      actualCash: actualCash ?? this.actualCash,
-      difference: difference ?? this.difference,
-      notes: notes ?? this.notes,
-      status: status ?? this.status,
-      openedAt: openedAt ?? this.openedAt,
-      closedAt: closedAt ?? this.closedAt,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (employeeId.present) {
-      map['employee_id'] = Variable<int>(employeeId.value);
-    }
-    if (cashierSessionId.present) {
-      map['cashier_session_id'] = Variable<int>(cashierSessionId.value);
-    }
-    if (branchId.present) {
-      map['branch_id'] = Variable<int>(branchId.value);
-    }
-    if (startingCash.present) {
-      map['starting_cash'] = Variable<int>(startingCash.value);
-    }
-    if (expectedCash.present) {
-      map['expected_cash'] = Variable<int>(expectedCash.value);
-    }
-    if (actualCash.present) {
-      map['actual_cash'] = Variable<int>(actualCash.value);
-    }
-    if (difference.present) {
-      map['difference'] = Variable<int>(difference.value);
-    }
-    if (notes.present) {
-      map['notes'] = Variable<String>(notes.value);
-    }
-    if (status.present) {
-      map['status'] = Variable<String>(status.value);
-    }
-    if (openedAt.present) {
-      map['opened_at'] = Variable<DateTime>(openedAt.value);
-    }
-    if (closedAt.present) {
-      map['closed_at'] = Variable<DateTime>(closedAt.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('ShiftSessionsCompanion(')
-          ..write('id: $id, ')
-          ..write('employeeId: $employeeId, ')
-          ..write('cashierSessionId: $cashierSessionId, ')
-          ..write('branchId: $branchId, ')
-          ..write('startingCash: $startingCash, ')
-          ..write('expectedCash: $expectedCash, ')
-          ..write('actualCash: $actualCash, ')
-          ..write('difference: $difference, ')
-          ..write('notes: $notes, ')
-          ..write('status: $status, ')
-          ..write('openedAt: $openedAt, ')
-          ..write('closedAt: $closedAt')
-          ..write(')'))
-        .toString();
-  }
-}
-
 class $StockCountsTable extends StockCounts
     with TableInfo<$StockCountsTable, StockCount> {
   @override
@@ -13717,7 +13117,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $OnlineOrdersTable onlineOrders = $OnlineOrdersTable(this);
   late final $CustomerDebtsTable customerDebts = $CustomerDebtsTable(this);
   late final $DebtPaymentsTable debtPayments = $DebtPaymentsTable(this);
-  late final $ShiftSessionsTable shiftSessions = $ShiftSessionsTable(this);
   late final $StockCountsTable stockCounts = $StockCountsTable(this);
   late final $StockCountItemsTable stockCountItems = $StockCountItemsTable(
     this,
@@ -13750,7 +13149,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     onlineOrders,
     customerDebts,
     debtPayments,
-    shiftSessions,
     stockCounts,
     stockCountItems,
   ];
@@ -15752,6 +15150,8 @@ typedef $$AttendanceTableCreateCompanionBuilder =
       Value<int?> pettyCash,
       Value<int?> finalCash,
       Value<String?> status,
+      Value<int?> expectedCash,
+      Value<String?> shiftNotes,
     });
 typedef $$AttendanceTableUpdateCompanionBuilder =
     AttendanceCompanion Function({
@@ -15763,6 +15163,8 @@ typedef $$AttendanceTableUpdateCompanionBuilder =
       Value<int?> pettyCash,
       Value<int?> finalCash,
       Value<String?> status,
+      Value<int?> expectedCash,
+      Value<String?> shiftNotes,
     });
 
 class $$AttendanceTableFilterComposer
@@ -15811,6 +15213,16 @@ class $$AttendanceTableFilterComposer
 
   ColumnFilters<String> get status => $composableBuilder(
     column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedCash => $composableBuilder(
+    column: $table.expectedCash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shiftNotes => $composableBuilder(
+    column: $table.shiftNotes,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -15863,6 +15275,16 @@ class $$AttendanceTableOrderingComposer
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get expectedCash => $composableBuilder(
+    column: $table.expectedCash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shiftNotes => $composableBuilder(
+    column: $table.shiftNotes,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AttendanceTableAnnotationComposer
@@ -15899,6 +15321,16 @@ class $$AttendanceTableAnnotationComposer
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get expectedCash => $composableBuilder(
+    column: $table.expectedCash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get shiftNotes => $composableBuilder(
+    column: $table.shiftNotes,
+    builder: (column) => column,
+  );
 }
 
 class $$AttendanceTableTableManager
@@ -15940,6 +15372,8 @@ class $$AttendanceTableTableManager
                 Value<int?> pettyCash = const Value.absent(),
                 Value<int?> finalCash = const Value.absent(),
                 Value<String?> status = const Value.absent(),
+                Value<int?> expectedCash = const Value.absent(),
+                Value<String?> shiftNotes = const Value.absent(),
               }) => AttendanceCompanion(
                 id: id,
                 employeeId: employeeId,
@@ -15949,6 +15383,8 @@ class $$AttendanceTableTableManager
                 pettyCash: pettyCash,
                 finalCash: finalCash,
                 status: status,
+                expectedCash: expectedCash,
+                shiftNotes: shiftNotes,
               ),
           createCompanionCallback:
               ({
@@ -15960,6 +15396,8 @@ class $$AttendanceTableTableManager
                 Value<int?> pettyCash = const Value.absent(),
                 Value<int?> finalCash = const Value.absent(),
                 Value<String?> status = const Value.absent(),
+                Value<int?> expectedCash = const Value.absent(),
+                Value<String?> shiftNotes = const Value.absent(),
               }) => AttendanceCompanion.insert(
                 id: id,
                 employeeId: employeeId,
@@ -15969,6 +15407,8 @@ class $$AttendanceTableTableManager
                 pettyCash: pettyCash,
                 finalCash: finalCash,
                 status: status,
+                expectedCash: expectedCash,
+                shiftNotes: shiftNotes,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -19730,345 +19170,6 @@ typedef $$DebtPaymentsTableProcessedTableManager =
       DebtPayment,
       PrefetchHooks Function()
     >;
-typedef $$ShiftSessionsTableCreateCompanionBuilder =
-    ShiftSessionsCompanion Function({
-      Value<int> id,
-      required int employeeId,
-      Value<int?> cashierSessionId,
-      Value<int?> branchId,
-      Value<int> startingCash,
-      Value<int> expectedCash,
-      Value<int> actualCash,
-      Value<int> difference,
-      Value<String?> notes,
-      Value<String> status,
-      Value<DateTime> openedAt,
-      Value<DateTime?> closedAt,
-    });
-typedef $$ShiftSessionsTableUpdateCompanionBuilder =
-    ShiftSessionsCompanion Function({
-      Value<int> id,
-      Value<int> employeeId,
-      Value<int?> cashierSessionId,
-      Value<int?> branchId,
-      Value<int> startingCash,
-      Value<int> expectedCash,
-      Value<int> actualCash,
-      Value<int> difference,
-      Value<String?> notes,
-      Value<String> status,
-      Value<DateTime> openedAt,
-      Value<DateTime?> closedAt,
-    });
-
-class $$ShiftSessionsTableFilterComposer
-    extends Composer<_$AppDatabase, $ShiftSessionsTable> {
-  $$ShiftSessionsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get employeeId => $composableBuilder(
-    column: $table.employeeId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get cashierSessionId => $composableBuilder(
-    column: $table.cashierSessionId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get branchId => $composableBuilder(
-    column: $table.branchId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get startingCash => $composableBuilder(
-    column: $table.startingCash,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get expectedCash => $composableBuilder(
-    column: $table.expectedCash,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get actualCash => $composableBuilder(
-    column: $table.actualCash,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get difference => $composableBuilder(
-    column: $table.difference,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get notes => $composableBuilder(
-    column: $table.notes,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get status => $composableBuilder(
-    column: $table.status,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get openedAt => $composableBuilder(
-    column: $table.openedAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get closedAt => $composableBuilder(
-    column: $table.closedAt,
-    builder: (column) => ColumnFilters(column),
-  );
-}
-
-class $$ShiftSessionsTableOrderingComposer
-    extends Composer<_$AppDatabase, $ShiftSessionsTable> {
-  $$ShiftSessionsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get employeeId => $composableBuilder(
-    column: $table.employeeId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get cashierSessionId => $composableBuilder(
-    column: $table.cashierSessionId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get branchId => $composableBuilder(
-    column: $table.branchId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get startingCash => $composableBuilder(
-    column: $table.startingCash,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get expectedCash => $composableBuilder(
-    column: $table.expectedCash,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get actualCash => $composableBuilder(
-    column: $table.actualCash,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get difference => $composableBuilder(
-    column: $table.difference,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get notes => $composableBuilder(
-    column: $table.notes,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get status => $composableBuilder(
-    column: $table.status,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get openedAt => $composableBuilder(
-    column: $table.openedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get closedAt => $composableBuilder(
-    column: $table.closedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-}
-
-class $$ShiftSessionsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $ShiftSessionsTable> {
-  $$ShiftSessionsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<int> get employeeId => $composableBuilder(
-    column: $table.employeeId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get cashierSessionId => $composableBuilder(
-    column: $table.cashierSessionId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get branchId =>
-      $composableBuilder(column: $table.branchId, builder: (column) => column);
-
-  GeneratedColumn<int> get startingCash => $composableBuilder(
-    column: $table.startingCash,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get expectedCash => $composableBuilder(
-    column: $table.expectedCash,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get actualCash => $composableBuilder(
-    column: $table.actualCash,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get difference => $composableBuilder(
-    column: $table.difference,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get notes =>
-      $composableBuilder(column: $table.notes, builder: (column) => column);
-
-  GeneratedColumn<String> get status =>
-      $composableBuilder(column: $table.status, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get openedAt =>
-      $composableBuilder(column: $table.openedAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get closedAt =>
-      $composableBuilder(column: $table.closedAt, builder: (column) => column);
-}
-
-class $$ShiftSessionsTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $ShiftSessionsTable,
-          ShiftSession,
-          $$ShiftSessionsTableFilterComposer,
-          $$ShiftSessionsTableOrderingComposer,
-          $$ShiftSessionsTableAnnotationComposer,
-          $$ShiftSessionsTableCreateCompanionBuilder,
-          $$ShiftSessionsTableUpdateCompanionBuilder,
-          (
-            ShiftSession,
-            BaseReferences<_$AppDatabase, $ShiftSessionsTable, ShiftSession>,
-          ),
-          ShiftSession,
-          PrefetchHooks Function()
-        > {
-  $$ShiftSessionsTableTableManager(_$AppDatabase db, $ShiftSessionsTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$ShiftSessionsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ShiftSessionsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ShiftSessionsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<int> employeeId = const Value.absent(),
-                Value<int?> cashierSessionId = const Value.absent(),
-                Value<int?> branchId = const Value.absent(),
-                Value<int> startingCash = const Value.absent(),
-                Value<int> expectedCash = const Value.absent(),
-                Value<int> actualCash = const Value.absent(),
-                Value<int> difference = const Value.absent(),
-                Value<String?> notes = const Value.absent(),
-                Value<String> status = const Value.absent(),
-                Value<DateTime> openedAt = const Value.absent(),
-                Value<DateTime?> closedAt = const Value.absent(),
-              }) => ShiftSessionsCompanion(
-                id: id,
-                employeeId: employeeId,
-                cashierSessionId: cashierSessionId,
-                branchId: branchId,
-                startingCash: startingCash,
-                expectedCash: expectedCash,
-                actualCash: actualCash,
-                difference: difference,
-                notes: notes,
-                status: status,
-                openedAt: openedAt,
-                closedAt: closedAt,
-              ),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required int employeeId,
-                Value<int?> cashierSessionId = const Value.absent(),
-                Value<int?> branchId = const Value.absent(),
-                Value<int> startingCash = const Value.absent(),
-                Value<int> expectedCash = const Value.absent(),
-                Value<int> actualCash = const Value.absent(),
-                Value<int> difference = const Value.absent(),
-                Value<String?> notes = const Value.absent(),
-                Value<String> status = const Value.absent(),
-                Value<DateTime> openedAt = const Value.absent(),
-                Value<DateTime?> closedAt = const Value.absent(),
-              }) => ShiftSessionsCompanion.insert(
-                id: id,
-                employeeId: employeeId,
-                cashierSessionId: cashierSessionId,
-                branchId: branchId,
-                startingCash: startingCash,
-                expectedCash: expectedCash,
-                actualCash: actualCash,
-                difference: difference,
-                notes: notes,
-                status: status,
-                openedAt: openedAt,
-                closedAt: closedAt,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ),
-      );
-}
-
-typedef $$ShiftSessionsTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $ShiftSessionsTable,
-      ShiftSession,
-      $$ShiftSessionsTableFilterComposer,
-      $$ShiftSessionsTableOrderingComposer,
-      $$ShiftSessionsTableAnnotationComposer,
-      $$ShiftSessionsTableCreateCompanionBuilder,
-      $$ShiftSessionsTableUpdateCompanionBuilder,
-      (
-        ShiftSession,
-        BaseReferences<_$AppDatabase, $ShiftSessionsTable, ShiftSession>,
-      ),
-      ShiftSession,
-      PrefetchHooks Function()
-    >;
 typedef $$StockCountsTableCreateCompanionBuilder =
     StockCountsCompanion Function({
       Value<int> id,
@@ -20681,8 +19782,6 @@ class $AppDatabaseManager {
       $$CustomerDebtsTableTableManager(_db, _db.customerDebts);
   $$DebtPaymentsTableTableManager get debtPayments =>
       $$DebtPaymentsTableTableManager(_db, _db.debtPayments);
-  $$ShiftSessionsTableTableManager get shiftSessions =>
-      $$ShiftSessionsTableTableManager(_db, _db.shiftSessions);
   $$StockCountsTableTableManager get stockCounts =>
       $$StockCountsTableTableManager(_db, _db.stockCounts);
   $$StockCountItemsTableTableManager get stockCountItems =>

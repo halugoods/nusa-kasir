@@ -35,7 +35,6 @@ import 'package:nusa_kasir/features/ai_assistant/ai_chat_screen.dart';
 import 'package:nusa_kasir/features/toko_online/storefront_screen.dart';
 import 'package:nusa_kasir/features/debts/debt_screen.dart';
 import 'package:nusa_kasir/features/stock_opname/stock_opname_screen.dart';
-import 'package:nusa_kasir/features/shift/shift_screen.dart';
 
 GoRouter buildRouter(String initialLocation) => GoRouter(
       initialLocation: initialLocation,
@@ -94,9 +93,6 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
             path: '/piutang',
             pageBuilder: (_, __) => _slidePage(const DebtScreen())),
         GoRoute(
-            path: '/piutang',
-            pageBuilder: (_, __) => _slidePage(const DebtScreen())),
-        GoRoute(
             path: '/promo', pageBuilder: (_, __) => _slidePage(const PromoScreen())),
         GoRoute(
             path: '/laporan',
@@ -107,9 +103,6 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/presensi',
             pageBuilder: (_, __) => _slidePage(const AttendanceScreen())),
-        GoRoute(
-            path: '/shift',
-            pageBuilder: (_, __) => _slidePage(const ShiftScreen())),
         GoRoute(
             path: '/keuangan',
             pageBuilder: (_, __) => _slidePage(const FinanceScreen())),
@@ -143,9 +136,6 @@ GoRouter buildRouter(String initialLocation) => GoRouter(
         GoRoute(
             path: '/stok_opname',
             pageBuilder: (_, __) => _slidePage(const StockOpnameScreen())),
-        GoRoute(
-            path: '/piutang',
-            pageBuilder: (_, __) => _slidePage(const DebtScreen())),
       ],
     );
 

@@ -294,4 +294,52 @@ class AttendanceRepository {
     }
     return result;
   }
+
+  // ═══ Shift Management (merged into Presensi) ═══
+
+  /// Set expected cash for today's active shift.
+  Future<void> setExpectedCash(int employeeId, int amount) async {
+    final today = await getToday(employeeId);
+    if (today == null) return;
+    await (db.update(db.attendance)..where((t) => t.id.equals(today.id)))
+        .write(AttendanceCompanion(expectedCash: Value(amount)));
+  }
+
+  /// Close the shift: record final cash, calculate difference from expected,
+  /// and optionally store notes. Returns the difference (finalCash - expectedCash).
+  Future<int> closeShift({
+    required int employeeId,
+    required int actualCash,
+    String? notes,
+  }) async {
+    final today = await getToday(employeeId);
+    if (today == null) return 0;
+
+    final expected = today.expectedCash ?? today.pettyCash ?? 0;
+    final diff = actualCash - expected;
+
+    await (db.update(db.attendance)..where((t) => t.id.equals(today.id)))
+        .write(AttendanceCompanion(
+      finalCash: Value(actualCash),
+      expectedCash: Value(expected),
+      shiftNotes: Value(notes),
+    ));
+
+    return diff;
+  }
+
+  /// Get shift history for an employee (attendance records with expectedCash set).
+  Future<List<AttendanceData>> getShiftHistory({
+    int? employeeId,
+    int limit = 30,
+  }) {
+    final q = db.select(db.attendance);
+    if (employeeId != null) {
+      q.where((t) => t.employeeId.equals(employeeId));
+    }
+    q.where((t) => t.expectedCash.isNotNull());
+    q.orderBy([(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)]);
+    q.limit(limit);
+    return q.get();
+  }
 }
