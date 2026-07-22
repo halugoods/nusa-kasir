@@ -813,6 +813,58 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         child: Column(children: [
           const SizedBox(height: 12),
 
+          // Month navigation
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            GestureDetector(
+              onTap: () {
+                if (_histMonth == 1) {
+                  setState(() { _histMonth = 12; _histYear--; });
+                } else {
+                  setState(() => _histMonth--);
+                }
+                _loadHistory();
+              },
+              child: Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+                ),
+                child: const Icon(Icons.chevron_left, size: 18),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text('${monthNames[_histMonth]} $_histYear',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textPri)),
+            ),
+            GestureDetector(
+              onTap: () {
+                final now = DateTime.now();
+                if (_histMonth == 12) {
+                  if (!(_histYear + 1 > now.year || (_histYear + 1 == now.year && 1 > now.month))) {
+                    setState(() { _histMonth = 1; _histYear++; });
+                    _loadHistory();
+                  }
+                } else if (!(_histYear > now.year || (_histYear == now.year && _histMonth + 1 > now.month))) {
+                  setState(() => _histMonth++);
+                  _loadHistory();
+                }
+              },
+              child: Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+                ),
+                child: const Icon(Icons.chevron_right, size: 18),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 14),
+
           // Summary chips
           if (_monthlySummary.isNotEmpty) ...[
             Row(children: [
@@ -973,10 +1025,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 18, color: textTer),
+                        Icon(isExpanded ? Icons.expand_less_rounded : Icons.calendar_month_outlined, size: 16, color: textTer),
                         const SizedBox(width: 4),
-                        Text(isExpanded ? 'Sembunyikan Kalender' : 'Lihat Kalender',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSec)),
+                        Text(isExpanded ? 'Tutup' : 'Lihat Presensi',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textSec)),
                       ]),
                     ),
                   ),
@@ -1006,14 +1058,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   List<Widget> _buildCalendarGrid(int year, int month, Map<int, String> dayStatus, bool isDark) {
     final daysInMonth = DateTime(year, month + 1, 0).day;
-    final firstWeekday = DateTime(year, month, 1).weekday; // 1=Mon, 7=Sun
+    final dartWeekday = DateTime(year, month, 1).weekday; // 1=Mon..7=Sun
+    final offset = dartWeekday % 7; // 0=Sun..6=Sat — matches our grid starting from Min
     final textSec = isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
     final textTer = isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary;
 
     final rows = <TableRow>[];
     var cells = <Widget>[];
-    // Leading empty cells
-    for (var i = 1; i < firstWeekday; i++) {
+    // Leading empty cells for correct weekday alignment
+    for (var i = 0; i < offset; i++) {
       cells.add(const SizedBox.shrink());
     }
     // Day cells

@@ -53,4 +53,12 @@ class SecureStore {
       _s.write(key: 'nusa_sheets_id', value: id);
   static Future<String?> getSheetsId() => _s.read(key: 'nusa_sheets_id');
   static Future<void> clearSheetsId() => _s.delete(key: 'nusa_sheets_id');
+
+  // -- Feature toggles (JSON) --
+  static Future<void> saveFeatureToggles(String json) =>
+      _s.write(key: 'nusa_feature_toggles', value: json);
+  static Future<String?> getFeatureToggles() =>
+      _s.read(key: 'nusa_feature_toggles');
+  static Future<void> clearFeatureToggles() =>
+      _s.delete(key: 'nusa_feature_toggles');
 }

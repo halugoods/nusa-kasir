@@ -42,3 +42,6 @@ final activationRepoProvider = Provider<ActivationRepository>((ref) {
 
 final onlineOrderRepoProvider =
     Provider((ref) => OnlineOrderRepository(ref.watch(databaseProvider)));
+
+/// Feature toggles — which menu items show on Home Screen.
+final featureTogglesProvider = StateProvider<Map<String, bool>>((ref) => {});

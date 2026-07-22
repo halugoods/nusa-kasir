@@ -187,9 +187,8 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
       if (mounted) {
         setState(() => _connecting = false);
         final msg = e.toString();
-        if (msg.contains('apiNotEnabled') || msg.contains('403')) {
-          TopToast.error(context, 'Google Sheets API belum diaktifkan.\n'
-              'Buka Google Cloud Console > APIs & Services > Enable Sheets API.');
+        if (msg.contains('apiNotEnabled') || msg.contains('403') || msg.contains('disabled')) {
+          _showApiSetupDialog();
         } else if (msg.contains('quota') || msg.contains('429')) {
           TopToast.error(context, 'Kuota Google Sheets tercapai. Coba beberapa saat lagi.');
         } else {
@@ -197,6 +196,34 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
         }
       }
     }
+  }
+
+  void _showApiSetupDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.info_outline, color: NusaConfig.accentGold, size: 24),
+          SizedBox(width: 10),
+          Expanded(child: Text('Google Sheets API', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
+        ]),
+        content: const Text(
+          'API belum diaktifkan untuk project ini.\n\n'
+          'Langkah perbaikan:\n'
+          '1. Buka console.cloud.google.com\n'
+          '2. Pilih project Firebase Anda\n'
+          '3. APIs & Services → Library\n'
+          '4. Cari "Google Sheets API" → Enable\n'
+          '5. Tunggu 1-2 menit, lalu coba lagi\n\n'
+          'Hubungi developer jika butuh bantuan.',
+          style: TextStyle(fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
+        ],
+      ),
+    );
   }
 
   Future<void> _syncTab(String tab) async {

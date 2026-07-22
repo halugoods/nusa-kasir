@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
@@ -129,6 +130,18 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     }
   }
 
+  Future<String?> _copyPhotoToStorage(String sourcePath) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final name = 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final dest = File('${dir.path}/$name');
+      await File(sourcePath).copy(dest.path);
+      return dest.path;
+    } catch (e) {
+      return null;
+    }
+  }
+
   void _showForm({Employee? employee}) {
     final nameC = TextEditingController(text: employee?.name ?? '');
     final pinC = TextEditingController(text: employee?.pin ?? '');
@@ -196,7 +209,8 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                       final picked = await _imagePicker.pickImage(
                           source: ImageSource.gallery, maxWidth: 512, maxHeight: 512);
                       if (picked != null) {
-                        setSt(() => photoPath = picked.path);
+                        final copied = await _copyPhotoToStorage(picked.path);
+                        if (copied != null) setSt(() => photoPath = copied);
                       }
                     },
                     child: Container(

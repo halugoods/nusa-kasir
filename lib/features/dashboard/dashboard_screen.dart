@@ -538,7 +538,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final role = session?.role ?? 'Owner';
 
     // Build menu items with access indicators
-    final menuItems = _items.map((item) {
+    final featureToggles = ref.watch(featureTogglesProvider);
+    final menuItems = _items
+        .where((item) {
+          // Filter by feature toggles — if explicitly disabled, hide from grid
+          final id = item['id'] as String;
+          return featureToggles[id] ?? true;
+        })
+        .map((item) {
       final id = item['id'] as String;
       final label = item['label'] as String;
       final icon = item['icon'] as String;
