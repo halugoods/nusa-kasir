@@ -42,4 +42,15 @@ class SecureStore {
       _s.write(key: AppConstants.sheetsTokenKey, value: json);
   static Future<String?> getSheetsTokens() => _s.read(key: AppConstants.sheetsTokenKey);
   static Future<void> clearSheetsTokens() => _s.delete(key: AppConstants.sheetsTokenKey);
+
+  // -- Sheets email + spreadsheet ID per user --
+  static Future<void> saveSheetsEmail(String email) =>
+      _s.write(key: 'nusa_sheets_email', value: email);
+  static Future<String?> getSheetsEmail() => _s.read(key: 'nusa_sheets_email');
+  static Future<void> clearSheetsEmail() => _s.delete(key: 'nusa_sheets_email');
+
+  static Future<void> saveSheetsId(String id) =>
+      _s.write(key: 'nusa_sheets_id', value: id);
+  static Future<String?> getSheetsId() => _s.read(key: 'nusa_sheets_id');
+  static Future<void> clearSheetsId() => _s.delete(key: 'nusa_sheets_id');
 }
