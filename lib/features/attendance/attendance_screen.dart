@@ -653,7 +653,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
             ),
             if (_tab == 0) ...[
               const SizedBox(width: 8),
-              _roleDropdown(isDark),
+              SizedBox(width: 130, child: _roleDropdown(isDark)),
             ] else ...[
               const SizedBox(width: 8),
               SizedBox(width: 130, child: _monthDropdown(isDark)),
@@ -864,13 +864,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           Container(
             width: 52, height: 52,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: statusColor, width: 2.5),
             ),
             child: Container(
               margin: const EdgeInsets.all(2.5),
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(14),
                 color: _avatarCol(e.name).withValues(alpha: 0.15),
                 image: e.photoPath != null && e.photoPath!.isNotEmpty
                     ? DecorationImage(
@@ -1221,7 +1221,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   Container(
                     width: 42, height: 42,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: ratio >= 0.8 ? NusaConfig.accentGreen : ratio >= 0.5 ? NusaConfig.accentGold : NusaConfig.primaryColor,
                         width: 2,
@@ -1230,7 +1230,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     child: Container(
                       margin: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(12),
                         color: _avatarCol(empName).withValues(alpha: 0.15),
                         image: emp?.photoPath != null && emp!.photoPath!.isNotEmpty
                             ? DecorationImage(

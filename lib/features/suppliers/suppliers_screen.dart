@@ -363,7 +363,9 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              GestureDetector(
+              Tooltip(
+                message: 'Ekspor supplier',
+                child: GestureDetector(
                 onTap: _filtered.isNotEmpty ? _showExportOptions : null,
                 child: Container(
                   height: 46, width: 46,
@@ -377,6 +379,7 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                           ? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)
                           : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                 ),
+              ),
               ),
             ]),
           ),

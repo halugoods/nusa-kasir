@@ -30,12 +30,16 @@ class DashboardHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Left: NUSA wordmark + subtitle only (user info shown in ProfileStatsCard below)
+          // Left: Logo + NUSA wordmark
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Image.asset('assets/images/nusa_logo.png', height: 36, fit: BoxFit.contain),
+                ]),
+                SizedBox(height: 4),
                 Text(
                   'NUSA',
                   style: TextStyle(
@@ -44,16 +48,6 @@ class DashboardHeader extends StatelessWidget {
                     letterSpacing: -0.5,
                     color: NusaConfig.primaryColor,
                     height: 1,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Aplikasi Kasir untuk Toko Kelontong',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
-                    height: 1.3,
                   ),
                 ),
               ],

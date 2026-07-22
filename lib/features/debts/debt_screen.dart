@@ -924,7 +924,7 @@ class _DebtScreenState extends ConsumerState<DebtScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: NusaConfig.accentGold,
+        backgroundColor: NusaConfig.primaryColor,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Catat Piutang'),

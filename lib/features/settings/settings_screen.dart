@@ -712,12 +712,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       isScrollControlled: true,
       builder: (ctx) {
         final setDark = Theme.of(ctx).brightness == Brightness.dark;
+        // State variables declared OUTSIDE StatefulBuilder so they persist across rebuilds
+        String? logoPath = currentLogo;
+        String headerText = headerCtrl.text;
+        String paper = paperSize;
+        Map<String, bool> togs = Map.from(toggles);
         return StatefulBuilder(
           builder: (ctx, setSt) {
-            String? logoPath = currentLogo;
-            String? headerText = headerCtrl.text;
-            String paper = paperSize;
-            Map<String, bool> togs = Map.from(toggles);
             return Container(
               decoration: BoxDecoration(
                 color: setDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
@@ -763,10 +764,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Text('Logo Toko', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
                     color: setDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                 const SizedBox(height: 8),
-                if (logoPath != null && logoPath.isNotEmpty)
+                if (logoPath != null && logoPath!.isNotEmpty)
                   Padding(padding: const EdgeInsets.only(bottom: 8),
                     child: ClipRRect(borderRadius: BorderRadius.circular(12),
-                      child: Image.file(File(logoPath), height: 80, fit: BoxFit.contain))),
+                      child: Image.file(File(logoPath!), height: 80, fit: BoxFit.contain))),
                 OutlinedButton.icon(
                   onPressed: () async {
                     final result = await FilePicker.pickFiles(type: FileType.image);
@@ -777,7 +778,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     }
                   },
                   icon: const Icon(Icons.image_outlined, size: 18),
-                  label: Text(logoPath != null && logoPath.isNotEmpty ? 'Ganti Logo' : 'Pilih Logo'),
+                  label: Text(logoPath != null && logoPath!.isNotEmpty ? 'Ganti Logo' : 'Pilih Logo'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: NusaConfig.primaryColor,
                     side: const BorderSide(color: NusaConfig.primaryColor),

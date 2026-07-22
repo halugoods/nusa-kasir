@@ -797,14 +797,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 ),
               ),
               const SizedBox(width: 10),
-              _iconButton(
-                icon: Icons.share_rounded,
-                label: 'Bagikan',
-                color: NusaConfig.info,
-                isDark: isDark,
-                onPressed: _exporting ? null : _quickSharePdf,
-                loading: _exporting,
-              ),
+              _shareButton(isDark, loading: _exporting, onPressed: _exporting ? null : _quickSharePdf),
             ]),
           ),
           const SizedBox(height: 12),
@@ -847,6 +840,31 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             },
           ),
         ]),
+      ),
+    );
+  }
+
+  Widget _shareButton(bool isDark, {VoidCallback? onPressed, bool loading = false}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: 48, height: 48,
+          decoration: BoxDecoration(
+            color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+          ),
+          alignment: Alignment.center,
+          child: loading
+              ? SizedBox(
+                  width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary))
+              : Icon(Icons.share_rounded, size: 20,
+                  color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+        ),
       ),
     );
   }
