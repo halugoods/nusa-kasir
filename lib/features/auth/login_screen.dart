@@ -7,7 +7,7 @@ import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
+import 'package:nusa_kasir/shared/widgets/pin_input.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 
@@ -21,13 +21,13 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _ctrl = TextEditingController();
+  final _pinKey = GlobalKey<PinInputState>();
   String? _error;
   bool _loading = false;
   bool _remember = false;
 
   Future<void> _submit() async {
-    final pin = _ctrl.text.trim();
+    final pin = _pinKey.currentState?.text ?? '';
     if (pin.isEmpty) {
       setState(() => _error = 'Masukkan PIN');
       return;
@@ -50,6 +50,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (emp == null) {
         if (mounted) {
+          _pinKey.currentState?.clear();
           setState(() {
             _loading = false;
             _error = 'PIN salah';
@@ -81,7 +82,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _ctrl.dispose();
     super.dispose();
   }
 
@@ -110,10 +110,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
             ),
             const SizedBox(height: 24),
-            NusaInput('PIN',
-                controller: _ctrl,
-                type: TextInputType.number,
-                obscure: true),
+            PinInput(
+              key: _pinKey,
+              autoSubmit: false,
+              error: _error,
+              onChanged: () { if (_error != null) setState(() => _error = null); },
+            ),
             if (_error != null) ...[
               const SizedBox(height: 8),
               Text(_error!,

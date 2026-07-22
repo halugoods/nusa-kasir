@@ -12,6 +12,7 @@ import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
+import 'package:nusa_kasir/shared/widgets/pin_input.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _avatarColors = [
@@ -148,7 +149,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   // ── Bottom sheet: Absen Masuk / Pulang (card-based redesign) ──────
 
   void _showAbsenSheet(Employee e, {required bool isCheckIn}) {
-    final pinCtrl = TextEditingController();
+    final pinKey = GlobalKey<PinInputState>();
     final cashCtrl = TextEditingController();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final title = isCheckIn ? 'Absen Masuk' : 'Absen Pulang';
@@ -232,16 +233,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 ),
               ]),
               const SizedBox(height: 20),
-              // PIN input — styled as card
-              _bsInput(
-                controller: pinCtrl,
-                label: 'PIN',
-                hint: 'Masukkan PIN 4-6 digit',
-                obscure: true,
-                maxLength: 6,
-                keyboardType: TextInputType.number,
-                isDark: isDark,
-                prefixIcon: Icons.lock_outline_rounded,
+              // PIN input — 6-box visual
+              Text('PIN', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                  color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+              const SizedBox(height: 8),
+              PinInput(
+                key: pinKey,
+                autoSubmit: false,
               ),
               const SizedBox(height: 14),
               // Cash input
@@ -274,7 +272,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   flex: 2,
                   child: ElevatedButton(
                     onPressed: () async {
-                      final pin = pinCtrl.text.trim();
+                      final pin = pinKey.currentState?.text ?? '';
                       if (pin != e.pin) {
                         TopToast.error(context, 'PIN salah');
                         return;
@@ -312,7 +310,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         ),
       ),
     ).then((_) {
-      pinCtrl.dispose();
       cashCtrl.dispose();
     });
   }

@@ -1,5 +1,4 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
@@ -12,6 +11,7 @@ import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
+import 'package:nusa_kasir/shared/widgets/pin_input.dart';
 import 'package:nusa_kasir/core/widgets/nusa_loading_animation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nfc_manager/nfc_manager.dart';
@@ -47,7 +47,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   String? _keyError;
 
   // PIN input (returning user)
-  final _pinCtrl = TextEditingController();
+  final _pinKey = GlobalKey<PinInputState>();
   bool _pinLoading = false;
   String? _pinError;
   bool _rememberPin = false;
@@ -267,8 +267,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
 
   // ── PIN Login Submit (returning user) ─────────────────────────────
 
-  Future<void> _submitPin() async {
-    final pin = _pinCtrl.text.trim();
+  Future<void> _submitPin(String pin) async {
     if (pin.isEmpty) {
       setState(() => _pinError = 'Masukkan PIN');
       return;
@@ -290,6 +289,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
           );
 
       if (emp == null) {
+        _pinKey.currentState?.clear();
         setState(() {
           _pinLoading = false;
           _pinError = 'PIN salah';
@@ -377,7 +377,6 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   @override
   void dispose() {
     _keyCtrl.dispose();
-    _pinCtrl.dispose();
     super.dispose();
   }
 
@@ -735,36 +734,12 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                       style: TextStyle(fontSize: 13,
                         color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                     const SizedBox(height: 24),
-                    // PIN input
-                    TextField(
-                      controller: _pinCtrl,
-                      obscureText: true,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: 12),
-                      maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                      onSubmitted: (_) => _submitPin(),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        hintText: '••••••',
-                        hintStyle: TextStyle(color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary, fontSize: 24),
-                        filled: true,
-                        fillColor: isDark ? NusaConfig.darkBackground : const Color(0xFFF9FAFB),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: const Color(0xFFECEDEC)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: const Color(0xFFECEDEC)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFF2D79F3), width: 1.5),
-                        ),
-                      ),
+                    // PIN input — 6-box visual
+                    PinInput(
+                      key: _pinKey,
+                      onComplete: (pin) => _submitPin(pin),
+                      error: _pinError,
+                      onChanged: () { if (_pinError != null) setState(() => _pinError = null); },
                     ),
                     if (_pinError != null)
                       Padding(
@@ -800,7 +775,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: _pinLoading ? null : _submitPin,
+                        onPressed: _pinLoading ? null : () => _submitPin(_pinKey.currentState?.text ?? ''),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF151717),
                           foregroundColor: Colors.white,

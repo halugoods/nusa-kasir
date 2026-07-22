@@ -237,15 +237,22 @@ class _StockOpnameScreenState extends ConsumerState<StockOpnameScreen> {
   Widget _buildBody(bool isDark) {
     return Column(
       children: [
-        // Tab bar
-        Container(
+        // Tab bar — segmented control
+        Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
+          child: Container(
+            height: 36,
+            decoration: BoxDecoration(
+              color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor,
+              ),
+            ),
+            child: Row(children: [
               _tabBtn('Opname Aktif', 0, isDark),
-              const SizedBox(width: 8),
               _tabBtn('Riwayat', 1, isDark),
-            ],
+            ]),
           ),
         ),
         const Divider(height: 1),
@@ -258,22 +265,22 @@ class _StockOpnameScreenState extends ConsumerState<StockOpnameScreen> {
 
   Widget _tabBtn(String label, int index, bool isDark) {
     final active = _tabIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _tabIndex = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: active
-              ? NusaConfig.primaryColor
-              : (isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: active ? Colors.white : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _tabIndex = index),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active ? NusaConfig.primaryColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: active ? Colors.white : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+            ),
           ),
         ),
       ),

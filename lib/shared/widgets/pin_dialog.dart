@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/shared/widgets/pin_input.dart';
 
 /// PIN login dialog — used when an employee needs to authenticate.
 ///
@@ -60,7 +60,7 @@ class PinDialog extends StatefulWidget {
 
 class _PinDialogState extends State<PinDialog>
     with SingleTickerProviderStateMixin {
-  final _ctrl = TextEditingController();
+  final _pinKey = GlobalKey<PinInputState>();
   bool _remember = false;
   String? _error;
   late final AnimationController _shakeCtrl;
@@ -86,21 +86,18 @@ class _PinDialogState extends State<PinDialog>
 
   @override
   void dispose() {
-    _ctrl.dispose();
     _shakeCtrl.dispose();
     super.dispose();
   }
 
-  void _submit() {
-    if (_ctrl.text.trim() == widget.correctPin) {
+  void _submit(String pin) {
+    if (pin == widget.correctPin) {
       Navigator.of(context).pop(
         PinResult(success: true, remember: widget.showRemember ? _remember : false),
       );
     } else {
-      setState(() {
-        _error = 'PIN salah';
-        _ctrl.clear();
-      });
+      setState(() => _error = 'PIN salah');
+      _pinKey.currentState?.clear();
       _shakeCtrl.forward(from: 0);
     }
   }
@@ -188,59 +185,11 @@ class _PinDialogState extends State<PinDialog>
               ),
               const SizedBox(height: 24),
 
-              // PIN input
-              SizedBox(
-                width: 220,
-                child: TextField(
-                  controller: _ctrl,
-                  obscureText: true,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 12,
-                  ),
-                  maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                  decoration: InputDecoration(
-                    counterText: '',
-                    filled: true,
-                    fillColor: isDark
-                        ? NusaConfig.darkSurface2
-                        : NusaConfig.backgroundColor,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(
-                        color: _error != null
-                            ? NusaConfig.primaryColor
-                            : isDark
-                                ? NusaConfig.darkBorder
-                                : NusaConfig.borderColor,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(
-                        color: _error != null
-                            ? NusaConfig.primaryColor
-                            : isDark
-                                ? NusaConfig.darkBorder
-                                : NusaConfig.borderColor,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(
-                        color: NusaConfig.primaryColor,
-                        width: 1.8,
-                      ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        vertical: 14, horizontal: 16),
-                  ),
-                  onSubmitted: (_) => _submit(),
-                ),
+              // PIN input — 6-box visual
+              PinInput(
+                key: _pinKey,
+                onComplete: (pin) => _submit(pin),
+                error: _error,
               ),
 
               if (_error != null) ...[
@@ -320,7 +269,7 @@ class _PinDialogState extends State<PinDialog>
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _submit,
+                      onPressed: () => _submit(_pinKey.currentState?.text ?? ''),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: NusaConfig.primaryColor,
                         foregroundColor: Colors.white,

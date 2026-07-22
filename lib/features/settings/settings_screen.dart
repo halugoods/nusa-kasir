@@ -15,6 +15,7 @@ import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
+import 'package:nusa_kasir/shared/widgets/pin_input.dart';
 import 'package:nusa_kasir/features/settings/backup_sheet.dart';
 import 'package:nusa_kasir/features/settings/printer_settings_sheet.dart';
 import 'package:nusa_kasir/core/services/update_service.dart';
@@ -138,7 +139,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<bool> _showPinDialog(int employeeId, String name) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final pinCtrl = TextEditingController();
+    final pinKey = GlobalKey<PinInputState>();
     String? error;
     final result = await showDialog<bool>(
       context: context,
@@ -166,42 +167,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
           ]),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(
-              controller: pinCtrl,
-              autofocus: true,
-              obscureText: true,
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: 12),
-              decoration: InputDecoration(
-                counterText: '',
-                filled: true,
-                hintText: '····',
-                hintStyle: TextStyle(fontSize: 28, letterSpacing: 12,
-                    color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                fillColor: isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(
-                    color: error != null ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(
-                    color: error != null ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: NusaConfig.primaryColor, width: 2),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-              ),
-              onChanged: (_) {
-                if (error != null) setSt(() => error = null);
-              },
+            PinInput(
+              key: pinKey,
+              autoSubmit: false,
+              error: error,
+              onChanged: () { if (error != null) setSt(() => error = null); },
             ),
             if (error != null) ...[
               const SizedBox(height: 12),
@@ -217,7 +187,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () async {
-                  final pin = pinCtrl.text;
+                  final pin = pinKey.currentState?.text ?? '';
                   if (pin.length < 4) {
                     setSt(() => error = 'PIN minimal 4 digit');
                     return;
@@ -228,7 +198,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   if (emp != null && emp.pin == pin) {
                     if (ctx.mounted) Navigator.pop(ctx, true);
                   } else {
-                    pinCtrl.clear();
+                    pinKey.currentState?.clear();
                     setSt(() => error = 'PIN salah — coba lagi');
                   }
                 },

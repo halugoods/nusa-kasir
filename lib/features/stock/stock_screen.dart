@@ -188,14 +188,23 @@ class _StockScreenState extends ConsumerState<StockScreen> {
     return ScreenScaffold(
       _lowStockFilter ? 'Stok Menipis' : 'Stok',
       Column(children: [
-        // Tab bar
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: Row(children: [
-            _segBtn('Stok', 0, isDark: isDark),
-            const SizedBox(width: 8),
-            _segBtn('Opname', 1, isDark: isDark),
-          ]),
+        // Tab bar — segmented control
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Container(
+            height: 36,
+            decoration: BoxDecoration(
+              color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor,
+              ),
+            ),
+            child: Row(children: [
+              _segBtn('Stok', 0, isDark: isDark),
+              _segBtn('Opname', 1, isDark: isDark),
+            ]),
+          ),
         ),
         const Divider(height: 1),
         Expanded(
@@ -209,22 +218,22 @@ class _StockScreenState extends ConsumerState<StockScreen> {
 
   Widget _segBtn(String label, int idx, {bool isDark = false}) {
     final sel = idx == _tabIndex;
-    return GestureDetector(
-      onTap: () => setState(() => _tabIndex = idx),
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: sel ? NusaConfig.primaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: sel ? Colors.white : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _tabIndex = idx),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: sel ? NusaConfig.primaryColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: sel ? Colors.white : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+            ),
           ),
         ),
       ),
