@@ -587,14 +587,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        color: NusaConfig.primaryColor,
-                      ),
-                    ),
+                    const _BouncingDots(),
                     const SizedBox(height: 16),
                     Text(
                       statusText!,
@@ -966,4 +959,100 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
       ),
     );
   }
+}
+
+/// Bouncing 3-dot loading indicator — matches splash screen rhythm.
+class _BouncingDots extends StatefulWidget {
+  final double size;
+  final double spacing;
+  const _BouncingDots({this.size = 10, this.spacing = 5});
+
+  @override
+  State<_BouncingDots> createState() => _BouncingDotsState();
+}
+
+class _BouncingDotsState extends State<_BouncingDots>
+    with TickerProviderStateMixin {
+  late final List<AnimationController> _ctrls;
+  late final List<Animation<double>> _anims;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrls = List.generate(3, (_) {
+      return AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 600),
+      );
+    });
+    _anims = List.generate(3, (i) {
+      return Tween<double>(begin: 0, end: -12).animate(
+        CurvedAnimation(
+          parent: _ctrls[i],
+          curve: const Interval(0, 0.5, curve: Curves.easeOut),
+        ),
+      );
+    });
+    for (var i = 0; i < 3; i++) {
+      Future.delayed(Duration(milliseconds: i * 150), () => _loop(i));
+    }
+  }
+
+  void _loop(int i) {
+    if (!mounted) return;
+    _ctrls[i].forward().then((_) => _ctrls[i].reverse()).then((_) => _loop(i));
+  }
+
+  @override
+  void dispose() {
+    for (final c in _ctrls) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) {
+        return _AnimatedBuilder(
+          animation: _anims[i],
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(0, _anims[i].value),
+              child: child,
+            );
+          },
+          child: Container(
+            width: widget.size,
+            height: widget.size,
+            margin: EdgeInsets.symmetric(horizontal: widget.spacing),
+            decoration: const BoxDecoration(
+              color: NusaConfig.primaryColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+// Reuse AnimatedBuilder from splash screen
+class _AnimatedBuilder extends AnimatedWidget {
+  final Widget Function(BuildContext, Widget?) builder;
+  final Widget? child;
+
+  const _AnimatedBuilder({
+    super.key,
+    required Animation<double> animation,
+    required this.builder,
+    this.child,
+  }) : super(listenable: animation);
+
+  Animation<double> get animation => listenable as Animation<double>;
+
+  @override
+  Widget build(BuildContext context) => builder(context, child);
 }

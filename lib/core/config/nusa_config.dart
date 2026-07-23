@@ -4,8 +4,8 @@ abstract class NusaConfig {
   static const String appName = "NUSA";
   static const String brandName = "NUSA";
   static const String appSubtitle = "Aplikasi Kasir untuk Toko Kelontong";
-  static const String appVersion = "1.2.8";
-  static const int appBuildNumber = 58;
+  static const String appVersion = "1.2.9";
+  static const int appBuildNumber = 59;
   static const String githubRepo = "halugoods/nusa-kasir";
   static const String landingPageUrl = "https://nusa-online.vercel.app";
   static const String whatsappOrder = "https://wa.me/6281234567890?text=Halo%2C%20saya%20mau%20beli%20NUSA%20Kasir";
@@ -18,9 +18,9 @@ abstract class NusaConfig {
   // ═══════════════════════════════════════════
 
   // ── Brand colors ──
-  static const Color primaryColor = Color(0xFFE63946);
-  static const Color primaryDark = Color(0xFFC1121F);
-  static const Color primarySoft = Color(0xFFFDE8EA);
+  static const Color primaryColor = Color(0xFFE40000);   // matched to SVG icon red
+  static const Color primaryDark = Color(0xFFB80000);
+  static const Color primarySoft = Color(0xFFFFE5E6);
   static const Color backgroundColor = Color(0xFFF7F7F9);
   static const Color surfaceColor = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF1F2937);

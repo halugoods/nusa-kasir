@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../config/nusa_config.dart';
 
 /// Splash screen — fullscreen SVG logo with bouncing-dots overlay.
 ///
@@ -94,10 +95,13 @@ class _SplashScreenState extends State<SplashScreen>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Fullscreen SVG logo — cover entire screen
-          SvgPicture.asset(
-            'assets/icons/splash_nusa.svg',
-            fit: BoxFit.cover,
+          // Fullscreen SVG logo — cover entire screen, perfectly centered
+          Positioned.fill(
+            child: SvgPicture.asset(
+              'assets/icons/splash_nusa.svg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
           ),
           // Loading dots overlay at bottom center
           Positioned(
@@ -120,8 +124,8 @@ class _SplashScreenState extends State<SplashScreen>
                     width: 10,
                     height: 10,
                     margin: const EdgeInsets.symmetric(horizontal: 5),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE63946),
+                    decoration: BoxDecoration(
+                      color: NusaConfig.primaryColor,
                       shape: BoxShape.circle,
                     ),
                   ),

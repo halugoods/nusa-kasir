@@ -883,9 +883,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 20,
-                        childAspectRatio: 1.0,
+                        crossAxisSpacing: 24,
+                        mainAxisSpacing: 32,
+                        childAspectRatio: 0.72,
                         children: menuItems.map((item) {
                           return _MenuItem(
                             label: item['label'] as String,
@@ -966,7 +966,7 @@ class _MenuItem extends StatelessWidget {
                 padding: const EdgeInsets.all(4),
                 child: MenuIcon(
                   name: icon,
-                  size: 38,
+                  size: 72,
                 ),
               ),
               // Lock badge
@@ -1013,11 +1013,11 @@ class _MenuItem extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: isLocked
                   ? (isDark
