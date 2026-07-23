@@ -20,6 +20,7 @@ import 'package:nusa_kasir/shared/widgets/dashboard_header.dart';
 import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/profile_stats_card.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:nusa_kasir/shared/services/biometric_service.dart';
 
 // ignore_for_file: use_build_context_synchronously
@@ -70,7 +71,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     {'id': 'piutang', 'label': 'Piutang', 'icon': 'debt'},
     {'id': 'promo', 'label': 'Promo', 'icon': 'promotion'},
     {'id': 'pesanan_online', 'label': 'Online', 'icon': 'online'},
-    {'id': 'laporan', 'label': 'Laporan', 'icon': 'finance'},
+    {'id': 'laporan', 'label': 'Laporan', 'icon': 'report'},
     {'id': 'presensi', 'label': 'Presensi', 'icon': 'notification'},
     {'id': 'karyawan', 'label': 'Karyawan', 'icon': 'employee'},
     {'id': 'keuangan', 'label': 'Keuangan', 'icon': 'finance'},
@@ -881,10 +882,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         crossAxisCount: 3,
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 0.85,
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 20,
+                        childAspectRatio: 1.0,
                         children: menuItems.map((item) {
                           return _MenuItem(
                             label: item['label'] as String,
@@ -963,6 +964,7 @@ class _MenuItem extends StatelessWidget {
     'ai': Color(0xFFD946EF),
     'branch': NusaConfig.accentPurple,
     'debt': const Color(0xFFF97316),
+    'report': const Color(0xFF14B8A6),
     'stockcount': NusaConfig.accentGreen,
   };
 
@@ -974,99 +976,86 @@ class _MenuItem extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
-        decoration: BoxDecoration(
-          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Icon
-            Stack(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: isLocked
-                        ? (isDark ? NusaConfig.darkSurface2 : const Color(0xFFF3F4F6))
-                        : iconColor.withValues(alpha: 0.12),
-                  ),
-                  alignment: Alignment.center,
-                  child: MenuIcon(
-                    name: icon,
-                    color: isLocked
-                        ? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)
-                        : iconColor,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Icon
+          Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(4),
+                child: MenuIcon(
+                  name: icon,
+                  color: isLocked
+                      ? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)
+                      : iconColor,
+                  size: 38,
+                ),
+              ),
+              // Lock badge
+              if (isLocked)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: NusaConfig.primaryColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: isDark ? NusaConfig.darkBackground : Colors.white,
+                          width: 1.5),
+                    ),
+                    alignment: Alignment.center,
+                    child:
+                        const Text('🔒', style: TextStyle(fontSize: 7)),
                   ),
                 ),
-                // Lock badge
-                if (isLocked)
-                  Positioned(
-                    right: -2,
-                    bottom: -2,
-                    child: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: NusaConfig.primaryColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: isDark ? NusaConfig.darkSurface : Colors.white, width: 1.5),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Text('🔒', style: TextStyle(fontSize: 7)),
+              // Badge (count)
+              if (badgeCount != null && badgeCount! > 0)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: badgeColor ?? NusaConfig.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$badgeCount',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800),
                     ),
                   ),
-                // Badge (count)
-                if (badgeCount != null && badgeCount! > 0)
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: badgeColor ?? NusaConfig.primaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '$badgeCount',
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
-              ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isLocked
+                  ? (isDark
+                      ? NusaConfig.darkTextTertiary
+                      : NusaConfig.textTertiary)
+                  : (isDark
+                      ? NusaConfig.darkTextPrimary
+                      : NusaConfig.textPrimary),
             ),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isLocked
-                    ? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)
-                    : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
@@ -1129,36 +1118,41 @@ class _KeuanganSummary extends StatelessWidget {
   }
 }
 
-/// Menu icon mapping.
+/// Menu icon mapping — SVG icons from assets/icons/.
 class MenuIcon extends StatelessWidget {
   final String name;
   final Color? color;
-  const MenuIcon({super.key, required this.name, this.color});
+  final double size;
+  const MenuIcon({super.key, required this.name, this.color, this.size = 26});
 
-  static const Map<String, IconData> _map = {
-    'product': Icons.inventory_2_outlined,
-    'inventory': Icons.view_module_outlined,
-    'transaction': Icons.receipt_long_outlined,
-    'customer': Icons.people_outline,
-    'promotion': Icons.local_offer_outlined,
-    'finance': Icons.bar_chart_outlined,
-    'settings': Icons.settings_outlined,
-    'notification': Icons.notifications_outlined,
-    'table': Icons.table_chart_outlined,
-    'supplier': Icons.local_shipping_outlined,
-    'employee': Icons.people_alt_outlined,
-    'online': Icons.shopping_cart_outlined,
-    'ai': Icons.auto_awesome_outlined,
-    'branch': Icons.storefront_outlined,
-    'debt': Icons.handshake_outlined,
-    'stockcount': Icons.assignment_turned_in_outlined,
+  static const Map<String, String> _map = {
+    'product': 'assets/icons/product.svg',
+    'inventory': 'assets/icons/inventory.svg',
+    'transaction': 'assets/icons/transaction.svg',
+    'customer': 'assets/icons/customer.svg',
+    'promotion': 'assets/icons/promotion.svg',
+    'report': 'assets/icons/report.svg',
+    'finance': 'assets/icons/finance.svg',
+    'settings': 'assets/icons/settings.svg',
+    'notification': 'assets/icons/notification.svg',
+    'table': 'assets/icons/table.svg',
+    'supplier': 'assets/icons/supplier.svg',
+    'employee': 'assets/icons/employee.svg',
+    'online': 'assets/icons/online.svg',
+    'ai': 'assets/icons/ai_chat.svg',
+    'branch': 'assets/icons/branch.svg',
+    'debt': 'assets/icons/debt.svg',
+    'stockcount': 'assets/icons/inventory.svg',
   };
 
   @override
-  Widget build(BuildContext context) => Icon(
-        _map[name] ?? Icons.circle_outlined,
-        size: 26,
-        color: color,
+  Widget build(BuildContext context) => SvgPicture.asset(
+        _map[name] ?? 'assets/icons/product.svg',
+        width: size,
+        height: size,
+        colorFilter: color != null
+            ? ColorFilter.mode(color!, BlendMode.srcIn)
+            : null,
       );
 }
 

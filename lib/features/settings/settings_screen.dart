@@ -43,6 +43,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   // Fingerprint
   bool _fingerprintEnabled = false;
+  bool _fingerprintAvailable = false;  // hardware check
 
   // Feature toggles — all true by default
   Map<String, bool> _featureToggles = {};
@@ -114,6 +115,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
       // Load fingerprint state
       _fingerprintEnabled = await BiometricService.isEnabled();
+      _fingerprintAvailable = await BiometricService.isHardwareAvailable();
 
       setState(() {});
     }
@@ -255,11 +257,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   /// Toggle fingerprint login for Owner. Requires PIN verification first.
+  /// When enabling, also validates the actual fingerprint via system dialog.
   Future<void> _toggleFingerprint(bool isDark, EmployeeSession session) async {
     // Only Owner
     if (session.role != 'Owner') {
       TopToast.info(context, 'Hanya Owner yang bisa mengatur fingerprint');
       return;
+    }
+
+    // If enabling, check hardware first
+    if (!_fingerprintEnabled) {
+      final hwOk = await BiometricService.isHardwareAvailable();
+      if (!hwOk) {
+        if (mounted) {
+          TopToast.error(context, 'Device tidak mendukung fingerprint');
+        }
+        return;
+      }
     }
 
     // Verify PIN before toggling
@@ -272,13 +286,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final newVal = !_fingerprintEnabled;
 
     if (newVal) {
-      // Check hardware availability
-      final hwOk = await BiometricService.isHardwareAvailable();
-      if (!hwOk) {
+      // Validate actual fingerprint via system dialog before enabling
+      final scanned = await BiometricService.authenticate(
+        reason: 'Pindai sidik jari untuk mengaktifkan Login Fingerprint',
+      );
+      if (!scanned) {
         if (mounted) {
-          TopToast.error(context, 'Device tidak mendukung fingerprint');
+          TopToast.error(context, 'Pemindaian sidik jari gagal atau dibatalkan');
         }
-        return;
+        return; // Don't enable — fingerprint not verified
       }
 
       await BiometricService.enable();
@@ -325,7 +341,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required IconData icon,
     required String title,
     required String subtitle,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
     Color? iconColor,
     bool isDark = false,
     Widget? trailing,
@@ -1239,13 +1255,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _menuRow(
               icon: Icons.fingerprint, iconColor: NusaConfig.accentPurple,
               title: 'Login Fingerprint',
-              subtitle: _fingerprintEnabled ? 'Aktif — akses cepat pakai sidik jari' : 'Aktifkan akses cepat Owner',
+              subtitle: !_fingerprintAvailable
+                  ? 'Device tidak mendukung sidik jari'
+                  : _fingerprintEnabled
+                      ? 'Aktif — akses cepat pakai sidik jari'
+                      : 'Aktifkan akses cepat Owner',
               isDark: isDark,
-              onTap: () => _toggleFingerprint(isDark, session!),
+              onTap: _fingerprintAvailable
+                  ? () => _toggleFingerprint(isDark, session!)
+                  : null,
               trailing: Switch(
                 value: _fingerprintEnabled,
                 activeColor: NusaConfig.accentPurple,
-                onChanged: (v) => _toggleFingerprint(isDark, session!),
+                onChanged: _fingerprintAvailable
+                    ? (v) => _toggleFingerprint(isDark, session!)
+                    : null,
               ),
             ),
           ],

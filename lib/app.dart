@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:nusa_kasir/core/theme/nusa_theme.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/activation/activation_screen.dart';
+import 'package:nusa_kasir/core/widgets/splash_screen.dart';
 import 'package:nusa_kasir/features/auth/login_screen.dart';
 import 'package:nusa_kasir/features/onboarding/onboarding_screen.dart';
 import 'package:nusa_kasir/features/dashboard/dashboard_screen.dart';
@@ -36,8 +37,19 @@ import 'package:nusa_kasir/features/toko_online/storefront_screen.dart';
 import 'package:nusa_kasir/features/debts/debt_screen.dart';
 
 GoRouter buildRouter(String initialLocation) => GoRouter(
-      initialLocation: initialLocation,
+      initialLocation: '/splash',
       routes: [
+        GoRoute(
+            path: '/splash',
+            pageBuilder: (_, state) => CustomTransitionPage(
+                  key: state.pageKey,
+                  child: SplashScreen(
+                    onDone: (context) => context.go(initialLocation),
+                  ),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) =>
+                          FadeTransition(opacity: animation, child: child),
+                )),
         GoRoute(
             path: '/activation',
             pageBuilder: (_, __) => _slidePage(const ActivationScreen())),
@@ -229,7 +241,6 @@ class _NusaAppState extends ConsumerState<NusaApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeModeStr = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'NUSA Kasir',
