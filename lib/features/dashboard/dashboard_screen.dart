@@ -161,6 +161,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Future<void> _load() async {
     final name = await ref.read(settingsRepoProvider).getStoreName();
+    // Sync PIN length to provider on every load
+    final pinLen = await ref.read(settingsRepoProvider).getPinLength();
+    ref.read(pinLengthProvider.notifier).state = pinLen;
     final branches =
         await BranchRepository(ref.read(databaseProvider)).getAll();
     final now = DateTime.now();
@@ -458,6 +461,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       employeeRole: emp.role,
       correctPin: emp.pin,
       showRemember: false,
+      pinLength: ref.read(pinLengthProvider),
     );
 
     if (result == null || !result.success) {
@@ -487,6 +491,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       employeeName: emp.name,
       employeeRole: emp.role,
       correctPin: emp.pin,
+      pinLength: ref.read(pinLengthProvider),
     );
 
     if (result == null || !result.success || !mounted) return;
@@ -527,7 +532,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       _currentRole = emp.role;
       _currentEmployeeId = emp.id;
       _currentPhotoPath = emp.photoPath;
-      TopToast.success(context, 'Halo, ${emp.name}! ðŸ‘‹');
+      TopToast.success(context, 'Halo, ${emp.name}! 👋');
     }
   }
 
@@ -576,7 +581,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         startingCash: 0,
       );
       if (mounted) {
-        TopToast.success(context, 'Kasir dibuka — Halo, ${s.name}! ðŸ‘‹');
+        TopToast.success(context, 'Kasir dibuka — Halo, ${s.name}! 👋');
         context.push('/kasir?sessionId=$sessionId');
       }
     } catch (e) {
@@ -746,7 +751,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (isOwnerOnly(id) && role != 'Owner' && role != 'Manager') {
         accessType = '🔒';
       } else if (needsPinGuard(id)) {
-        accessType = 'ðŸ”';
+        accessType = '🔐';
       } else if (hasAccess(role, id)) {
         accessType = '✅';
       } else {
@@ -884,7 +889,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         physics: const NeverScrollableScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                         crossAxisSpacing: 24,
-                        mainAxisSpacing: 32,
+                        mainAxisSpacing: 24,
                         childAspectRatio: 0.72,
                         children: menuItems.map((item) {
                           return _MenuItem(
@@ -1013,7 +1018,7 @@ class _MenuItem extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Text(
             label,
             style: TextStyle(

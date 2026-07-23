@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../config/nusa_config.dart';
 
-/// Splash screen — fullscreen SVG logo with bouncing-dots overlay.
+/// Splash screen — centered SVG logo with bouncing-dots overlay.
 ///
-/// The brand SVG fills the entire screen (cover).
+/// The brand SVG is displayed centered with [BoxFit.contain] so it fits
+/// the screen without cropping. Background adapts to the current theme.
 /// A 3-dot bouncing animation is layered on top.
 /// After ~2.5 seconds, calls [onDone].
 class SplashScreen extends StatefulWidget {
@@ -90,50 +91,57 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FadeTransition(
       opacity: _fadeAnim,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Fullscreen SVG logo — cover entire screen, perfectly centered
-          Positioned.fill(
-            child: SvgPicture.asset(
-              'assets/icons/splash_nusa.svg',
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
+      child: Container(
+        color: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Centered SVG logo — contain ensures no cropping, full visibility
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+                child: SvgPicture.asset(
+                  'assets/icons/splash_nusa.svg',
+                  fit: BoxFit.contain,
+                  alignment: Alignment.center,
+                ),
+              ),
             ),
-          ),
-          // Loading dots overlay at bottom center
-          Positioned(
-            bottom: 60,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (i) {
-                return AnimatedBuilder(
-                  animation: _dotAnims[i],
-                  builder: (context, child) {
-                    return Transform.translate(
-                      offset: Offset(0, _dotAnims[i].value),
-                      child: child,
-                    );
-                  },
-                  child: Container(
-                    width: 10,
-                    height: 10,
-                    margin: const EdgeInsets.symmetric(horizontal: 5),
-                    decoration: BoxDecoration(
-                      color: NusaConfig.primaryColor,
-                      shape: BoxShape.circle,
+            // Loading dots overlay at bottom center
+            Positioned(
+              bottom: 60,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (i) {
+                  return AnimatedBuilder(
+                    animation: _dotAnims[i],
+                    builder: (context, child) {
+                      return Transform.translate(
+                        offset: Offset(0, _dotAnims[i].value),
+                        child: child,
+                      );
+                    },
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      margin: const EdgeInsets.symmetric(horizontal: 5),
+                      decoration: BoxDecoration(
+                        color: NusaConfig.primaryColor,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

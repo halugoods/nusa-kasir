@@ -146,7 +146,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     if (widget.sessionId == null) { if (mounted) context.go('/home'); return; }
     final repo = CashierSessionRepository(ref.read(databaseProvider));
     await repo.close(widget.sessionId!);
-    if (mounted) { context.go('/home'); TopToast.success(context, 'Kasir ditutup. Sampai jumpa! ðŸ‘‹'); }
+    if (mounted) { context.go('/home'); TopToast.success(context, 'Kasir ditutup. Sampai jumpa! 👋'); }
   }
 
   @override

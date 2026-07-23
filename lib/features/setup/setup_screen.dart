@@ -44,7 +44,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       return;
     }
     if (pin.length < 4 || pin.length > 6) {
-      setState(() => _error = 'PIN harus 4–6 digit');
+      setState(() => _error = 'PIN harus 4–6 digit angka');
       return;
     }
     if (int.tryParse(pin) == null) {
@@ -243,7 +243,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
                         const SizedBox(height: 24),
                         NusaButton(
-                          _loading ? 'Menyimpan...' : 'Mulai Buka Toko ðŸš€',
+                          _loading ? 'Menyimpan...' : 'Mulai Buka Toko 🚀',
                           onPressed: _loading ? null : _submit,
                         ),
                       ],

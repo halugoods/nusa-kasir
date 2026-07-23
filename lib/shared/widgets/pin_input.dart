@@ -2,22 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 
-/// 6-box PIN input with a hidden TextField for seamless paste/continuous typing.
+/// PIN input with configurable [length] (4 or 6 digits).
 ///
-/// Visually shows 6 separate rounded boxes but accepts input as one continuous
-/// stream — the user can type fast or paste a full PIN without interruption.
+/// Visually shows N rounded boxes behind a hidden TextField for seamless
+/// typing/pasting. Boxes auto-size via LayoutBuilder so they fit inside
+/// dialogs and bottom sheets without overflowing.
 ///
-/// Boxes auto-size via LayoutBuilder so they fit inside dialogs and bottom sheets
-/// without overflowing. Max size: 48×56, min size: 36×42.
-///
-/// When [autoSubmit] is true (default), [onComplete] fires automatically when
-/// all 6 digits are entered. When false, read [PinInputState.text] manually.
+/// When [autoSubmit] is true (default), [onComplete] fires automatically
+/// when all [length] digits are entered. When false, read [PinInputState.text].
 class PinInput extends StatefulWidget {
   final void Function(String pin)? onComplete;
   final String? error;
   final bool autofocus;
   final VoidCallback? onChanged;
   final bool autoSubmit;
+  final int length;
 
   const PinInput({
     super.key,
@@ -26,7 +25,8 @@ class PinInput extends StatefulWidget {
     this.autofocus = true,
     this.onChanged,
     this.autoSubmit = true,
-  });
+    this.length = 6,
+  }) : assert(length == 4 || length == 6);
 
   @override
   PinInputState createState() => PinInputState();
@@ -61,14 +61,16 @@ class PinInputState extends State<PinInput> {
 
   void _onChanged(String value) {
     final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.length > 6) {
-      _ctrl.text = _text = digits.substring(0, 6);
-      _ctrl.selection = TextSelection.collapsed(offset: 6);
+    if (digits.length > widget.length) {
+      _ctrl.text = _text = digits.substring(0, widget.length);
+      _ctrl.selection = TextSelection.collapsed(offset: widget.length);
     } else {
       _text = digits;
     }
     widget.onChanged?.call();
-    if (widget.autoSubmit && _text.length == 6 && widget.onComplete != null) {
+    if (widget.autoSubmit &&
+        _text.length == widget.length &&
+        widget.onComplete != null) {
       widget.onComplete!(_text);
     }
     setState(() {});
@@ -80,13 +82,15 @@ class PinInputState extends State<PinInput> {
     final hasError = widget.error != null;
     final focused = _focusNode.hasFocus;
     final len = _text.length;
+    final count = widget.length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         // Responsive box sizing — fits tight dialogs, capped at 48×56 on wide screens
         const gap = 8.0;
-        const totalGaps = 5 * gap;
-        final boxW = ((constraints.maxWidth - totalGaps) / 6).clamp(36.0, 48.0);
+        final totalGaps = (count - 1) * gap;
+        final boxW =
+            ((constraints.maxWidth - totalGaps) / count).clamp(36.0, 48.0);
         final boxH = boxW * 56 / 48;
         final dotSize = boxW * 26 / 48;
         final radius = boxW * 14 / 48;
@@ -102,7 +106,7 @@ class PinInputState extends State<PinInput> {
                 focusNode: _focusNode,
                 autofocus: widget.autofocus,
                 keyboardType: TextInputType.number,
-                maxLength: 6,
+                maxLength: count,
                 maxLengthEnforcement: MaxLengthEnforcement.enforced,
                 onChanged: _onChanged,
                 style: const TextStyle(fontSize: 1, color: Colors.transparent),
@@ -117,7 +121,7 @@ class PinInputState extends State<PinInput> {
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(6, (i) {
+              children: List.generate(count, (i) {
                 final filled = i < len;
                 final isCurrent = i == len;
                 return Padding(
@@ -126,7 +130,9 @@ class PinInputState extends State<PinInput> {
                     width: boxW,
                     height: boxH,
                     decoration: BoxDecoration(
-                      color: isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
+                      color: isDark
+                          ? NusaConfig.darkSurface2
+                          : NusaConfig.backgroundColor,
                       borderRadius: BorderRadius.circular(radius),
                       border: Border.all(
                         color: hasError
@@ -144,7 +150,7 @@ class PinInputState extends State<PinInput> {
                         ? FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
-                              '•',
+                              '\u2022',
                               style: TextStyle(
                                 fontSize: dotSize,
                                 fontWeight: FontWeight.w700,

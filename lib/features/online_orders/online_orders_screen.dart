@@ -585,7 +585,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
                         color: const Color(0xFF25D366).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text('ðŸ’¬ WA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF128C7E))),
+                      child: const Text('💬 WA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF128C7E))),
                     ),
                   ),
               ],
@@ -597,7 +597,7 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
             child: GestureDetector(
               onTap: order.customerPhone.isNotEmpty ? () => _openWA(order) : null,
               child: Text(
-                order.customerPhone.isNotEmpty ? 'ðŸ“± ${order.customerPhone}' : 'Tanpa nomor WA',
+                order.customerPhone.isNotEmpty ? '📱 ${order.customerPhone}' : 'Tanpa nomor WA',
                 style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, decoration: order.customerPhone.isNotEmpty ? TextDecoration.underline : null),
               ),
             ),

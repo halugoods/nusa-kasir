@@ -8249,6 +8249,18 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     requiredDuringInsert: false,
     defaultValue: const Constant('58mm'),
   );
+  static const VerificationMeta _pinLengthMeta = const VerificationMeta(
+    'pinLength',
+  );
+  @override
+  late final GeneratedColumn<int> pinLength = GeneratedColumn<int>(
+    'pin_length',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(6),
+  );
   static const VerificationMeta _receiptShowLogoMeta = const VerificationMeta(
     'receiptShowLogo',
   );
@@ -8346,6 +8358,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     qrisImagePath,
     receiptHeader,
     receiptPaperSize,
+    pinLength,
     receiptShowLogo,
     receiptShowCashier,
     receiptShowInvoice,
@@ -8541,6 +8554,12 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
       );
     }
+    if (data.containsKey('pin_length')) {
+      context.handle(
+        _pinLengthMeta,
+        pinLength.isAcceptableOrUnknown(data['pin_length']!, _pinLengthMeta),
+      );
+    }
     if (data.containsKey('receipt_show_logo')) {
       context.handle(
         _receiptShowLogoMeta,
@@ -8687,6 +8706,10 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.string,
         data['${effectivePrefix}receipt_paper_size'],
       )!,
+      pinLength: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pin_length'],
+      )!,
       receiptShowLogo: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}receipt_show_logo'],
@@ -8740,6 +8763,7 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String? qrisImagePath;
   final String? receiptHeader;
   final String receiptPaperSize;
+  final int pinLength;
   final bool receiptShowLogo;
   final bool receiptShowCashier;
   final bool receiptShowInvoice;
@@ -8769,6 +8793,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.qrisImagePath,
     this.receiptHeader,
     required this.receiptPaperSize,
+    required this.pinLength,
     required this.receiptShowLogo,
     required this.receiptShowCashier,
     required this.receiptShowInvoice,
@@ -8827,6 +8852,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       map['receipt_header'] = Variable<String>(receiptHeader);
     }
     map['receipt_paper_size'] = Variable<String>(receiptPaperSize);
+    map['pin_length'] = Variable<int>(pinLength);
     map['receipt_show_logo'] = Variable<bool>(receiptShowLogo);
     map['receipt_show_cashier'] = Variable<bool>(receiptShowCashier);
     map['receipt_show_invoice'] = Variable<bool>(receiptShowInvoice);
@@ -8886,6 +8912,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ? const Value.absent()
           : Value(receiptHeader),
       receiptPaperSize: Value(receiptPaperSize),
+      pinLength: Value(pinLength),
       receiptShowLogo: Value(receiptShowLogo),
       receiptShowCashier: Value(receiptShowCashier),
       receiptShowInvoice: Value(receiptShowInvoice),
@@ -8923,6 +8950,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       qrisImagePath: serializer.fromJson<String?>(json['qrisImagePath']),
       receiptHeader: serializer.fromJson<String?>(json['receiptHeader']),
       receiptPaperSize: serializer.fromJson<String>(json['receiptPaperSize']),
+      pinLength: serializer.fromJson<int>(json['pinLength']),
       receiptShowLogo: serializer.fromJson<bool>(json['receiptShowLogo']),
       receiptShowCashier: serializer.fromJson<bool>(json['receiptShowCashier']),
       receiptShowInvoice: serializer.fromJson<bool>(json['receiptShowInvoice']),
@@ -8957,6 +8985,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       'qrisImagePath': serializer.toJson<String?>(qrisImagePath),
       'receiptHeader': serializer.toJson<String?>(receiptHeader),
       'receiptPaperSize': serializer.toJson<String>(receiptPaperSize),
+      'pinLength': serializer.toJson<int>(pinLength),
       'receiptShowLogo': serializer.toJson<bool>(receiptShowLogo),
       'receiptShowCashier': serializer.toJson<bool>(receiptShowCashier),
       'receiptShowInvoice': serializer.toJson<bool>(receiptShowInvoice),
@@ -8989,6 +9018,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<String?> qrisImagePath = const Value.absent(),
     Value<String?> receiptHeader = const Value.absent(),
     String? receiptPaperSize,
+    int? pinLength,
     bool? receiptShowLogo,
     bool? receiptShowCashier,
     bool? receiptShowInvoice,
@@ -9026,6 +9056,7 @@ class Setting extends DataClass implements Insertable<Setting> {
         ? receiptHeader.value
         : this.receiptHeader,
     receiptPaperSize: receiptPaperSize ?? this.receiptPaperSize,
+    pinLength: pinLength ?? this.pinLength,
     receiptShowLogo: receiptShowLogo ?? this.receiptShowLogo,
     receiptShowCashier: receiptShowCashier ?? this.receiptShowCashier,
     receiptShowInvoice: receiptShowInvoice ?? this.receiptShowInvoice,
@@ -9093,6 +9124,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       receiptPaperSize: data.receiptPaperSize.present
           ? data.receiptPaperSize.value
           : this.receiptPaperSize,
+      pinLength: data.pinLength.present ? data.pinLength.value : this.pinLength,
       receiptShowLogo: data.receiptShowLogo.present
           ? data.receiptShowLogo.value
           : this.receiptShowLogo,
@@ -9137,6 +9169,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('qrisImagePath: $qrisImagePath, ')
           ..write('receiptHeader: $receiptHeader, ')
           ..write('receiptPaperSize: $receiptPaperSize, ')
+          ..write('pinLength: $pinLength, ')
           ..write('receiptShowLogo: $receiptShowLogo, ')
           ..write('receiptShowCashier: $receiptShowCashier, ')
           ..write('receiptShowInvoice: $receiptShowInvoice, ')
@@ -9171,6 +9204,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     qrisImagePath,
     receiptHeader,
     receiptPaperSize,
+    pinLength,
     receiptShowLogo,
     receiptShowCashier,
     receiptShowInvoice,
@@ -9204,6 +9238,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.qrisImagePath == this.qrisImagePath &&
           other.receiptHeader == this.receiptHeader &&
           other.receiptPaperSize == this.receiptPaperSize &&
+          other.pinLength == this.pinLength &&
           other.receiptShowLogo == this.receiptShowLogo &&
           other.receiptShowCashier == this.receiptShowCashier &&
           other.receiptShowInvoice == this.receiptShowInvoice &&
@@ -9235,6 +9270,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String?> qrisImagePath;
   final Value<String?> receiptHeader;
   final Value<String> receiptPaperSize;
+  final Value<int> pinLength;
   final Value<bool> receiptShowLogo;
   final Value<bool> receiptShowCashier;
   final Value<bool> receiptShowInvoice;
@@ -9264,6 +9300,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.qrisImagePath = const Value.absent(),
     this.receiptHeader = const Value.absent(),
     this.receiptPaperSize = const Value.absent(),
+    this.pinLength = const Value.absent(),
     this.receiptShowLogo = const Value.absent(),
     this.receiptShowCashier = const Value.absent(),
     this.receiptShowInvoice = const Value.absent(),
@@ -9294,6 +9331,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.qrisImagePath = const Value.absent(),
     this.receiptHeader = const Value.absent(),
     this.receiptPaperSize = const Value.absent(),
+    this.pinLength = const Value.absent(),
     this.receiptShowLogo = const Value.absent(),
     this.receiptShowCashier = const Value.absent(),
     this.receiptShowInvoice = const Value.absent(),
@@ -9324,6 +9362,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<String>? qrisImagePath,
     Expression<String>? receiptHeader,
     Expression<String>? receiptPaperSize,
+    Expression<int>? pinLength,
     Expression<bool>? receiptShowLogo,
     Expression<bool>? receiptShowCashier,
     Expression<bool>? receiptShowInvoice,
@@ -9354,6 +9393,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (qrisImagePath != null) 'qris_image_path': qrisImagePath,
       if (receiptHeader != null) 'receipt_header': receiptHeader,
       if (receiptPaperSize != null) 'receipt_paper_size': receiptPaperSize,
+      if (pinLength != null) 'pin_length': pinLength,
       if (receiptShowLogo != null) 'receipt_show_logo': receiptShowLogo,
       if (receiptShowCashier != null)
         'receipt_show_cashier': receiptShowCashier,
@@ -9389,6 +9429,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String?>? qrisImagePath,
     Value<String?>? receiptHeader,
     Value<String>? receiptPaperSize,
+    Value<int>? pinLength,
     Value<bool>? receiptShowLogo,
     Value<bool>? receiptShowCashier,
     Value<bool>? receiptShowInvoice,
@@ -9419,6 +9460,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       qrisImagePath: qrisImagePath ?? this.qrisImagePath,
       receiptHeader: receiptHeader ?? this.receiptHeader,
       receiptPaperSize: receiptPaperSize ?? this.receiptPaperSize,
+      pinLength: pinLength ?? this.pinLength,
       receiptShowLogo: receiptShowLogo ?? this.receiptShowLogo,
       receiptShowCashier: receiptShowCashier ?? this.receiptShowCashier,
       receiptShowInvoice: receiptShowInvoice ?? this.receiptShowInvoice,
@@ -9499,6 +9541,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (receiptPaperSize.present) {
       map['receipt_paper_size'] = Variable<String>(receiptPaperSize.value);
     }
+    if (pinLength.present) {
+      map['pin_length'] = Variable<int>(pinLength.value);
+    }
     if (receiptShowLogo.present) {
       map['receipt_show_logo'] = Variable<bool>(receiptShowLogo.value);
     }
@@ -9543,6 +9588,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('qrisImagePath: $qrisImagePath, ')
           ..write('receiptHeader: $receiptHeader, ')
           ..write('receiptPaperSize: $receiptPaperSize, ')
+          ..write('pinLength: $pinLength, ')
           ..write('receiptShowLogo: $receiptShowLogo, ')
           ..write('receiptShowCashier: $receiptShowCashier, ')
           ..write('receiptShowInvoice: $receiptShowInvoice, ')
@@ -17844,6 +17890,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> qrisImagePath,
       Value<String?> receiptHeader,
       Value<String> receiptPaperSize,
+      Value<int> pinLength,
       Value<bool> receiptShowLogo,
       Value<bool> receiptShowCashier,
       Value<bool> receiptShowInvoice,
@@ -17875,6 +17922,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> qrisImagePath,
       Value<String?> receiptHeader,
       Value<String> receiptPaperSize,
+      Value<int> pinLength,
       Value<bool> receiptShowLogo,
       Value<bool> receiptShowCashier,
       Value<bool> receiptShowInvoice,
@@ -18003,6 +18051,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<String> get receiptPaperSize => $composableBuilder(
     column: $table.receiptPaperSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pinLength => $composableBuilder(
+    column: $table.pinLength,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18156,6 +18209,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get pinLength => $composableBuilder(
+    column: $table.pinLength,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get receiptShowLogo => $composableBuilder(
     column: $table.receiptShowLogo,
     builder: (column) => ColumnOrderings(column),
@@ -18296,6 +18354,9 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get pinLength =>
+      $composableBuilder(column: $table.pinLength, builder: (column) => column);
+
   GeneratedColumn<bool> get receiptShowLogo => $composableBuilder(
     column: $table.receiptShowLogo,
     builder: (column) => column,
@@ -18373,6 +18434,7 @@ class $$SettingsTableTableManager
                 Value<String?> qrisImagePath = const Value.absent(),
                 Value<String?> receiptHeader = const Value.absent(),
                 Value<String> receiptPaperSize = const Value.absent(),
+                Value<int> pinLength = const Value.absent(),
                 Value<bool> receiptShowLogo = const Value.absent(),
                 Value<bool> receiptShowCashier = const Value.absent(),
                 Value<bool> receiptShowInvoice = const Value.absent(),
@@ -18402,6 +18464,7 @@ class $$SettingsTableTableManager
                 qrisImagePath: qrisImagePath,
                 receiptHeader: receiptHeader,
                 receiptPaperSize: receiptPaperSize,
+                pinLength: pinLength,
                 receiptShowLogo: receiptShowLogo,
                 receiptShowCashier: receiptShowCashier,
                 receiptShowInvoice: receiptShowInvoice,
@@ -18433,6 +18496,7 @@ class $$SettingsTableTableManager
                 Value<String?> qrisImagePath = const Value.absent(),
                 Value<String?> receiptHeader = const Value.absent(),
                 Value<String> receiptPaperSize = const Value.absent(),
+                Value<int> pinLength = const Value.absent(),
                 Value<bool> receiptShowLogo = const Value.absent(),
                 Value<bool> receiptShowCashier = const Value.absent(),
                 Value<bool> receiptShowInvoice = const Value.absent(),
@@ -18462,6 +18526,7 @@ class $$SettingsTableTableManager
                 qrisImagePath: qrisImagePath,
                 receiptHeader: receiptHeader,
                 receiptPaperSize: receiptPaperSize,
+                pinLength: pinLength,
                 receiptShowLogo: receiptShowLogo,
                 receiptShowCashier: receiptShowCashier,
                 receiptShowInvoice: receiptShowInvoice,

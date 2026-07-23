@@ -45,6 +45,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _fingerprintEnabled = false;
   bool _fingerprintAvailable = false;  // hardware check
 
+  // PIN length
+  int _pinLength = 6;
+
   // Feature toggles — all true by default
   Map<String, bool> _featureToggles = {};
   static const _featureToggleKey = 'nusa_feature_toggles';
@@ -117,6 +120,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _fingerprintEnabled = await BiometricService.isEnabled();
       _fingerprintAvailable = await BiometricService.isHardwareAvailable();
 
+      // Load PIN length
+      _pinLength = await repo.getPinLength();
+      ref.read(pinLengthProvider.notifier).state = _pinLength;
+
       setState(() {});
     }
   }
@@ -182,6 +189,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               key: pinKey,
               autoSubmit: false,
               error: error,
+              length: _pinLength,
               onChanged: () { if (error != null) setSt(() => error = null); },
             ),
             if (error != null) ...[
@@ -199,8 +207,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: ElevatedButton(
                 onPressed: () async {
                   final pin = pinKey.currentState?.text ?? '';
-                  if (pin.length < 4) {
-                    setSt(() => error = 'PIN minimal 4 digit');
+                  if (pin.length < _pinLength) {
+                    setSt(() => error = 'PIN harus $_pinLength digit');
                     return;
                   }
                   final repo = AttendanceRepository(ref.read(databaseProvider));
@@ -305,6 +313,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (mounted) {
       setState(() => _fingerprintEnabled = newVal);
       TopToast.success(context, newVal ? 'Fingerprint diaktifkan' : 'Fingerprint dinonaktifkan');
+    }
+  }
+
+  /// Change PIN length: 4 or 6 digits. Owner only. Requires PIN verification.
+  Future<void> _changePinLength(bool isDark) async {
+    final session = ref.read(employeeSessionProvider);
+    if (session == null || session.role != 'Owner') return;
+
+    // Verify PIN first
+    final ok = await _showPinDialog(session.employeeId, session.name);
+    if (!ok) {
+      if (mounted) TopToast.error(context, 'Verifikasi PIN gagal');
+      return;
+    }
+
+    final newVal = _pinLength == 6 ? 4 : 6;
+    final repo = ref.read(settingsRepoProvider);
+    await repo.setPinLength(newVal);
+
+    if (mounted) {
+      setState(() => _pinLength = newVal);
+      ref.read(pinLengthProvider.notifier).state = newVal;
+      TopToast.success(context, 'PIN diubah ke $newVal digit');
     }
   }
 
@@ -1271,6 +1302,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ? (v) => _toggleFingerprint(isDark, session!)
                     : null,
               ),
+            ),
+            // PIN Length — Owner only
+            const SizedBox(height: 12),
+            _menuRow(
+              icon: Icons.pin, iconColor: NusaConfig.primaryColor,
+              title: 'Panjang PIN',
+              subtitle: '$_pinLength digit — semua PIN di aplikasi mengikuti ini',
+              isDark: isDark,
+              onTap: () => _changePinLength(isDark),
+              trailing: Icon(Icons.chevron_right, size: 20,
+                  color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
             ),
           ],
 

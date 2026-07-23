@@ -293,6 +293,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               key: _pinKey,
               autoSubmit: false,
               error: _error,
+              length: ref.watch(pinLengthProvider),
               onChanged: () { if (_error != null) setState(() => _error = null); },
             ),
             if (_error != null) ...[

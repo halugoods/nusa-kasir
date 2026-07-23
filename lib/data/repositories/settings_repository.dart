@@ -203,6 +203,17 @@ class SettingsRepository {
         .write(SettingsCompanion(waTemplates: Value(json)));
   }
 
+  // ── PIN length config (4 or 6) ──
+  Future<int> getPinLength() async =>
+      (await db.select(db.settings).getSingleOrNull())?.pinLength ?? 6;
+
+  Future<void> setPinLength(int length) async {
+    assert(length == 4 || length == 6);
+    await ensureRow();
+    await (db.update(db.settings)..where((t) => t.id.equals(1)))
+        .write(SettingsCompanion(pinLength: Value(length)));
+  }
+
   // ── Point system config ──
   Future<Map<String, int>> getPointConfig() async {
     final row = await db.select(db.settings).getSingleOrNull();

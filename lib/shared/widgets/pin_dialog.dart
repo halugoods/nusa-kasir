@@ -1,18 +1,15 @@
-﻿import 'package:flutter/material.dart';
-import 'package:nusa_kasir/core/config/nusa_config.dart';
-import 'package:nusa_kasir/shared/widgets/pin_input.dart';
+import 'package:flutter/material.dart';
+import 'package:nusa_kasir/shared/widgets/pin_pad.dart';
 
-/// PIN login dialog — used when an employee needs to authenticate.
+/// PIN authentication — now uses the custom PinPad (mobile-banking style).
 ///
-/// Shows the employee name and role, a PIN input (4-6 digits, obscured),
-/// a "Remember PIN for 8 hours" checkbox, and Masuk/Batal buttons.
+/// Shows the employee name and role, a branded numeric keypad (4 or 6 digits),
+/// an optional fingerprint button, and NFC auto-detect readiness.
 ///
 /// Call [show] and check the returned [PinResult]:
 /// ```dart
 /// final result = await PinDialog.show(context: ..., ...);
-/// if (result?.success == true) {
-///   // authenticated; result!.remember indicates whether to save session
-/// }
+/// if (result?.success == true) { ... }
 /// ```
 class PinResult {
   final bool success;
@@ -20,11 +17,14 @@ class PinResult {
   const PinResult({required this.success, required this.remember});
 }
 
-class PinDialog extends StatefulWidget {
+class PinDialog extends StatelessWidget {
   final String employeeName;
   final String employeeRole;
   final String correctPin;
   final bool showRemember;
+  final int pinLength;
+  final bool showFingerprint;
+  final Future<bool> Function()? onFingerprint;
 
   const PinDialog({
     super.key,
@@ -32,6 +32,9 @@ class PinDialog extends StatefulWidget {
     required this.employeeRole,
     required this.correctPin,
     this.showRemember = true,
+    this.pinLength = 6,
+    this.showFingerprint = false,
+    this.onFingerprint,
   });
 
   /// Show the dialog. Returns [PinResult] or null if cancelled.
@@ -41,275 +44,38 @@ class PinDialog extends StatefulWidget {
     required String employeeRole,
     required String correctPin,
     bool showRemember = true,
-  }) {
-    return showDialog<PinResult>(
+    int pinLength = 6,
+    bool showFingerprint = false,
+    Future<bool> Function()? onFingerprint,
+  }) async {
+    // Use custom PinPad (mobile-banking style) by default
+    final padResult = await showDialog<PinPadResult>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => PinDialog(
+      builder: (_) => PinPad(
         employeeName: employeeName,
         employeeRole: employeeRole,
         correctPin: correctPin,
-        showRemember: showRemember,
+        pinLength: pinLength,
+        showFingerprint: showFingerprint,
+        onFingerprint: onFingerprint,
       ),
     );
-  }
 
-  @override
-  State<PinDialog> createState() => _PinDialogState();
-}
-
-class _PinDialogState extends State<PinDialog>
-    with SingleTickerProviderStateMixin {
-  final _pinKey = GlobalKey<PinInputState>();
-  bool _remember = false;
-  String? _error;
-  late final AnimationController _shakeCtrl;
-  late final Animation<double> _shakeAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _shakeCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _shakeAnim = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0, end: 10), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: 10, end: -10), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: -10, end: 10), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: 10, end: 0), weight: 1),
-    ]).animate(CurvedAnimation(
-      parent: _shakeCtrl,
-      curve: Curves.easeInOut,
-    ));
-  }
-
-  @override
-  void dispose() {
-    _shakeCtrl.dispose();
-    super.dispose();
-  }
-
-  void _submit(String pin) {
-    if (pin == widget.correctPin) {
-      Navigator.of(context).pop(
-        PinResult(success: true, remember: widget.showRemember ? _remember : false),
-      );
-    } else {
-      setState(() => _error = 'PIN salah');
-      _pinKey.currentState?.clear();
-      _shakeCtrl.forward(from: 0);
-    }
-  }
-
-  Color? _roleColor(bool isDark) {
-    switch (widget.employeeRole) {
-      case 'Owner':
-        return NusaConfig.primaryColor;
-      case 'Manager':
-        return NusaConfig.accentPurple;
-      case 'Kasir':
-        return NusaConfig.accentGreen;
-      case 'Gudang':
-        return const Color(0xFFF59E0B);
-      case 'Finance':
-        return const Color(0xFF3B82F6);
-      default:
-        return isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
-    }
+    if (padResult == null) return null;
+    return PinResult(success: padResult.success, remember: showRemember);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: AnimatedBuilder(
-        animation: _shakeAnim,
-        builder: (context, child) {
-          return Transform.translate(
-            offset: Offset(_shakeAnim.value, 0),
-            child: child,
-          );
-        },
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header — avatar + name + role
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  color: (_roleColor(isDark) ?? NusaConfig.primaryColor)
-                      .withValues(alpha: 0.12),
-                ),
-                child: Icon(
-                  Icons.person_rounded,
-                  size: 36,
-                  color: _roleColor(isDark) ?? NusaConfig.primaryColor,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                widget.employeeName,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color:
-                      isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: (_roleColor(isDark) ?? NusaConfig.primaryColor)
-                      .withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  widget.employeeRole,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _roleColor(isDark) ?? NusaConfig.primaryColor,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // PIN input — 6-box visual
-              PinInput(
-                key: _pinKey,
-                onComplete: (pin) => _submit(pin),
-                error: _error,
-              ),
-
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _error!,
-                  style: const TextStyle(
-                    color: NusaConfig.primaryColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 16),
-
-              // Remember checkbox (only for login, not for buka kasir PIN re-entry)
-              if (widget.showRemember) ...[
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: Checkbox(
-                        value: _remember,
-                        onChanged: (v) =>
-                            setState(() => _remember = v ?? false),
-                        activeColor: NusaConfig.primaryColor,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () =>
-                          setState(() => _remember = !_remember),
-                      child: Text(
-                        'Ingat PIN selama 8 jam',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark
-                              ? NusaConfig.darkTextSecondary
-                              : isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-
-              const SizedBox(height: 24),
-
-              // Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed:
-                          () => Navigator.of(context).pop(null),
-                      style: OutlinedButton.styleFrom(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        side: BorderSide(
-                          color: isDark
-                              ? NusaConfig.darkBorder
-                              : NusaConfig.dividerColor,
-                        ),
-                      ),
-                      child: const Text('Batal'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => _submit(_pinKey.currentState?.text ?? ''),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: NusaConfig.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Masuk',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    // Fallback — normally PinDialog.show() uses PinPad directly
+    return PinPad(
+      employeeName: employeeName,
+      employeeRole: employeeRole,
+      correctPin: correctPin,
+      pinLength: pinLength,
+      showFingerprint: showFingerprint,
+      onFingerprint: onFingerprint,
     );
   }
-}
-
-/// Simple AnimatedBuilder that works with Flutter 3.44.
-class AnimatedBuilder extends AnimatedWidget {
-  final Widget Function(BuildContext, Widget?) builder;
-  final Widget? child;
-
-  const AnimatedBuilder({
-    super.key,
-    required Animation<double> animation,
-    required this.builder,
-    this.child,
-  }) : super(listenable: animation);
-
-  Animation<double> get animation => listenable as Animation<double>;
-
-  @override
-  Widget build(BuildContext context) => builder(context, child);
 }

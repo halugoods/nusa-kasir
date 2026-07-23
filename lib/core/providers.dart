@@ -45,3 +45,7 @@ final onlineOrderRepoProvider =
 
 /// Feature toggles — which menu items show on Home Screen.
 final featureTogglesProvider = StateProvider<Map<String, bool>>((ref) => {});
+
+/// PIN length preference (4 or 6 digits). Default 6.
+/// Loaded from settings DB on app init, mutated by settings screen.
+final pinLengthProvider = StateProvider<int>((ref) => 6);

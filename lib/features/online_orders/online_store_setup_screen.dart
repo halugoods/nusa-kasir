@@ -251,7 +251,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
                     child: Column(
                       children: [
                         Text(
-                          _isActive ? 'ðŸŸ¢ Toko Online Aktif' : '⚪ Toko Online Nonaktif',
+                          _isActive ? '🟢 Toko Online Aktif' : '⚪ Toko Online Nonaktif',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 17,

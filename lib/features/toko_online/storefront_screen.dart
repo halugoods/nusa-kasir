@@ -200,7 +200,7 @@ class _StorefrontScreenState extends ConsumerState<StorefrontScreen> {
     ).join('\n');
     final msg = Uri.encodeComponent(
       '🛒 *Pesanan Baru*\n\n'
-      '👤 $name\nðŸ“± $phone\n🏪 $_branch\n💳 $_paymentMethod\n\n'
+      '👤 $name\n📱 $phone\n🏪 $_branch\n💳 $_paymentMethod\n\n'
       '*Item:*\n$itemsText\n\n'
       '*Total: ${formatRupiah(_totalPrice)}*');
     final targetPhone = _storePhone ?? '';

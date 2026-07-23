@@ -191,6 +191,7 @@ class Settings extends Table {
   // ── Receipt advanced ──
   TextColumn get receiptHeader => text().nullable()();
   TextColumn get receiptPaperSize => text().withDefault(const Constant('58mm'))();
+  IntColumn get pinLength => integer().withDefault(const Constant(6))();
   BoolColumn get receiptShowLogo => boolean().withDefault(const Constant(true))();
   BoolColumn get receiptShowCashier => boolean().withDefault(const Constant(true))();
   BoolColumn get receiptShowInvoice => boolean().withDefault(const Constant(true))();
