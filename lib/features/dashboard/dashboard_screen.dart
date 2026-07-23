@@ -948,31 +948,10 @@ class _MenuItem extends StatelessWidget {
     this.badgeColor,
   });
 
-  static const _iconColors = {
-    'product': NusaConfig.accentGreen,
-    'inventory': Color(0xFF6366F1),
-    'transaction': Color(0xFF3B82F6),
-    'customer': Color(0xFFEC4899),
-    'promotion': NusaConfig.accentGold,
-    'finance': Color(0xFF14B8A6),
-    'settings': Color(0xFF6B7280),
-    'notification': NusaConfig.primaryColor,
-    'table': NusaConfig.accentGreen,
-    'supplier': Color(0xFFF97316),
-    'employee': NusaConfig.accentPurple,
-    'online': Color(0xFF0EA5E9),
-    'ai': Color(0xFFD946EF),
-    'branch': NusaConfig.accentPurple,
-    'debt': const Color(0xFFF97316),
-    'report': const Color(0xFF14B8A6),
-    'stockcount': NusaConfig.accentGreen,
-  };
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isLocked = access == '🔒';
-    final iconColor = _iconColors[icon] ?? NusaConfig.primaryColor;
 
     return GestureDetector(
       onTap: onTap,
@@ -987,9 +966,6 @@ class _MenuItem extends StatelessWidget {
                 padding: const EdgeInsets.all(4),
                 child: MenuIcon(
                   name: icon,
-                  color: isLocked
-                      ? (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)
-                      : iconColor,
                   size: 38,
                 ),
               ),
@@ -1121,9 +1097,8 @@ class _KeuanganSummary extends StatelessWidget {
 /// Menu icon mapping — SVG icons from assets/icons/.
 class MenuIcon extends StatelessWidget {
   final String name;
-  final Color? color;
   final double size;
-  const MenuIcon({super.key, required this.name, this.color, this.size = 26});
+  const MenuIcon({super.key, required this.name, this.size = 26});
 
   static const Map<String, String> _map = {
     'product': 'assets/icons/product.svg',
@@ -1150,9 +1125,6 @@ class MenuIcon extends StatelessWidget {
         _map[name] ?? 'assets/icons/product.svg',
         width: size,
         height: size,
-        colorFilter: color != null
-            ? ColorFilter.mode(color!, BlendMode.srcIn)
-            : null,
       );
 }
 

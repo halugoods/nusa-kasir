@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-/// Splash screen shown on app startup — SVG logo + bouncing dots loading animation.
+/// Splash screen — fullscreen SVG logo with bouncing-dots overlay.
 ///
-/// Displays the brand logo SVG centered,
-/// with a 3-dot bouncing animation below. After ~2.5 seconds,
-/// calls [onDone] with the current [BuildContext].
+/// The brand SVG fills the entire screen (cover).
+/// A 3-dot bouncing animation is layered on top.
+/// After ~2.5 seconds, calls [onDone].
 class SplashScreen extends StatefulWidget {
   final void Function(BuildContext context) onDone;
   final Duration duration;
@@ -25,7 +25,6 @@ class _SplashScreenState extends State<SplashScreen>
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
 
-  // Three dot controllers — staggered bounce
   late final List<AnimationController> _dotCtrls;
   late final List<Animation<double>> _dotAnims;
 
@@ -33,7 +32,6 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // Fade
     _fadeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -43,11 +41,10 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Bouncing dots — staggered loop
     _dotCtrls = List.generate(3, (i) {
-      final ctrl = AnimationController(
+      return AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 600),
       );
-      return ctrl;
     });
     _dotAnims = List.generate(3, (i) {
       return Tween<double>(begin: 0, end: -12).animate(
@@ -58,14 +55,12 @@ class _SplashScreenState extends State<SplashScreen>
       );
     });
 
-    // Start staggered loops
     for (var i = 0; i < 3; i++) {
       Future.delayed(Duration(milliseconds: i * 150), () {
         _startDotLoop(i);
       });
     }
 
-    // Auto-finish after duration
     Future.delayed(widget.duration, () {
       if (mounted) {
         _fadeCtrl.reverse().then((_) {
@@ -96,46 +91,45 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _fadeAnim,
-      child: Container(
-        color: const Color(0xFFF8F9FA),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Logo
-              SvgPicture.asset(
-                'assets/icons/splash_nusa.svg',
-                width: 280,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 36),
-              // Bouncing dots
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(3, (i) {
-                  return AnimatedBuilder(
-                    animation: _dotAnims[i],
-                    builder: (context, child) {
-                      return Transform.translate(
-                        offset: Offset(0, _dotAnims[i].value),
-                        child: child,
-                      );
-                    },
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      margin: const EdgeInsets.symmetric(horizontal: 5),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE63946),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ],
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Fullscreen SVG logo — cover entire screen
+          SvgPicture.asset(
+            'assets/icons/splash_nusa.svg',
+            fit: BoxFit.cover,
           ),
-        ),
+          // Loading dots overlay at bottom center
+          Positioned(
+            bottom: 60,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(3, (i) {
+                return AnimatedBuilder(
+                  animation: _dotAnims[i],
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, _dotAnims[i].value),
+                      child: child,
+                    );
+                  },
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    margin: const EdgeInsets.symmetric(horizontal: 5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFE63946),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -13,7 +13,6 @@ import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/pin_input.dart';
-import 'package:nusa_kasir/core/widgets/nusa_loading_animation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -585,7 +584,28 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                   ),
                 ),
               ] else ...[
-                NusaLoadingAnimation(statusText: statusText!),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: NusaConfig.primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      statusText!,
+                      style: TextStyle(
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ],
           ),
