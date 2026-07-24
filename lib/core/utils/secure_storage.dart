@@ -1,17 +1,48 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:nusa_kasir/core/constants/app_constants.dart';
 
 class SecureStore {
   const SecureStore._();
   static const _s = FlutterSecureStorage();
+  static bool _didReset = false;
+
+  /// Reset the entire keystore when the Android KeyStore key is corrupted
+  /// (e.g. after app reinstall or clear data — old encrypted values can't be
+  /// decrypted with the new key).  Called once per process on first PlatformException.
+  static Future<void> _resetOnKeystoreCorruption() async {
+    if (_didReset) return;
+    _didReset = true;
+    try { await _s.deleteAll(); } catch (_) {}
+  }
 
   // -- Generic key-value --
-  static Future<void> write({required String key, required String value}) =>
-      _s.write(key: key, value: value);
-  static Future<String?> read({required String key}) =>
-      _s.read(key: key);
-  static Future<void> delete({required String key}) =>
-      _s.delete(key: key);
+  static Future<void> write({required String key, required String value}) async {
+    try {
+      await _s.write(key: key, value: value);
+    } on PlatformException {
+      await _resetOnKeystoreCorruption();
+      try { await _s.write(key: key, value: value); } catch (_) {}
+    }
+  }
+
+  static Future<String?> read({required String key}) async {
+    try {
+      return await _s.read(key: key);
+    } on PlatformException {
+      await _resetOnKeystoreCorruption();
+      return null;
+    }
+  }
+
+  static Future<void> delete({required String key}) async {
+    try {
+      await _s.delete(key: key);
+    } on PlatformException {
+      await _resetOnKeystoreCorruption();
+      try { await _s.delete(key: key); } catch (_) {}
+    }
+  }
 
   // -- Activation --
   static Future<void> saveActivation(String key) =>
