@@ -15,7 +15,6 @@ import 'package:nusa_kasir/core/services/notification_service.dart';
 import 'package:nusa_kasir/core/services/stok_alert_worker.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
-import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/core/services/backup_crypto.dart';
 
 /// Catch all unhandled Flutter errors and display them instead of blank screen.
@@ -96,29 +95,6 @@ void main() async {
   final db = AppDatabase();
   final persistedTheme =
       await SettingsRepository(db).getThemeMode() ?? 'system';
-
-  // ═══════════════════════════════════════════════════════════
-  // Auto-repair PIN length mismatch on EVERY startup.
-  // Fixes the bug where changing PIN length in settings without
-  // migrating employee PINs causes user lockout.
-  // ═══════════════════════════════════════════════════════════
-  try {
-    final settingsRepo = SettingsRepository(db);
-    final attRepo = AttendanceRepository(db);
-    final pinLenSetting = await settingsRepo.getPinLength();
-    final emps = await attRepo.getEmployees();
-    if (emps.isNotEmpty) {
-      final actualPinLen = emps.first.pin.length;
-      if (actualPinLen != pinLenSetting) {
-        debugPrint('[AutoRepair] PIN length mismatch: setting=$pinLenSetting, actual=$actualPinLen. Migrating...');
-        await attRepo.migrateAllPins(actualPinLen, pinLenSetting);
-        debugPrint('[AutoRepair] All ${emps.length} employee PINs migrated.');
-      }
-    }
-  } catch (e) {
-    debugPrint('[AutoRepair] Error: $e');
-  }
-  // ═══════════════════════════════════════════════════════════
 
   // New startup flow: always go to /activation first
   // ActivationScreen handles Google Sign-In → key activation or PIN login
