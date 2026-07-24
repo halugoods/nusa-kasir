@@ -16,6 +16,8 @@ import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 import 'package:nusa_kasir/shared/widgets/employee_flip_card.dart';
+import 'package:nusa_kasir/shared/widgets/profile_stats_card.dart'
+    show EmployeeCardData;
 import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
 import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';

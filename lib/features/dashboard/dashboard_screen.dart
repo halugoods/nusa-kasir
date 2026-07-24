@@ -22,6 +22,7 @@ import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/profile_stats_card.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:nusa_kasir/shared/services/biometric_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ignore_for_file: use_build_context_synchronously
 
@@ -62,6 +63,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   // Keuangan summary
   int _financeExpense = 0;
   int _financeIncome = 0;
+
+  // Flip card data
+  EmployeeCardData? _cardData;
+  int? _cardEmployeeId;
 
   final List<Map<String, dynamic>> _items = const [
     {'id': 'produk', 'label': 'Produk', 'icon': 'product'},
@@ -217,6 +222,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final financeRepo = FinanceRepository(ref.read(databaseProvider));
     final finSummary = await financeRepo.getDashboardSummary();
 
+    // Load flip card data
+    await _fetchCardData(ref.read(employeeSessionProvider)?.employeeId);
+
     if (mounted) {
       setState(() {
         _storeName = name.isNotEmpty ? name : 'NUSA';
@@ -240,6 +248,83 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _financeIncome = finSummary['totalIncome'] ?? 0;
       });
     }
+  }
+
+  /// Pre-fetch flip card data for the profile card back side.
+  Future<void> _fetchCardData(int? employeeId) async {
+    if (employeeId == null) return;
+    _cardEmployeeId = employeeId;
+    try {
+      final db = ref.read(databaseProvider);
+      final reportRepo = ReportRepository(db);
+      final attRepo = AttendanceRepository(db);
+      final onlineRepo = OnlineOrderRepository(db);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      // Today's sales summary
+      final sum = await reportRepo.summary(from: today, to: now);
+      final penjualan = sum['omzet'] as int;
+      final trxCount = sum['count'] as int;
+
+      // Profit estimate
+      final laba = (penjualan * 0.9).round();
+
+      // Cash drawer — from today's attendance record
+      final todayAtt = await attRepo.getToday(employeeId);
+      final modalAwal = todayAtt?.pettyCash ?? 0;
+      final totalLaci = todayAtt?.finalCash ?? modalAwal;
+      final selisihLaci = totalLaci - modalAwal - penjualan;
+      String? shiftHours;
+      // Shift hours from today's attendance
+      if (todayAtt?.checkIn != null) {
+        final parts = todayAtt!.checkIn!.split(':');
+        if (parts.length >= 2) {
+          final h = int.tryParse(parts[0]) ?? 0;
+          final m = int.tryParse(parts[1]) ?? 0;
+          final diff = now.difference(
+              DateTime(now.year, now.month, now.day, h, m));
+          if (diff.inMinutes > 0) {
+            shiftHours = '${diff.inHours}j ${diff.inMinutes.remainder(60)}m';
+          }
+        }
+      }
+
+      // Monthly data
+      final monthStart = DateTime(now.year, now.month, 1);
+      final monthSum = await reportRepo.summary(from: monthStart, to: now);
+      final omzet = monthSum['omzet'] as int;
+      final transaksiBulan = monthSum['count'] as int;
+
+      // Attendance — count records this month
+      final history = await attRepo.history(employeeId: employeeId);
+      final hadirDays = history
+          .where((a) => a.date.isAfter(monthStart.subtract(const Duration(days: 1))) && a.checkIn != null)
+          .length;
+      final totalDays = now.day;
+
+      // Pending online orders
+      final pendingItems = await onlineRepo.countPending();
+
+      if (mounted) {
+        setState(() {
+          _cardData = EmployeeCardData(
+            penjualan: penjualan,
+            laba: laba,
+            trxCount: trxCount,
+            modalAwal: modalAwal,
+            totalLaci: totalLaci,
+            selisihLaci: selisihLaci,
+            shiftHours: shiftHours,
+            omzet: omzet,
+            transaksiBulan: transaksiBulan,
+            hadirDays: hadirDays,
+            totalDays: totalDays,
+            pendingItems: pendingItems,
+          );
+        });
+      }
+    } catch (_) {}
   }
 
   // ── Branch Picker ──────────────────────────────────────────────
@@ -367,7 +452,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Future<void> _handleMenuTap(String route) async {
     final session = ref.read(employeeSessionProvider);
-    final role = session?.role ?? 'Kasir';
 
     // 1. Login required
     if (session == null) {
@@ -595,6 +679,87 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     await context.push('/presensi');
     if (mounted) {
       await _load();
+    }
+  }
+
+  /// Show employee list with WhatsApp chat buttons (Owner quick access).
+  void _showEmployeeWaList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text('Hubungi Karyawan',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          ..._employees.where((e) => e.phone != null && e.phone!.isNotEmpty).map((e) {
+            return ListTile(
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: NusaConfig.primaryColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(e.name[0].toUpperCase(),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: NusaConfig.primaryColor)),
+              ),
+              title: Text(e.name,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(e.role,
+                  style: const TextStyle(fontSize: 12)),
+              trailing: const Icon(Icons.chat, color: NusaConfig.accentGreen),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _launchWa(e.phone!);
+              },
+            );
+          }),
+          if (_employees.where((e) => e.phone != null && e.phone!.isNotEmpty).isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text('Tidak ada karyawan dengan nomor WA',
+                  style: TextStyle(fontSize: 13, color: NusaConfig.textSecondary)),
+            ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _launchWa(String phone) async {
+    final clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final uri = Uri.parse(
+        'https://wa.me/${clean.startsWith('0') ? '62${clean.substring(1)}' : clean}');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        TopToast.error(context, 'Gagal membuka WhatsApp');
+      }
     }
   }
 
@@ -857,7 +1022,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
                     children: [
-                      // Profile card
+                      // Profile card (now interactive — tap to flip)
                       ProfileStatsCard(
                         photoPath: cardPhoto,
                         initials: initials,
@@ -869,6 +1034,46 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         transactionCount: _trxCount,
                         avgValue: _avg,
                         topProduct: _topProduct,
+                        // Flip card params
+                        viewerRole: role,
+                        viewerEmployeeId: session?.employeeId,
+                        employeeId: _cardEmployeeId ?? session?.employeeId,
+                        cardData: _cardData,
+                        onAuthOwner: session?.role != 'Owner'
+                            ? () async {
+                                // Owner authenticating from non-Owner session
+                                final attRepo = AttendanceRepository(
+                                    ref.read(databaseProvider));
+                                final emps = await attRepo.getEmployees();
+                                final owner =
+                                    emps.cast<Employee?>().firstWhere(
+                                          (e) =>
+                                              e!.role == 'Owner' &&
+                                              e.status != 'Nonaktif',
+                                          orElse: () => null,
+                                        );
+                                if (owner == null) return false;
+                                final result = await PinDialog.show(
+                                  context: context,
+                                  employeeName: owner.name,
+                                  employeeRole: 'Owner',
+                                  correctPin: owner.pin,
+                                  showRemember: false,
+                                  pinLength: ref.read(pinLengthProvider),
+                                );
+                                return result?.success ?? false;
+                              }
+                            : null,
+                        onAbsenMasuk: () {
+                          _handlePresensiTap();
+                        },
+                        onAbsenKeluar: () {
+                          _handlePresensiTap();
+                        },
+                        onKontakWa: () {
+                          // Show employee WA list for Owner
+                          _showEmployeeWaList();
+                        },
                       ),
 
                       // Keuangan summary card

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:nusa_kasir/shared/widgets/pin_pad.dart';
+import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/shared/widgets/pin_keypad.dart';
 
-/// PIN authentication — now uses the custom PinPad (mobile-banking style).
-///
-/// Shows the employee name and role, a branded numeric keypad (4 or 6 digits),
-/// an optional fingerprint button, and NFC auto-detect readiness.
+/// PIN authentication dialog — shows a branded keypad (EDC/ATM style)
+/// with employee name + role header.
 ///
 /// Call [show] and check the returned [PinResult]:
 /// ```dart
@@ -48,34 +47,132 @@ class PinDialog extends StatelessWidget {
     bool showFingerprint = false,
     Future<bool> Function()? onFingerprint,
   }) async {
-    // Use custom PinPad (mobile-banking style) by default
-    final padResult = await showDialog<PinPadResult>(
+    return showDialog<PinResult>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => PinPad(
-        employeeName: employeeName,
-        employeeRole: employeeRole,
-        correctPin: correctPin,
-        pinLength: pinLength,
-        showFingerprint: showFingerprint,
-        onFingerprint: onFingerprint,
-      ),
-    );
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        String? error;
+        final keypadKey = GlobalKey<_PinDialogKeypadState>();
 
-    if (padResult == null) return null;
-    return PinResult(success: padResult.success, remember: showRemember);
+        return StatefulBuilder(
+          builder: (ctx, setSt) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24)),
+              titlePadding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+              contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              actionsPadding: EdgeInsets.zero,
+              title: Column(children: [
+                // Lock icon
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: NusaConfig.primaryColor.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.lock_outline,
+                      color: NusaConfig.primaryColor, size: 26),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  employeeName,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: isDark
+                        ? NusaConfig.darkTextPrimary
+                        : NusaConfig.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  employeeRole,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark
+                        ? NusaConfig.darkTextSecondary
+                        : NusaConfig.textSecondary,
+                  ),
+                ),
+              ]),
+              content: _PinDialogKeypad(
+                key: keypadKey,
+                pinLength: pinLength,
+                error: error,
+                showFingerprint: showFingerprint,
+                onFingerprint: onFingerprint,
+                onComplete: (pin) {
+                  final ok = pin.isNotEmpty && pin == correctPin;
+                  if (ok) {
+                    Navigator.of(ctx).pop(
+                        PinResult(success: true, remember: showRemember));
+                  } else {
+                    setSt(() {
+                      error = 'PIN salah';
+                      keypadKey.currentState?.clear();
+                    });
+                  }
+                },
+              ),
+              actions: [],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Fallback — normally PinDialog.show() uses PinPad directly
-    return PinPad(
-      employeeName: employeeName,
-      employeeRole: employeeRole,
-      correctPin: correctPin,
-      pinLength: pinLength,
-      showFingerprint: showFingerprint,
-      onFingerprint: onFingerprint,
+    // Fallback — normally PinDialog.show() handles rendering
+    return const SizedBox.shrink();
+  }
+}
+
+/// Internal keypad holder that exposes [clear].
+class _PinDialogKeypad extends StatefulWidget {
+  final int pinLength;
+  final String? error;
+  final bool showFingerprint;
+  final Future<bool> Function()? onFingerprint;
+  final ValueChanged<String> onComplete;
+
+  const _PinDialogKeypad({
+    super.key,
+    required this.pinLength,
+    this.error,
+    this.showFingerprint = false,
+    this.onFingerprint,
+    required this.onComplete,
+  });
+
+  @override
+  State<_PinDialogKeypad> createState() => _PinDialogKeypadState();
+}
+
+class _PinDialogKeypadState extends State<_PinDialogKeypad> {
+  int _resetCount = 0;
+
+  void clear() {
+    // Force fresh PinKeypad so internal digits reset
+    setState(() => _resetCount++);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PinKeypad(
+      key: ValueKey('dialog_pad_$_resetCount'),
+      length: widget.pinLength,
+      error: widget.error,
+      showFingerprint: widget.showFingerprint,
+      showCancel: true,
+      onFingerprint: widget.onFingerprint,
+      onFingerprintSuccess: () => Navigator.of(context)
+          .pop(PinResult(success: true, remember: true)),
+      onComplete: widget.onComplete,
+      onCancel: () => Navigator.of(context).pop(null),
     );
   }
 }

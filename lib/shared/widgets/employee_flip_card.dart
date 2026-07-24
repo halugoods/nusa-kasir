@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart' show formatRupiah;
+// EmployeeCardData is defined in profile_stats_card.dart
+import 'package:nusa_kasir/shared/widgets/profile_stats_card.dart'
+    show EmployeeCardData;
 
 /// A 2-sided employee flip card with role-adaptive back side.
 ///
@@ -657,33 +660,6 @@ class _EmployeeFlipCardState extends State<EmployeeFlipCard>
       default:       return NusaConfig.textSecondary;
     }
   }
-}
+	}
 
-/// Pre-fetched data for the employee card back side.
-class EmployeeCardData {
-  final int penjualan;
-  final int laba;
-  final int trxCount;
-  final int modalAwal;
-  final int totalLaci;
-  final int selisihLaci;
-  final String? shiftHours;
-  final int omzet;
-  final int hadirDays;
-  final int totalDays;
-  final int pendingItems;
-
-  const EmployeeCardData({
-    this.penjualan = 0,
-    this.laba = 0,
-    this.trxCount = 0,
-    this.modalAwal = 0,
-    this.totalLaci = 0,
-    this.selisihLaci = 0,
-    this.shiftHours,
-    this.omzet = 0,
-    this.hadirDays = 0,
-    this.totalDays = 0,
-    this.pendingItems = 0,
-  });
-}
+// EmployeeCardData is imported from profile_stats_card.dart
