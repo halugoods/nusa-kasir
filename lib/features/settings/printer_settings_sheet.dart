@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/utils/receipt_printer.dart';
@@ -6,9 +9,13 @@ import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 
 /// Bottom sheet for managing Bluetooth thermal printer settings:
 /// - Scan & connect to BT printers
+/// - Logo upload (appears at top of receipt)
+/// - Custom footer text
+/// - Cash drawer auto-open toggle
 /// - Test print
 /// - Auto-print toggle (print automatically after transaction)
 /// - Paper size selector (58mm / 80mm)
+/// - Reprint last receipt
 class PrinterSettingsSheet extends StatefulWidget {
   final String? currentAddress;
   final void Function(PrinterDevice device) onPrinterSelected;
@@ -52,6 +59,14 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
   String? _connectedAddr;
   String? _storedAddr;
 
+  // New settings
+  bool _cashDrawerEnabled = false;
+  String _footerText = '';
+  String? _logoPath;
+  bool _reprinting = false;
+
+  final _footerCtrl = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -63,14 +78,30 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
     _scan();
   }
 
+  @override
+  void dispose() {
+    _footerCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadSettings() async {
     final auto = await SecureStore.getAutoPrint();
     final paper = await SecureStore.getPaperSize();
+    final drawer = await SecureStore.getCashDrawerEnabled();
+    final footer = await SecureStore.getPrinterFooter();
+    final logo = await SecureStore.getPrinterLogoPath();
     if (mounted) {
       setState(() {
         _autoPrint = auto;
         _paperSize = paper;
+        _cashDrawerEnabled = drawer;
+        _footerText = footer;
+        _footerCtrl.text = footer;
+        _logoPath = logo;
       });
+      ReceiptPrinter.setCashDrawer(enabled: drawer);
+      ReceiptPrinter.setFooter(footer);
+      if (logo != null) ReceiptPrinter.loadLogo(logo);
     }
   }
 
@@ -82,6 +113,42 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
   Future<void> _setPaperSize(String v) async {
     await SecureStore.setPaperSize(v);
     if (mounted) setState(() => _paperSize = v);
+  }
+
+  Future<void> _setCashDrawer(bool v) async {
+    await SecureStore.setCashDrawerEnabled(v);
+    ReceiptPrinter.setCashDrawer(enabled: v);
+    if (mounted) setState(() => _cashDrawerEnabled = v);
+  }
+
+  Future<void> _saveFooter() async {
+    final text = _footerCtrl.text.trim();
+    await SecureStore.setPrinterFooter(text);
+    ReceiptPrinter.setFooter(text);
+    if (mounted) setState(() => _footerText = text);
+    TopToast.success(context, 'Footer tersimpan');
+  }
+
+  Future<void> _pickLogo() async {
+    final result = await FilePicker.pickFiles(type: FileType.image);
+    if (result == null || result.files.single.path == null) return;
+    final path = result.files.single.path!;
+    await ReceiptPrinter.loadLogo(path);
+    await SecureStore.setPrinterLogoPath(path);
+    if (mounted) {
+      setState(() => _logoPath = path);
+      TopToast.success(context, 'Logo disimpan');
+    }
+  }
+
+  Future<void> _removeLogo() async {
+    _logoPath = null;
+    await ReceiptPrinter.loadLogo(null);
+    await SecureStore.setPrinterLogoPath(null);
+    if (mounted) {
+      setState(() {});
+      TopToast.success(context, 'Logo dihapus');
+    }
   }
 
   Future<void> _scan() async {
@@ -162,17 +229,50 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
     }
   }
 
+  Future<void> _reprintLast() async {
+    if (ReceiptPrinter.lastPrint == null) {
+      TopToast.error(context, 'Belum ada struk terakhir');
+      return;
+    }
+    if (_storedAddr == null || !_storedAddr!.contains('|')) {
+      TopToast.error(context, 'Hubungkan printer terlebih dahulu');
+      return;
+    }
+    setState(() => _reprinting = true);
+    final printer = ReceiptPrinter();
+    try {
+      final devices = await printer.discover();
+      final savedAddr = _storedAddr!.split('|').last;
+      final found = devices.where((d) => d.address == savedAddr);
+      if (found.isEmpty) {
+        if (mounted) TopToast.error(context, 'Printer tidak ditemukan');
+        return;
+      }
+      await printer.connect(found.first);
+      final ok = await printer.printLastReceipt();
+      if (mounted) {
+        if (ok) {
+          TopToast.success(context, 'Struk terakhir dicetak ulang');
+        } else {
+          TopToast.error(context, 'Gagal cetak ulang');
+        }
+      }
+    } catch (_) {
+      if (mounted) TopToast.error(context, 'Gagal cetak ulang');
+    } finally {
+      await printer.dispose();
+      if (mounted) setState(() => _reprinting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onSurface;
-    final subColor =
-        isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280);
-    final borderColor =
-        isDark ? const Color(0xFF3A3A52) : const Color(0xFFF3F4F6);
+    final subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280);
+    final borderColor = isDark ? const Color(0xFF3A3A52) : const Color(0xFFF3F4F6);
     final accentRed = const Color(0xFFE63946);
-    final accentGreen = const Color(0xFF10B981);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -192,9 +292,7 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
               height: 4,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(2),
-                color: isDark
-                    ? const Color(0xFF3A3A52)
-                    : const Color(0xFFE5E7EB),
+                color: isDark ? const Color(0xFF3A3A52) : const Color(0xFFE5E7EB),
               ),
             ),
           ),
@@ -221,10 +319,9 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
               ),
               if (_connectedAddr != null)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: accentGreen.withValues(alpha: 0.12),
+                    color: NusaConfig.accentGreen.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -251,208 +348,271 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
           ),
           const SizedBox(height: 16),
 
-          // ── Settings toggles ──
-          // Auto-print toggle
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: borderColor),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.auto_awesome, size: 20, color: subColor),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Cetak Otomatis',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: textColor)),
-                      Text('Langsung cetak struk setelah transaksi',
-                          style: TextStyle(fontSize: 11, color: subColor)),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: _autoPrint,
-                  activeColor: accentRed,
-                  onChanged: _setAutoPrint,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Paper size selector
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: borderColor),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.view_agenda_outlined, size: 20, color: subColor),
-                const SizedBox(width: 10),
-                Text('Ukuran Kertas',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: textColor)),
-                const Spacer(),
-                _paperChip('58mm',
-                    selected: _paperSize == '58', isDark: isDark),
-                const SizedBox(width: 6),
-                _paperChip('80mm',
-                    selected: _paperSize == '80', isDark: isDark),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // ── Buttons row ──
-          Row(
-            children: [
-              // Scan button
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _scanning ? null : _scan,
-                  icon: _scanning
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.bluetooth_searching, size: 18),
-                  label: Text(_scanning ? 'Memindai...' : 'Pindai'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: textColor,
-                    side: BorderSide(color: borderColor),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Test print button
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed:
-                      (_testPrinting || _connectedAddr == null) ? null : _testPrint,
-                  icon: _testPrinting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.print, size: 18),
-                  label: Text(_testPrinting ? 'Mencetak...' : 'Test Print'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _connectedAddr != null ? accentRed : subColor,
-                    side: BorderSide(
-                        color: _connectedAddr != null ? accentRed : borderColor),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Device list
-          if (_devices.isEmpty && !_scanning)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Column(
-                children: [
-                  Icon(Icons.print_disabled, size: 48, color: subColor),
-                  const SizedBox(height: 8),
-                  Text('Tidak ada printer ditemukan',
-                      style: TextStyle(fontSize: 14, color: subColor)),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Pastikan Bluetooth aktif dan printer dalam mode pairing',
-                    style: TextStyle(fontSize: 11, color: subColor),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-
-          // Scrollable list
+          // ── Scrollable settings area ──
           Flexible(
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: _devices.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (_, i) {
-                final d = _devices[i];
-                final isConnecting = _connecting == d.address;
-                final isCurrent = _connectedAddr == d.address;
-                return GestureDetector(
-                  onTap: isConnecting ? null : () => _connect(d),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── Auto-print toggle ──
+                  _settingRow(
+                    icon: Icons.auto_awesome,
+                    title: 'Cetak Otomatis',
+                    subtitle: 'Langsung cetak struk setelah transaksi',
+                    borderColor: borderColor,
+                    subColor: subColor,
+                    textColor: textColor,
+                    trailing: Switch(
+                      value: _autoPrint,
+                      activeColor: accentRed,
+                      onChanged: _setAutoPrint,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // ── Cash drawer toggle ──
+                  _settingRow(
+                    icon: Icons.shopping_bag_outlined,
+                    title: 'Buka Laci Uang Otomatis',
+                    subtitle: 'Buka cash drawer setelah cetak struk',
+                    borderColor: borderColor,
+                    subColor: subColor,
+                    textColor: textColor,
+                    trailing: Switch(
+                      value: _cashDrawerEnabled,
+                      activeColor: accentRed,
+                      onChanged: _setCashDrawer,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // ── Paper size selector ──
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color:
-                            isCurrent ? accentRed : borderColor,
-                      ),
-                      color: isCurrent
-                          ? accentRed.withValues(alpha: 0.06)
-                          : null,
+                      border: Border.all(color: borderColor),
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.print,
-                          size: 22,
-                          color: isCurrent ? accentRed : subColor,
-                        ),
-                        const SizedBox(width: 12),
+                        Icon(Icons.view_agenda_outlined, size: 20, color: subColor),
+                        const SizedBox(width: 10),
+                        Text('Ukuran Kertas',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: textColor)),
+                        const Spacer(),
+                        _paperChip('58mm', selected: _paperSize == '58', isDark: isDark),
+                        const SizedBox(width: 6),
+                        _paperChip('80mm', selected: _paperSize == '80', isDark: isDark),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // ── Logo ──
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.image_outlined, size: 20, color: subColor),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(d.name,
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: textColor)),
-                              Text(d.address,
-                                  style: TextStyle(
-                                      fontSize: 11, color: subColor)),
+                              Text('Logo Struk',
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: textColor)),
+                              Text(_logoPath != null ? 'Logo tersimpan' : 'Opsional — tampil di atas struk',
+                                  style: TextStyle(fontSize: 11, color: subColor)),
                             ],
                           ),
                         ),
-                        if (isCurrent)
-                          const Icon(Icons.check_circle,
-                              size: 20, color: Color(0xFFE63946)),
-                        if (isConnecting)
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2),
+                        if (_logoPath != null)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                            onPressed: _removeLogo,
+                            tooltip: 'Hapus logo',
                           ),
-                        if (!isCurrent && !isConnecting)
-                          Text('Hubungkan',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: accentRed)),
+                        TextButton(
+                          onPressed: _pickLogo,
+                          child: Text(_logoPath != null ? 'Ganti' : 'Pilih',
+                              style: const TextStyle(fontWeight: FontWeight.w600)),
+                        ),
                       ],
                     ),
                   ),
-                );
-              },
+                  const SizedBox(height: 8),
+
+                  // ── Footer ──
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Icon(Icons.text_fields, size: 20, color: subColor),
+                          const SizedBox(width: 10),
+                          Text('Footer Struk',
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: textColor)),
+                        ]),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _footerCtrl,
+                          maxLines: 2,
+                          onChanged: (_) => _saveFooter(),
+                          style: TextStyle(fontSize: 13, color: textColor),
+                          decoration: InputDecoration(
+                            hintText: 'Contoh: Jam operasional 08:00–22:00',
+                            hintStyle: TextStyle(fontSize: 12, color: subColor),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.all(10),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: borderColor),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: borderColor),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: accentRed),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Buttons row ──
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _scanning ? null : _scan,
+                          icon: _scanning
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.bluetooth_searching, size: 18),
+                          label: Text(_scanning ? 'Memindai...' : 'Pindai'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: textColor,
+                            side: BorderSide(color: borderColor),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: (_testPrinting || _connectedAddr == null) ? null : _testPrint,
+                          icon: _testPrinting
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.print, size: 18),
+                          label: Text(_testPrinting ? 'Mencetak...' : 'Test Print'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _connectedAddr != null ? accentRed : subColor,
+                            side: BorderSide(color: _connectedAddr != null ? accentRed : borderColor),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Reprint button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: (_reprinting || _connectedAddr == null || ReceiptPrinter.lastPrint == null) ? null : _reprintLast,
+                      icon: _reprinting
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.replay, size: 18),
+                      label: Text(_reprinting ? 'Mencetak...' : 'Cetak Ulang Struk Terakhir'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: accentRed,
+                        side: BorderSide(color: accentRed.withValues(alpha: 0.4)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Device list
+                  if (_devices.isEmpty && !_scanning)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Column(
+                        children: [
+                          Icon(Icons.print_disabled, size: 48, color: subColor),
+                          const SizedBox(height: 8),
+                          Text('Tidak ada printer ditemukan',
+                              style: TextStyle(fontSize: 14, color: subColor)),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Pastikan Bluetooth aktif dan printer dalam mode pairing',
+                            style: TextStyle(fontSize: 11, color: subColor),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Device list
+                  if (_devices.isNotEmpty)
+                    ..._devices.map((d) {
+                      final isConnecting = _connecting == d.address;
+                      final isCurrent = _connectedAddr == d.address;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: GestureDetector(
+                          onTap: isConnecting ? null : () => _connect(d),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: isCurrent ? accentRed : borderColor),
+                              color: isCurrent ? accentRed.withValues(alpha: 0.06) : null,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.print, size: 22, color: isCurrent ? accentRed : subColor),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(d.name, style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
+                                      Text(d.address, style: TextStyle(fontSize: 11, color: subColor)),
+                                    ],
+                                  ),
+                                ),
+                                if (isCurrent) const Icon(Icons.check_circle, size: 20, color: Color(0xFFE63946)),
+                                if (isConnecting) const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                                if (!isCurrent && !isConnecting)
+                                  Text('Hubungkan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: accentRed)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                ],
+              ),
             ),
           ),
         ],
@@ -460,16 +620,47 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
     );
   }
 
-  Widget _paperChip(String label,
-      {required bool selected, required bool isDark}) {
+  Widget _settingRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color borderColor,
+    required Color subColor,
+    required Color textColor,
+    required Widget trailing,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: subColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: textColor)),
+                Text(subtitle, style: TextStyle(fontSize: 11, color: subColor)),
+              ],
+            ),
+          ),
+          trailing,
+        ],
+      ),
+    );
+  }
+
+  Widget _paperChip(String label, {required bool selected, required bool isDark}) {
     return GestureDetector(
       onTap: () => _setPaperSize(label == '58mm' ? '58' : '80'),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xFFE63946).withValues(alpha: 0.12)
-              : Colors.transparent,
+          color: selected ? const Color(0xFFE63946).withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: selected
@@ -482,9 +673,7 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: selected
-                ? const Color(0xFFE63946)
-                : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)),
+            color: selected ? const Color(0xFFE63946) : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)),
           ),
         ),
       ),

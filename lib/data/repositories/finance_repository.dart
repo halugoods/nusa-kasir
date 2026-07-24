@@ -105,7 +105,7 @@ class FinanceRepository {
           next = r.nextDate.add(const Duration(days: 7));
           break;
         default: // bulanan
-          next = DateTime(r.nextDate.year, r.nextDate.month + 1, r.nextDate.day);
+          next = _addMonthSafe(r.nextDate);
       }
       await updateRecurringNextDate(r.id, next);
       count++;
@@ -263,4 +263,11 @@ class FinanceRepository {
   Future<void> updatePayrollStatus(int id, String status) =>
       (db.update(db.payroll)..where((t) => t.id.equals(id)))
           .write(PayrollCompanion(status: Value(status)));
+
+  /// Safe month increment — avoids DateTime(date.year, 13, …) crash.
+  static DateTime _addMonthSafe(DateTime date) {
+    return date.month == 12
+        ? DateTime(date.year + 1, 1, date.day)
+        : DateTime(date.year, date.month + 1, date.day);
+  }
 }

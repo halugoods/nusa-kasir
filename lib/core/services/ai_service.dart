@@ -27,13 +27,16 @@ class AiService {
   /// Send a conversation and get the assistant's reply.
   /// [messages] includes the full history (user + assistant turns).
   /// [storeName] is optional — adds store context to the prompt.
+  /// [model] is optional — can be "gemini", "gpt4", "claude", "deepseek", etc.
   Future<String> chat({
     required List<ChatMessage> messages,
     String? storeName,
+    String? model,
   }) async {
-    final body = {
+    final body = <String, dynamic>{
       'messages': messages.map((m) => m.toJson()).toList(),
       if (storeName != null) 'store_name': storeName,
+      if (model != null) 'model': model,
     };
 
     try {

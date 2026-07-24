@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:esc_pos_bluetooth/esc_pos_bluetooth.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
+import 'package:image/image.dart' as img;
 
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 
@@ -31,16 +34,83 @@ class PrinterDevice {
   final String address;
 }
 
+/// Cached parameters from the last successful print — enables one-tap reprint.
+class LastPrintParams {
+  final String storeName;
+  final List<ReceiptLine> lines;
+  final int total;
+  final String? paymentMethod;
+  final String? cashierName;
+  final String invoice;
+  final String dateStr;
+  final int discount;
+  final int? cashGiven;
+  final int? cashReturn;
+  final String? customerName;
+  final String paperWidth;
+
+  const LastPrintParams({
+    required this.storeName,
+    required this.lines,
+    required this.total,
+    this.paymentMethod,
+    this.cashierName,
+    this.invoice = '',
+    this.dateStr = '',
+    this.discount = 0,
+    this.cashGiven,
+    this.cashReturn,
+    this.customerName,
+    this.paperWidth = '58',
+  });
+}
+
 /// Utility for discovering, connecting to and printing receipts on a
 /// Bluetooth thermal (ESC/POS) printer.
 ///
 /// Backed by `esc_pos_bluetooth` + `esc_pos_utils`.
+///
+/// Future: WiFi/Ethernet/USB printer support via `esc_pos_printer` package.
 class ReceiptPrinter {
   final PrinterBluetoothManager _manager = PrinterBluetoothManager();
 
   final Map<String, PrinterBluetooth> _discovered = {};
   PrinterBluetooth? _selected;
   StreamSubscription<List<PrinterBluetooth>>? _scanSubscription;
+
+  /// Cache the last print for one-tap reprint.
+  static LastPrintParams? lastPrint;
+
+  // ── Printer settings (persisted via SecureStore) ──
+  static Uint8List? _logoBytes;
+  static String _footerText = '';
+  static bool _cashDrawerEnabled = false;
+  static int _cashDrawerPin = 2; // default: pin 2 (common on most printers)
+
+  /// Load printer logo from app dir.
+  static Future<void> loadLogo(String? path) async {
+    if (path == null || path.isEmpty) {
+      _logoBytes = null;
+      return;
+    }
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        _logoBytes = await file.readAsBytes();
+      }
+    } catch (_) {
+      _logoBytes = null;
+    }
+  }
+
+  /// Set custom footer text (e.g. "Jam operasional: 08:00–22:00").
+  static void setFooter(String text) => _footerText = text;
+
+  /// Enable/disable cash drawer auto-open after print.
+  static void setCashDrawer({required bool enabled, int pin = 2}) {
+    _cashDrawerEnabled = enabled;
+    _cashDrawerPin = pin;
+  }
 
   /// Scan for paired/classic Bluetooth thermal printers and return them.
   ///
@@ -89,6 +159,9 @@ class ReceiptPrinter {
 
   /// Build the ESC/POS bytes for a receipt and send them to the connected
   /// printer. Returns `true` if the print job completed successfully.
+  ///
+  /// After a successful print the parameters are cached in [lastPrint]
+  /// so that [printLastReceipt] can reprint without re-entering data.
   Future<bool> printReceipt({
     required String storeName,
     required List<ReceiptLine> lines,
@@ -102,6 +175,9 @@ class ReceiptPrinter {
     int? cashReturn,
     String? customerName,
     String paperWidth = '58',
+    Uint8List? logo,
+    String? footer,
+    bool openDrawer = false,
   }) async {
     if (_selected == null) {
       return false;
@@ -112,6 +188,20 @@ class ReceiptPrinter {
     final generator = Generator(paperSize, profile);
 
     final List<int> bytes = [];
+
+    // ── Logo ──
+    final logoBytes = logo ?? _logoBytes;
+    if (logoBytes != null) {
+      try {
+        final logoImage = img.decodeImage(logoBytes);
+        if (logoImage != null) {
+          bytes.addAll(generator.imageRaster(logoImage, align: PosAlign.center));
+          bytes.addAll(generator.feed(1));
+        }
+      } catch (_) {
+        // Skip logo if decode fails
+      }
+    }
 
     // Header.
     bytes.addAll(generator.text(
@@ -216,6 +306,13 @@ class ReceiptPrinter {
     bytes.addAll(generator.hr());
 
     // Footer.
+    final footerText = footer ?? _footerText;
+    if (footerText.isNotEmpty) {
+      bytes.addAll(generator.text(
+        footerText,
+        styles: const PosStyles(align: PosAlign.center),
+      ));
+    }
     bytes.addAll(generator.text(
       'Terima Kasih!',
       styles: const PosStyles(align: PosAlign.center, bold: true),
@@ -225,8 +322,70 @@ class ReceiptPrinter {
     bytes.addAll(generator.feed(2));
     bytes.addAll(generator.cut());
 
+    // ── Cash drawer trigger ──
+    if (openDrawer || _cashDrawerEnabled) {
+      final pin = _cashDrawerPin == 2 ? PosDrawer.pin2 : PosDrawer.pin5;
+      bytes.addAll(generator.drawer(pin: pin));
+    }
+
     final result = await _manager.printTicket(bytes);
+
+    if (result == PosPrintResult.success) {
+      // Cache for reprint
+      lastPrint = LastPrintParams(
+        storeName: storeName,
+        lines: lines,
+        total: total,
+        paymentMethod: paymentMethod,
+        cashierName: cashierName,
+        invoice: invoice,
+        dateStr: dateStr,
+        discount: discount,
+        cashGiven: cashGiven,
+        cashReturn: cashReturn,
+        customerName: customerName,
+        paperWidth: paperWidth,
+      );
+    }
+
     return result == PosPrintResult.success;
+  }
+
+  /// Reprint the last receipt (if available).
+  Future<bool> printLastReceipt({bool openDrawer = false}) async {
+    final p = lastPrint;
+    if (p == null) return false;
+    return printReceipt(
+      storeName: p.storeName,
+      lines: p.lines,
+      total: p.total,
+      paymentMethod: p.paymentMethod,
+      cashierName: p.cashierName,
+      invoice: p.invoice,
+      dateStr: p.dateStr,
+      discount: p.discount,
+      cashGiven: p.cashGiven,
+      cashReturn: p.cashReturn,
+      customerName: p.customerName,
+      paperWidth: p.paperWidth,
+      openDrawer: openDrawer,
+    );
+  }
+
+  /// Open cash drawer only (no print).
+  Future<bool> openDrawer({int pin = 2}) async {
+    if (_selected == null) return false;
+    try {
+      final profile = await CapabilityProfile.load();
+      final generator = Generator(PaperSize.mm58, profile);
+      final bytes = generator.drawer(
+        pin: pin == 2 ? PosDrawer.pin2 : PosDrawer.pin5,
+      );
+      final result = await _manager.printTicket(bytes);
+      return result == PosPrintResult.success;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Print a test receipt to verify the printer is working.

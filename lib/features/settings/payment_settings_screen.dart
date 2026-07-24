@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
@@ -71,13 +73,21 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
 
   Future<void> _pickQrisImage() async {
     final result = await FilePicker.pickFiles(type: FileType.image);
-    if (result != null && result.files.single.path != null) {
-      final path = result.files.single.path!;
-      await ref.read(settingsRepoProvider).setQrisImagePath(path);
+    if (result == null || result.files.single.path == null) return;
+    try {
+      final src = File(result.files.single.path!);
+      final dir = await getApplicationDocumentsDirectory();
+      final ext = p.extension(src.path);
+      final destName = 'qris_${DateTime.now().millisecondsSinceEpoch}$ext';
+      final dest = File(p.join(dir.path, destName));
+      await src.copy(dest.path);
+      await ref.read(settingsRepoProvider).setQrisImagePath(dest.path);
       if (mounted) {
-        setState(() => _qrisImagePath = path);
+        setState(() => _qrisImagePath = dest.path);
         TopToast.success(context, 'QRIS disimpan ✅');
       }
+    } catch (_) {
+      if (mounted) TopToast.error(context, 'Gagal menyimpan gambar QRIS');
     }
   }
 

@@ -103,4 +103,27 @@ class SecureStore {
       SecureStore.write(key: 'nusa_printer_paper_size', value: v);
   static Future<String> getPaperSize() async =>
       (await SecureStore.read(key: 'nusa_printer_paper_size')) ?? '58';
+
+  // -- Cash drawer --
+  static Future<void> setCashDrawerEnabled(bool v) =>
+      SecureStore.write(key: 'nusa_cash_drawer_enabled', value: v.toString());
+  static Future<bool> getCashDrawerEnabled() async =>
+      (await SecureStore.read(key: 'nusa_cash_drawer_enabled')) == 'true';
+
+  // -- Printer footer --
+  static Future<void> setPrinterFooter(String v) =>
+      SecureStore.write(key: 'nusa_printer_footer', value: v);
+  static Future<String> getPrinterFooter() async =>
+      (await SecureStore.read(key: 'nusa_printer_footer')) ?? '';
+
+  // -- Printer logo path --
+  static Future<void> setPrinterLogoPath(String? v) async {
+    if (v == null) {
+      await SecureStore.delete(key: 'nusa_printer_logo_path');
+    } else {
+      await SecureStore.write(key: 'nusa_printer_logo_path', value: v);
+    }
+  }
+  static Future<String?> getPrinterLogoPath() async =>
+      SecureStore.read(key: 'nusa_printer_logo_path');
 }

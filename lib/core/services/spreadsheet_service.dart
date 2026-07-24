@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -13,6 +15,15 @@ import 'package:nusa_kasir/data/repositories/customer_repository.dart';
 import 'package:nusa_kasir/data/repositories/promo_repository.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 
+/// Result of a sync operation — carries success/failure + user-facing message.
+class SyncResult {
+  final bool ok;
+  final String tab;
+  final String? error;
+
+  const SyncResult({required this.ok, required this.tab, this.error});
+}
+
 class SpreadsheetService {
   final GoogleSignIn _signIn = GoogleSignIn(
     scopes: [SheetsApi.spreadsheetsScope],
@@ -20,6 +31,12 @@ class SpreadsheetService {
 
   final AppDatabase db;
   SpreadsheetService(this.db);
+
+  /// Maximum number of retries for transient API failures.
+  static const _maxRetries = 3;
+
+  /// Timeout for individual API calls.
+  static const _apiTimeout = Duration(seconds: 30);
 
   Future<GoogleSignInAccount?> signIn() => _signIn.signIn();
 
@@ -56,6 +73,44 @@ class SpreadsheetService {
     return '';
   }
 
+  /// Run an API call with retry + timeout.
+  Future<T> _withRetry<T>(
+    Future<T> Function() fn,
+    String debugLabel,
+  ) async {
+    String? lastError;
+    for (var attempt = 1; attempt <= _maxRetries; attempt++) {
+      try {
+        return await fn().timeout(_apiTimeout);
+      } catch (e) {
+        lastError = e.toString();
+        debugPrint('[Spreadsheet] $debugLabel attempt $attempt/$_maxRetries failed: $e');
+        if (attempt < _maxRetries) {
+          await Future.delayed(Duration(seconds: attempt * 2)); // exponential backoff
+        }
+      }
+    }
+    throw Exception(lastError ?? 'Unknown error in $debugLabel');
+  }
+
+  /// Translate Google API errors into user-facing messages.
+  String _friendlyError(Object e) {
+    final msg = e.toString().toLowerCase();
+    if (msg.contains('apinotenabled') || msg.contains('403') || msg.contains('disabled')) {
+      return 'Google Sheets API belum diaktifkan. Buka menu "Bantuan" untuk panduan setup.';
+    }
+    if (msg.contains('quota') || msg.contains('429')) {
+      return 'Kuota Google Sheets tercapai. Coba beberapa saat lagi.';
+    }
+    if (msg.contains('timeout') || msg.contains('timed out')) {
+      return 'Koneksi ke Google lambat. Periksa internet dan coba lagi.';
+    }
+    if (msg.contains('not found') || msg.contains('404')) {
+      return 'Spreadsheet tidak ditemukan — mungkin sudah dihapus. Coba buat ulang.';
+    }
+    return 'Gagal sinkron: $msg';
+  }
+
   /// Find or create a per-user spreadsheet.
   Future<String?> findOrCreate(String email) async {
     final api = await _client();
@@ -63,37 +118,59 @@ class SpreadsheetService {
     final shortName = email.split('@').first;
     final title = 'NUSA Kasir - $shortName';
     try {
-      final sheet = await api.spreadsheets.create(Spreadsheet(
-        properties: SpreadsheetProperties(title: title),
-        sheets: [
-          Sheet(properties: SheetProperties(title: 'Produk')),
-          Sheet(properties: SheetProperties(title: 'Transaksi')),
-          Sheet(properties: SheetProperties(title: 'Stok')),
-          Sheet(properties: SheetProperties(title: 'Laporan')),
-          Sheet(properties: SheetProperties(title: 'Keuangan')),
-          Sheet(properties: SheetProperties(title: 'Karyawan')),
-          Sheet(properties: SheetProperties(title: 'Pelanggan')),
-          Sheet(properties: SheetProperties(title: 'Supplier')),
-          Sheet(properties: SheetProperties(title: 'Promo')),
-          Sheet(properties: SheetProperties(title: 'Presensi')),
-        ],
-      ));
+      final sheet = await _withRetry(
+        () => api.spreadsheets.create(Spreadsheet(
+          properties: SpreadsheetProperties(title: title),
+          sheets: [
+            Sheet(properties: SheetProperties(title: 'Produk')),
+            Sheet(properties: SheetProperties(title: 'Transaksi')),
+            Sheet(properties: SheetProperties(title: 'Stok')),
+            Sheet(properties: SheetProperties(title: 'Laporan')),
+            Sheet(properties: SheetProperties(title: 'Keuangan')),
+            Sheet(properties: SheetProperties(title: 'Karyawan')),
+            Sheet(properties: SheetProperties(title: 'Pelanggan')),
+            Sheet(properties: SheetProperties(title: 'Supplier')),
+            Sheet(properties: SheetProperties(title: 'Promo')),
+            Sheet(properties: SheetProperties(title: 'Presensi')),
+          ],
+        )),
+        'findOrCreate',
+      );
       return sheet.spreadsheetId;
     } catch (e) {
       debugPrint('[Spreadsheet] findOrCreate API call failed: $e');
-      // Re-throw so the caller can show a meaningful message
       rethrow;
     }
+  }
+
+  /// Write data to a sheet range with retry.
+  Future<void> _writeValues(
+    SheetsApi api,
+    String spreadsheetId,
+    String range,
+    List<List<dynamic>> rows,
+    String tabName,
+  ) async {
+    await _withRetry(
+      () => api.spreadsheets.values.update(
+        ValueRange(range: range, values: rows),
+        spreadsheetId,
+        range,
+        valueInputOption: 'USER_ENTERED',
+      ),
+      'sync$tabName',
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
   //  SYNC PER TAB
   // ═══════════════════════════════════════════════════════════
 
-  Future<bool> syncProducts(String spreadsheetId) async {
-    final api = await _client();
-    if (api == null) return false;
+  Future<SyncResult> syncProducts(String spreadsheetId) async {
+    const tab = 'Produk';
     try {
+      final api = await _client();
+      if (api == null) return SyncResult(ok: false, tab: tab, error: 'Tidak terhubung ke Google');
       final repo = ProductRepository(db);
       final products = await repo.getProducts();
       final rows = <List<dynamic>>[
@@ -101,18 +178,19 @@ class SpreadsheetService {
         for (final p in products)
           [p.id, p.name, p.sku ?? '', p.barcode ?? '', p.category, p.buyPrice, p.sellPrice, p.stock, p.minStock],
       ];
-      await api.spreadsheets.values.update(
-        ValueRange(range: 'Produk!A1', values: rows), spreadsheetId, 'Produk!A1',
-        valueInputOption: 'USER_ENTERED',
-      );
-      return true;
-    } catch (e) { debugPrint('[Spreadsheet] syncProducts: $e'); return false; }
+      await _writeValues(api, spreadsheetId, '$tab!A1', rows, tab);
+      return SyncResult(ok: true, tab: tab);
+    } catch (e) {
+      debugPrint('[Spreadsheet] syncProducts: $e');
+      return SyncResult(ok: false, tab: tab, error: _friendlyError(e));
+    }
   }
 
-  Future<bool> syncTransactions(String spreadsheetId) async {
-    final api = await _client();
-    if (api == null) return false;
+  Future<SyncResult> syncTransactions(String spreadsheetId) async {
+    const tab = 'Transaksi';
     try {
+      final api = await _client();
+      if (api == null) return SyncResult(ok: false, tab: tab, error: 'Tidak terhubung ke Google');
       final repo = TransactionRepository(db);
       final txs = await repo.getTransactions();
       final rows = <List<dynamic>>[
@@ -120,18 +198,19 @@ class SpreadsheetService {
         for (final t in txs)
           [t.invoice, '${t.date.day}/${t.date.month}/${t.date.year} ${t.date.hour.toString().padLeft(2, '0')}:${t.date.minute.toString().padLeft(2, '0')}', t.total, t.discount, t.paymentMethod, t.cashGiven ?? 0, t.cashReturn ?? 0, t.cashierName ?? '-', t.status],
       ];
-      await api.spreadsheets.values.update(
-        ValueRange(range: 'Transaksi!A1', values: rows), spreadsheetId, 'Transaksi!A1',
-        valueInputOption: 'USER_ENTERED',
-      );
-      return true;
-    } catch (e) { debugPrint('[Spreadsheet] syncTransactions: $e'); return false; }
+      await _writeValues(api, spreadsheetId, '$tab!A1', rows, tab);
+      return SyncResult(ok: true, tab: tab);
+    } catch (e) {
+      debugPrint('[Spreadsheet] syncTransactions: $e');
+      return SyncResult(ok: false, tab: tab, error: _friendlyError(e));
+    }
   }
 
-  Future<bool> syncStock(String spreadsheetId) async {
-    final api = await _client();
-    if (api == null) return false;
+  Future<SyncResult> syncStock(String spreadsheetId) async {
+    const tab = 'Stok';
     try {
+      final api = await _client();
+      if (api == null) return SyncResult(ok: false, tab: tab, error: 'Tidak terhubung ke Google');
       final movements = await (db.select(db.stockMovements)
             ..orderBy([(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)]))
           .get();
@@ -142,18 +221,19 @@ class SpreadsheetService {
         for (final m in movements)
           ['${m.date.day}/${m.date.month}/${m.date.year} ${m.date.hour}:${m.date.minute}', nameOf[m.productId] ?? '#${m.productId}', m.type, m.qty, m.note ?? ''],
       ];
-      await api.spreadsheets.values.update(
-        ValueRange(range: 'Stok!A1', values: rows), spreadsheetId, 'Stok!A1',
-        valueInputOption: 'USER_ENTERED',
-      );
-      return true;
-    } catch (e) { debugPrint('[Spreadsheet] syncStock: $e'); return false; }
+      await _writeValues(api, spreadsheetId, '$tab!A1', rows, tab);
+      return SyncResult(ok: true, tab: tab);
+    } catch (e) {
+      debugPrint('[Spreadsheet] syncStock: $e');
+      return SyncResult(ok: false, tab: tab, error: _friendlyError(e));
+    }
   }
 
-  Future<bool> syncLaporan(String spreadsheetId) async {
-    final api = await _client();
-    if (api == null) return false;
+  Future<SyncResult> syncLaporan(String spreadsheetId) async {
+    const tab = 'Laporan';
     try {
+      final api = await _client();
+      if (api == null) return SyncResult(ok: false, tab: tab, error: 'Tidak terhubung ke Google');
       final reportRepo = ReportRepository(db);
       final summary = await reportRepo.summary();
       final pl = await reportRepo.profitLoss();
@@ -175,18 +255,19 @@ class SpreadsheetService {
         ['Total Beban', pl['totalBeban']],
         ['Laba Bersih', pl['labaBersih']],
       ];
-      await api.spreadsheets.values.update(
-        ValueRange(range: 'Laporan!A1', values: rows), spreadsheetId, 'Laporan!A1',
-        valueInputOption: 'USER_ENTERED',
-      );
-      return true;
-    } catch (e) { debugPrint('[Spreadsheet] syncLaporan: $e'); return false; }
+      await _writeValues(api, spreadsheetId, '$tab!A1', rows, tab);
+      return SyncResult(ok: true, tab: tab);
+    } catch (e) {
+      debugPrint('[Spreadsheet] syncLaporan: $e');
+      return SyncResult(ok: false, tab: tab, error: _friendlyError(e));
+    }
   }
 
-  Future<bool> syncKeuangan(String spreadsheetId) async {
-    final api = await _client();
-    if (api == null) return false;
+  Future<SyncResult> syncKeuangan(String spreadsheetId) async {
+    const tab = 'Keuangan';
     try {
+      final api = await _client();
+      if (api == null) return SyncResult(ok: false, tab: tab, error: 'Tidak terhubung ke Google');
       final repo = FinanceRepository(db);
       final expenses = await repo.getExpenses();
       final payroll = await repo.getPayroll();
@@ -195,29 +276,25 @@ class SpreadsheetService {
       final liquidity = await repo.getLiquidity();
       final rows = <List<dynamic>>[
         ['TIPE', 'KATEGORI', 'KETERANGAN', 'JUMLAH', 'TANGGAL / INFO'],
-        // Pengeluaran
         ...expenses.map((e) => ['Pengeluaran', e.category, e.description, e.amount, '${e.date.day}/${e.date.month}/${e.date.year}']),
-        // Payroll
         ...payroll.map((p) => ['Payroll', 'Karyawan #${p.employeeId}', p.period, p.salary + p.bonus - p.deduction, p.status]),
-        // Waste
         ...waste.map((w) => ['Waste', 'Produk #${w.productId}', w.reason ?? '', w.qty, '${w.date.day}/${w.date.month}/${w.date.year}']),
-        // Recurring
         ...recurring.where((r) => r.active).map((r) => ['Berulang', r.category, r.description, r.amount, 'Next: ${r.nextDate.day}/${r.nextDate.month}/${r.nextDate.year}']),
-        // Liquidity
         ...liquidity.map((l) => [l.type == 'in' ? 'Likuiditas Masuk' : 'Likuiditas Keluar', l.category, l.description, l.amount, '${l.date.day}/${l.date.month}/${l.date.year}']),
       ];
-      await api.spreadsheets.values.update(
-        ValueRange(range: 'Keuangan!A1', values: rows), spreadsheetId, 'Keuangan!A1',
-        valueInputOption: 'USER_ENTERED',
-      );
-      return true;
-    } catch (e) { debugPrint('[Spreadsheet] syncKeuangan: $e'); return false; }
+      await _writeValues(api, spreadsheetId, '$tab!A1', rows, tab);
+      return SyncResult(ok: true, tab: tab);
+    } catch (e) {
+      debugPrint('[Spreadsheet] syncKeuangan: $e');
+      return SyncResult(ok: false, tab: tab, error: _friendlyError(e));
+    }
   }
 
-  Future<bool> syncKaryawan(String spreadsheetId) async {
-    final api = await _client();
-    if (api == null) return false;
+  Future<SyncResult> syncKaryawan(String spreadsheetId) async {
+    const tab = 'Karyawan';
     try {
+      final api = await _client();
+      if (api == null) return SyncResult(ok: false, tab: tab, error: 'Tidak terhubung ke Google');
       final emps = await (db.select(db.employees)
             ..orderBy([(t) => OrderingTerm(expression: t.name, mode: OrderingMode.asc)]))
           .get();
@@ -228,18 +305,19 @@ class SpreadsheetService {
            e.baseSalary != null ? formatRupiah(e.baseSalary!) : '',
            e.startDate != null ? '${e.startDate!.day}/${e.startDate!.month}/${e.startDate!.year}' : ''],
       ];
-      await api.spreadsheets.values.update(
-        ValueRange(range: 'Karyawan!A1', values: rows), spreadsheetId, 'Karyawan!A1',
-        valueInputOption: 'USER_ENTERED',
-      );
-      return true;
-    } catch (e) { debugPrint('[Spreadsheet] syncKaryawan: $e'); return false; }
+      await _writeValues(api, spreadsheetId, '$tab!A1', rows, tab);
+      return SyncResult(ok: true, tab: tab);
+    } catch (e) {
+      debugPrint('[Spreadsheet] syncKaryawan: $e');
+      return SyncResult(ok: false, tab: tab, error: _friendlyError(e));
+    }
   }
 
-  Future<bool> syncPelanggan(String spreadsheetId) async {
-    final api = await _client();
-    if (api == null) return false;
+  Future<SyncResult> syncPelanggan(String spreadsheetId) async {
+    const tab = 'Pelanggan';
     try {
+      final api = await _client();
+      if (api == null) return SyncResult(ok: false, tab: tab, error: 'Tidak terhubung ke Google');
       final custRepo = CustomerRepository(db);
       final customers = await custRepo.getCustomers();
       final rows = <List<dynamic>>[
@@ -247,18 +325,19 @@ class SpreadsheetService {
         for (final c in customers)
           [c.id, c.name, c.phone ?? '', c.level, c.totalSpent, c.points],
       ];
-      await api.spreadsheets.values.update(
-        ValueRange(range: 'Pelanggan!A1', values: rows), spreadsheetId, 'Pelanggan!A1',
-        valueInputOption: 'USER_ENTERED',
-      );
-      return true;
-    } catch (e) { debugPrint('[Spreadsheet] syncPelanggan: $e'); return false; }
+      await _writeValues(api, spreadsheetId, '$tab!A1', rows, tab);
+      return SyncResult(ok: true, tab: tab);
+    } catch (e) {
+      debugPrint('[Spreadsheet] syncPelanggan: $e');
+      return SyncResult(ok: false, tab: tab, error: _friendlyError(e));
+    }
   }
 
-  Future<bool> syncSupplier(String spreadsheetId) async {
-    final api = await _client();
-    if (api == null) return false;
+  Future<SyncResult> syncSupplier(String spreadsheetId) async {
+    const tab = 'Supplier';
     try {
+      final api = await _client();
+      if (api == null) return SyncResult(ok: false, tab: tab, error: 'Tidak terhubung ke Google');
       final suppRepo = SupplierRepository(db);
       final suppliers = await suppRepo.getSuppliers();
       final rows = <List<dynamic>>[
@@ -266,18 +345,19 @@ class SpreadsheetService {
         for (final s in suppliers)
           [s.id, s.name, s.contactPerson ?? '', s.phone ?? '', s.address ?? '', s.note ?? ''],
       ];
-      await api.spreadsheets.values.update(
-        ValueRange(range: 'Supplier!A1', values: rows), spreadsheetId, 'Supplier!A1',
-        valueInputOption: 'USER_ENTERED',
-      );
-      return true;
-    } catch (e) { debugPrint('[Spreadsheet] syncSupplier: $e'); return false; }
+      await _writeValues(api, spreadsheetId, '$tab!A1', rows, tab);
+      return SyncResult(ok: true, tab: tab);
+    } catch (e) {
+      debugPrint('[Spreadsheet] syncSupplier: $e');
+      return SyncResult(ok: false, tab: tab, error: _friendlyError(e));
+    }
   }
 
-  Future<bool> syncPromo(String spreadsheetId) async {
-    final api = await _client();
-    if (api == null) return false;
+  Future<SyncResult> syncPromo(String spreadsheetId) async {
+    const tab = 'Promo';
     try {
+      final api = await _client();
+      if (api == null) return SyncResult(ok: false, tab: tab, error: 'Tidak terhubung ke Google');
       final promoRepo = PromoRepository(db);
       final promos = await promoRepo.getPromos();
       final rows = <List<dynamic>>[
@@ -288,18 +368,19 @@ class SpreadsheetService {
            p.endDate != null ? '${p.endDate!.day}/${p.endDate!.month}/${p.endDate!.year}' : '',
            p.status, p.usedCount],
       ];
-      await api.spreadsheets.values.update(
-        ValueRange(range: 'Promo!A1', values: rows), spreadsheetId, 'Promo!A1',
-        valueInputOption: 'USER_ENTERED',
-      );
-      return true;
-    } catch (e) { debugPrint('[Spreadsheet] syncPromo: $e'); return false; }
+      await _writeValues(api, spreadsheetId, '$tab!A1', rows, tab);
+      return SyncResult(ok: true, tab: tab);
+    } catch (e) {
+      debugPrint('[Spreadsheet] syncPromo: $e');
+      return SyncResult(ok: false, tab: tab, error: _friendlyError(e));
+    }
   }
 
-  Future<bool> syncPresensi(String spreadsheetId) async {
-    final api = await _client();
-    if (api == null) return false;
+  Future<SyncResult> syncPresensi(String spreadsheetId) async {
+    const tab = 'Presensi';
     try {
+      final api = await _client();
+      if (api == null) return SyncResult(ok: false, tab: tab, error: 'Tidak terhubung ke Google');
       final atts = await (db.select(db.attendance)
             ..orderBy([(t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc)]))
           .get();
@@ -315,25 +396,27 @@ class SpreadsheetService {
            a.finalCash != null ? formatRupiah(a.finalCash!) : '-',
            a.status ?? 'Hadir'],
       ];
-      await api.spreadsheets.values.update(
-        ValueRange(range: 'Presensi!A1', values: rows), spreadsheetId, 'Presensi!A1',
-        valueInputOption: 'USER_ENTERED',
-      );
-      return true;
-    } catch (e) { debugPrint('[Spreadsheet] syncPresensi: $e'); return false; }
+      await _writeValues(api, spreadsheetId, '$tab!A1', rows, tab);
+      return SyncResult(ok: true, tab: tab);
+    } catch (e) {
+      debugPrint('[Spreadsheet] syncPresensi: $e');
+      return SyncResult(ok: false, tab: tab, error: _friendlyError(e));
+    }
   }
 
-  Future<bool> syncAll(String spreadsheetId) async {
-    final p = await syncProducts(spreadsheetId);
-    final t = await syncTransactions(spreadsheetId);
-    final s = await syncStock(spreadsheetId);
-    final l = await syncLaporan(spreadsheetId);
-    final k = await syncKeuangan(spreadsheetId);
-    final e = await syncKaryawan(spreadsheetId);
-    final c = await syncPelanggan(spreadsheetId);
-    final sp = await syncSupplier(spreadsheetId);
-    final pr = await syncPromo(spreadsheetId);
-    final at = await syncPresensi(spreadsheetId);
-    return p && t && s && l && k && e && c && sp && pr && at;
+  /// Convenience: sync all tabs sequentially. Returns list of per-tab results.
+  Future<List<SyncResult>> syncAll(String spreadsheetId) async {
+    final results = <SyncResult>[];
+    results.add(await syncProducts(spreadsheetId));
+    results.add(await syncTransactions(spreadsheetId));
+    results.add(await syncStock(spreadsheetId));
+    results.add(await syncLaporan(spreadsheetId));
+    results.add(await syncKeuangan(spreadsheetId));
+    results.add(await syncKaryawan(spreadsheetId));
+    results.add(await syncPelanggan(spreadsheetId));
+    results.add(await syncSupplier(spreadsheetId));
+    results.add(await syncPromo(spreadsheetId));
+    results.add(await syncPresensi(spreadsheetId));
+    return results;
   }
 }

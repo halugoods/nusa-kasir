@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:cryptography/cryptography.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 
 /// NFC tag read/write service for employee tap-to-login.
@@ -114,23 +115,19 @@ class NfcTagService {
 
   // ── Internal ──
 
-  /// Simple HMAC-like hash: SHA-based fingerprint of employee + device.
+  /// HMAC-SHA256 hash binding employee + activation key → anti-cloning.
   ///
-  /// Uses activation key + employeeId + device fingerprint to ensure
-  /// the tag only works on this specific device/app installation.
+  /// Uses cryptographic HMAC so that attackers cannot forge valid tags
+  /// even if they know the employee ID.
   static Future<String> _computeHash(int employeeId) async {
     final activationKey = await SecureStore.getActivation();
-    final seed = '$activationKey|$employeeId|nusa_tag_secret';
-    final bytes = utf8.encode(seed);
-
-    // Fast djb2 hash (sufficient for anti-cloning, not for cryptographic security)
-    int hash = 5381;
-    for (final b in bytes) {
-      hash = ((hash << 5) + hash) + b;
-      hash &= 0xFFFFFFFF; // 32-bit
-    }
-
-    return hash.toRadixString(16).padLeft(8, '0');
+    final hmac = Hmac.sha256();
+    final key = SecretKey(utf8.encode(activationKey ?? 'nusa_default'));
+    final message = utf8.encode('$employeeId|nusa_tag_secret');
+    final mac = await hmac.calculateMac(message, secretKey: key);
+    return mac.bytes
+        .take(8)
+        .fold<String>('', (s, b) => s + b.toRadixString(16).padLeft(2, '0'));
   }
 
   /// Parse a text record from an NDEF message.

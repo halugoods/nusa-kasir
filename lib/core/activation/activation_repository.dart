@@ -117,12 +117,12 @@ class ActivationRepository {
       final files = <String, Uint8List>{};
       files['nusa_kasir.sqlite'] = await dbFile.readAsBytes();
 
-      // Collect all product_* image files
+      // Collect all product, employee, and QRIS image files
       final dirContents = dir.listSync();
       for (final entity in dirContents) {
         if (entity is File) {
           final name = p.basename(entity.path);
-          if (name.startsWith('product_') &&
+          if ((name.startsWith('product_') || name.startsWith('photo_') || name.startsWith('qris_')) &&
               (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png') || name.endsWith('.webp'))) {
             files[name] = await entity.readAsBytes();
           }

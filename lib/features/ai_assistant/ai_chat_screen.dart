@@ -18,6 +18,16 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   final _messages = <ChatMessage>[];
   bool _loading = false;
   String? _storeName;
+  String _selectedModel = 'gemini';
+
+  static const _models = {
+    'gemini': 'Gemini Flash',
+    'gpt4-mini': 'GPT-4o Mini',
+    'gpt4': 'GPT-4o',
+    'claude': 'Claude 3.5',
+    'deepseek': 'DeepSeek',
+    'llama': 'Llama 4',
+  };
 
   @override
   void initState() {
@@ -58,6 +68,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       final reply = await svc.chat(
         messages: _messages,
         storeName: _storeName,
+        model: _selectedModel,
       );
 
       if (mounted) {
@@ -102,32 +113,74 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             color: NusaConfig.primaryColor.withValues(alpha: 0.06),
-            child: Row(
+            child: Column(
               children: [
-                const Icon(Icons.auto_awesome, size: 16, color: NusaConfig.primaryColor),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    _storeName != null
-                        ? 'AI Assistant • $_storeName'
-                        : 'AI Assistant NUSA Kasir',
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: NusaConfig.primaryColor,
-                        fontWeight: FontWeight.w600),
-                  ),
+                Row(
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 16, color: NusaConfig.primaryColor),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _storeName != null
+                            ? 'AI Assistant • $_storeName'
+                            : 'AI Assistant NUSA Kasir',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: NusaConfig.primaryColor,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: NusaConfig.accentGreen.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(_models[_selectedModel] ?? _selectedModel,
+                          style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: NusaConfig.accentGreen)),
+                    ),
+                  ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: NusaConfig.accentGreen.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(4),
+                const SizedBox(height: 6),
+                // Model selector chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _models.entries.map((e) {
+                      final isSel = _selectedModel == e.key;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedModel = e.key),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isSel
+                                  ? NusaConfig.primaryColor
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isSel
+                                    ? NusaConfig.primaryColor
+                                    : NusaConfig.textTertiary.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Text(
+                              e.value,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: isSel ? Colors.white : NusaConfig.textTertiary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                  child: const Text('BETA',
-                      style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: NusaConfig.accentGreen)),
                 ),
               ],
             ),

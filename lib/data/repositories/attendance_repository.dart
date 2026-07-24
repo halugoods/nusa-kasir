@@ -267,7 +267,7 @@ class AttendanceRepository {
 
   Future<List<AttendanceData>> getMonthly({required int year, required int month, int? employeeId}) {
     final start = DateTime(year, month, 1);
-    final end = DateTime(year, month + 1, 1);
+    final end = month == 12 ? DateTime(year + 1, 1, 1) : DateTime(year, month + 1, 1);
     final q = db.select(db.attendance)
       ..where((t) => t.date.isBetweenValues(start, end));
     if (employeeId != null) {

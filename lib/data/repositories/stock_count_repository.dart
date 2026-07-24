@@ -82,28 +82,32 @@ class StockCountRepository {
     int diffCount = 0;
     int totalLossValue = 0; // negative = loss, positive = gain
 
-    for (final item in items) {
-      if (item.physicalStock == null) continue;
-      final diff = item.physicalStock! - item.systemStock;
-      if (diff != 0) {
-        diffCount++;
-        // Adjust product stock to match physical
-        await productRepo.adjustStock(item.productId, diff);
-        // Track value: negative diff = loss at buyPrice
-        if (diff < 0) {
-          totalLossValue += diff.abs() * item.buyPrice;
+    // Wrap all stock adjustments in a single transaction so
+    // that a partial failure doesn't leave inventory inconsistent.
+    await db.transaction(() async {
+      for (final item in items) {
+        if (item.physicalStock == null) continue;
+        final diff = item.physicalStock! - item.systemStock;
+        if (diff != 0) {
+          diffCount++;
+          // Adjust product stock to match physical
+          await productRepo.adjustStock(item.productId, diff);
+          // Track value: negative diff = loss at buyPrice
+          if (diff < 0) {
+            totalLossValue += diff.abs() * item.buyPrice;
+          }
+          // Also record as stock movement
+          await db.into(db.stockMovements).insert(StockMovementsCompanion.insert(
+            productId: item.productId,
+            type: diff > 0 ? 'in' : 'out',
+            qty: diff.abs(),
+            note: Value('Penyesuaian Stok Opname #$sessionId'),
+          ));
+        } else {
+          matchCount++;
         }
-        // Also record as stock movement
-        await db.into(db.stockMovements).insert(StockMovementsCompanion.insert(
-          productId: item.productId,
-          type: diff > 0 ? 'in' : 'out',
-          qty: diff.abs(),
-          note: Value('Penyesuaian Stok Opname #$sessionId'),
-        ));
-      } else {
-        matchCount++;
       }
-    }
+    });
 
     await (db.update(db.stockCounts)..where((t) => t.id.equals(sessionId)))
         .write(StockCountsCompanion(

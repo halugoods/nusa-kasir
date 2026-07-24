@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/services/spreadsheet_service.dart';
+// SyncResult is exported from spreadsheet_service.dart
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
@@ -306,33 +307,30 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
       _syncing = true;
       _syncingTab = tab;
     });
-    bool ok = false;
-    try {
-      switch (tab) {
-        case 'Produk':    ok = await _svc!.syncProducts(_spreadsheetId!); break;
-        case 'Transaksi': ok = await _svc!.syncTransactions(_spreadsheetId!); break;
-        case 'Stok':      ok = await _svc!.syncStock(_spreadsheetId!); break;
-        case 'Laporan':   ok = await _svc!.syncLaporan(_spreadsheetId!); break;
-        case 'Keuangan':  ok = await _svc!.syncKeuangan(_spreadsheetId!); break;
-        case 'Karyawan':  ok = await _svc!.syncKaryawan(_spreadsheetId!); break;
-        case 'Pelanggan': ok = await _svc!.syncPelanggan(_spreadsheetId!); break;
-        case 'Supplier':  ok = await _svc!.syncSupplier(_spreadsheetId!); break;
-        case 'Promo':     ok = await _svc!.syncPromo(_spreadsheetId!); break;
-        case 'Presensi':  ok = await _svc!.syncPresensi(_spreadsheetId!); break;
-      }
-    } catch (_) {
-      ok = false;
+    SyncResult result;
+    switch (tab) {
+      case 'Produk':    result = await _svc!.syncProducts(_spreadsheetId!); break;
+      case 'Transaksi': result = await _svc!.syncTransactions(_spreadsheetId!); break;
+      case 'Stok':      result = await _svc!.syncStock(_spreadsheetId!); break;
+      case 'Laporan':   result = await _svc!.syncLaporan(_spreadsheetId!); break;
+      case 'Keuangan':  result = await _svc!.syncKeuangan(_spreadsheetId!); break;
+      case 'Karyawan':  result = await _svc!.syncKaryawan(_spreadsheetId!); break;
+      case 'Pelanggan': result = await _svc!.syncPelanggan(_spreadsheetId!); break;
+      case 'Supplier':  result = await _svc!.syncSupplier(_spreadsheetId!); break;
+      case 'Promo':     result = await _svc!.syncPromo(_spreadsheetId!); break;
+      case 'Presensi':  result = await _svc!.syncPresensi(_spreadsheetId!); break;
+      default: return;
     }
     if (mounted) {
       setState(() {
         _syncing = false;
         _syncingTab = '';
-        if (ok) _lastSync[tab] = DateTime.now();
+        if (result.ok) _lastSync[tab] = DateTime.now();
       });
-      if (ok) {
+      if (result.ok) {
         TopToast.success(context, '$tab tersinkronisasi');
       } else {
-        TopToast.error(context, 'Gagal sinkron $tab');
+        TopToast.error(context, result.error ?? 'Gagal sinkron $tab');
       }
     }
   }
@@ -353,42 +351,30 @@ class _SpreadsheetScreenState extends ConsumerState<SpreadsheetScreen> {
       _syncedCount = 0;
       _totalCount = _allTabs.length;
     });
-    bool allOk = true;
-    for (var i = 0; i < _allTabs.length; i++) {
-      final tab = _allTabs[i];
-      bool ok = false;
-      try {
-        switch (tab) {
-          case 'Produk':    ok = await _svc!.syncProducts(_spreadsheetId!); break;
-          case 'Transaksi': ok = await _svc!.syncTransactions(_spreadsheetId!); break;
-          case 'Stok':      ok = await _svc!.syncStock(_spreadsheetId!); break;
-          case 'Laporan':   ok = await _svc!.syncLaporan(_spreadsheetId!); break;
-          case 'Keuangan':  ok = await _svc!.syncKeuangan(_spreadsheetId!); break;
-          case 'Karyawan':  ok = await _svc!.syncKaryawan(_spreadsheetId!); break;
-          case 'Pelanggan': ok = await _svc!.syncPelanggan(_spreadsheetId!); break;
-          case 'Supplier':  ok = await _svc!.syncSupplier(_spreadsheetId!); break;
-          case 'Promo':     ok = await _svc!.syncPromo(_spreadsheetId!); break;
-          case 'Presensi':  ok = await _svc!.syncPresensi(_spreadsheetId!); break;
-        }
-      } catch (_) {
-        ok = false;
+    final results = await _svc!.syncAll(_spreadsheetId!);
+    int okCount = 0;
+    final errors = <String>[];
+    for (final r in results) {
+      if (r.ok) {
+        okCount++;
+        if (mounted) _lastSync[r.tab] = DateTime.now();
+      } else if (r.error != null) {
+        errors.add('${r.tab}: ${r.error}');
       }
-      if (ok) {
-        if (mounted) _lastSync[tab] = DateTime.now();
-      } else {
-        allOk = false;
-      }
-      if (mounted) setState(() => _syncedCount = i + 1);
+      if (mounted) setState(() => _syncedCount++);
     }
     if (mounted) {
       setState(() {
         _syncing = false;
         _syncingTab = '';
       });
-      if (allOk) {
+      if (results.every((r) => r.ok)) {
         TopToast.success(context, 'Semua data tersinkronisasi!');
       } else {
-        TopToast.error(context, 'Sebagian gagal sinkronisasi');
+        final msg = errors.isNotEmpty
+            ? errors.take(2).join('\n')
+            : 'Sebagian gagal sinkronisasi';
+        TopToast.error(context, msg);
       }
     }
   }
