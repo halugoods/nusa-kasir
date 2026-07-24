@@ -6,9 +6,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/activation/activation_key.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/core/services/image_storage_service.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/data/repositories/category_repository.dart';
@@ -178,9 +180,21 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       await src.copy(dest.path);
       setState(() => _imagePath = dest.path);
       TopToast.success(context, 'Gambar ditambahkan');
+      // Upload to cloud in background (fire-and-forget)
+      _uploadToCloud(dest.path);
     } catch (_) {
       TopToast.error(context, 'Gagal menyimpan gambar');
     }
+  }
+
+  void _uploadToCloud(String localPath) {
+    try {
+      final uid = Supabase.instance.client.auth.currentUser?.id;
+      if (uid != null) {
+        ImageStorageService(Supabase.instance.client, uid)
+            .uploadImage('products', localPath);
+      }
+    } catch (_) {}
   }
 
   String? _serializeVariants() {
@@ -230,6 +244,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         variantsJson: Value(variants), wholesaleJson: Value(wholesale),
       ));
     }
+    // Upload image to cloud in background
+    if (_imagePath != null) _uploadToCloud(_imagePath!);
     if (mounted) context.pop();
   }
 

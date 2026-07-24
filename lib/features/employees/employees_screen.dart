@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/core/services/image_storage_service.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
@@ -250,7 +252,8 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                     final picked = await _imagePicker.pickImage(
                         source: ImageSource.gallery, maxWidth: 512, maxHeight: 512);
                     if (picked != null) {
-                      setSt(() => photoPath = picked.path);
+                      final copied = await _copyPhotoToStorage(picked.path);
+                      if (copied != null) setSt(() => photoPath = copied);
                     }
                   },
                   icon: Icon(Icons.camera_alt_outlined, size: 16,
@@ -454,6 +457,16 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                               startDate: startDate,
                               status: status,
                               branchId: branchId);
+                        }
+                        // Upload photo to cloud in background
+                        if (photoPath != null) {
+                          try {
+                            final uid = Supabase.instance.client.auth.currentUser?.id;
+                            if (uid != null) {
+                              ImageStorageService(Supabase.instance.client, uid)
+                                  .uploadImage('employees', photoPath!);
+                            }
+                          } catch (_) {}
                         }
                         if (mounted) Navigator.of(context).pop();
                         _load();

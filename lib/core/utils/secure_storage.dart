@@ -126,4 +126,10 @@ class SecureStore {
   }
   static Future<String?> getPrinterLogoPath() async =>
       SecureStore.read(key: 'nusa_printer_logo_path');
+
+  // ── Image migration flag ──────────────────────────────────────────
+  static Future<bool> getImagesMigrated() async =>
+      (await SecureStore.read(key: 'nusa_images_migrated')) == 'true';
+  static Future<void> setImagesMigrated(bool v) =>
+      SecureStore.write(key: 'nusa_images_migrated', value: v.toString());
 }

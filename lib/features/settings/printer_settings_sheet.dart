@@ -2,7 +2,11 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/core/services/image_storage_service.dart';
 import 'package:nusa_kasir/core/utils/receipt_printer.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
@@ -132,12 +136,31 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
   Future<void> _pickLogo() async {
     final result = await FilePicker.pickFiles(type: FileType.image);
     if (result == null || result.files.single.path == null) return;
-    final path = result.files.single.path!;
-    await ReceiptPrinter.loadLogo(path);
-    await SecureStore.setPrinterLogoPath(path);
-    if (mounted) {
-      setState(() => _logoPath = path);
-      TopToast.success(context, 'Logo disimpan');
+    try {
+      final src = File(result.files.single.path!);
+      final dir = await getApplicationDocumentsDirectory();
+      final ext = p.extension(src.path);
+      final destName = 'printer_logo_${DateTime.now().millisecondsSinceEpoch}$ext';
+      final destPath = p.join(dir.path, destName);
+      await src.copy(destPath);
+
+      await ReceiptPrinter.loadLogo(destPath);
+      await SecureStore.setPrinterLogoPath(destPath);
+      if (mounted) {
+        setState(() => _logoPath = destPath);
+        TopToast.success(context, 'Logo disimpan');
+      }
+
+      // Upload to cloud
+      try {
+        final uid = Supabase.instance.client.auth.currentUser?.id;
+        if (uid != null) {
+          ImageStorageService(Supabase.instance.client, uid)
+              .uploadImage('settings', destPath);
+        }
+      } catch (_) {}
+    } catch (_) {
+      if (mounted) TopToast.error(context, 'Gagal menyimpan logo');
     }
   }
 

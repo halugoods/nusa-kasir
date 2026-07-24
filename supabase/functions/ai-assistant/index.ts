@@ -1,15 +1,14 @@
 // Supabase Edge Function: ai-assistant
 //
-// Receives chat messages + optional store context, forwards to an LLM,
-// and returns the assistant reply.
+// Uses Groq API (gratis, cepat) for AI chat.
+// Endpoint: https://api.groq.com/openai/v1/chat/completions
+// Default model: llama-3.1-8b-instant (free tier, fast)
 //
 // Deploy: supabase functions deploy ai-assistant
 //
 // Environment variables (set via Supabase Dashboard → Edge Functions):
-//   OPENROUTER_API_KEY  – OpenRouter API key (https://openrouter.ai/keys)
-//   OPENROUTER_MODEL    – default model (e.g. "google/gemini-2.0-flash-001")
-//   OPENAI_API_KEY      – optional, fallback to OpenAI
-//   SYSTEM_PROMPT       – optional, overrides the built-in prompt
+//   GROQ_API_KEY  – Groq API key (https://console.groq.com/keys)
+//   SYSTEM_PROMPT – optional, overrides the built-in prompt
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -29,22 +28,7 @@ Gaya bicara: santai, ramah, dan profesional. Gunakan bahasa Indonesia yang natur
 
 Jika ditanya hal di luar konteks bisnis/POS/NUSA Kasir, arahkan kembali ke topik yang relevan dengan sopan.`;
 
-// ── Model mapping ──────────────────────────────────────────────────
-const MODEL_ALIASES: Record<string, string> = {
-  "gemini": "google/gemini-2.0-flash-001",
-  "gpt4": "openai/gpt-4o",
-  "gpt4-mini": "openai/gpt-4o-mini",
-  "claude": "anthropic/claude-3.5-sonnet",
-  "deepseek": "deepseek/deepseek-chat",
-  "llama": "meta-llama/llama-4-maverick:free",
-};
-
-function resolveModel(requested?: string): string {
-  if (!requested) {
-    return Deno.env.get("OPENROUTER_MODEL") ?? "google/gemini-2.0-flash-001";
-  }
-  return MODEL_ALIASES[requested] ?? requested;
-}
+const DEFAULT_MODEL = "llama-3.1-8b-instant";
 
 // ── Main handler ───────────────────────────────────────────────────
 serve(async (req: Request) => {
@@ -57,12 +41,18 @@ serve(async (req: Request) => {
     const body = await req.json();
     const messages: { role: string; content: string }[] = body.messages ?? [];
     const storeName: string | undefined = body.store_name;
-    const modelAlias: string | undefined = body.model;
-    const model = resolveModel(modelAlias);
 
-    if (messages.length === 0) {
+    if (!messages || messages.length === 0) {
       return new Response(
         JSON.stringify({ reply: "Tidak ada pesan yang dikirim." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const apiKey = Deno.env.get("GROQ_API_KEY");
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ reply: "⚠️ AI Assistant belum dikonfigurasi. Admin perlu menambahkan GROQ_API_KEY di Supabase Edge Function settings. Dapatkan key gratis di https://console.groq.com/keys" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -81,25 +71,15 @@ serve(async (req: Request) => {
       ...messages,
     ];
 
-    const apiKey = Deno.env.get("OPENROUTER_API_KEY");
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ reply: "⚠️ AI Assistant belum dikonfigurasi. Admin perlu menambahkan OPENROUTER_API_KEY di Supabase Edge Function settings." }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    // Call OpenRouter API
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    // Call Groq API (OpenAI-compatible)
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://nusa-kasir.app",
-        "X-Title": "NUSA Kasir AI Assistant",
       },
       body: JSON.stringify({
-        model,
+        model: DEFAULT_MODEL,
         messages: apiMessages,
         max_tokens: 1024,
         temperature: 0.7,
@@ -108,37 +88,9 @@ serve(async (req: Request) => {
 
     if (!response.ok) {
       const err = await response.text();
-      console.error(`OpenRouter error ${response.status}:`, err);
-
-      // Try OpenAI fallback if configured
-      const openaiKey = Deno.env.get("OPENAI_API_KEY");
-      if (openaiKey) {
-        const oaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${openaiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: apiMessages,
-            max_tokens: 1024,
-            temperature: 0.7,
-          }),
-        });
-        if (oaiResp.ok) {
-          const oaiData = await oaiResp.json();
-          const reply = oaiData.choices?.[0]?.message?.content
-            ?? "Maaf, tidak ada jawaban dari AI.";
-          return new Response(
-            JSON.stringify({ reply }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
-        }
-      }
-
+      console.error(`Groq error ${response.status}:`, err);
       return new Response(
-        JSON.stringify({ reply: `Maaf, AI Assistant sedang sibuk (error ${response.status}). Coba lagi nanti.` }),
+        JSON.stringify({ reply: `Maaf, AI Assistant sedang sibuk (error ${response.status}). Coba lagi nanti ya.` }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }

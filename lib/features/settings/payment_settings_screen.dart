@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/core/services/image_storage_service.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
@@ -86,6 +88,14 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
         setState(() => _qrisImagePath = dest.path);
         TopToast.success(context, 'QRIS disimpan ✅');
       }
+      // Upload to cloud
+      try {
+        final uid = Supabase.instance.client.auth.currentUser?.id;
+        if (uid != null) {
+          ImageStorageService(Supabase.instance.client, uid)
+              .uploadImage('settings', dest.path);
+        }
+      } catch (_) {}
     } catch (_) {
       if (mounted) TopToast.error(context, 'Gagal menyimpan gambar QRIS');
     }

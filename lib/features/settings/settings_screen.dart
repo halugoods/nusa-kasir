@@ -7,8 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/core/services/image_storage_service.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
@@ -709,9 +713,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onPressed: () async {
                     final result = await FilePicker.pickFiles(type: FileType.image);
                     if (result != null && result.files.single.path != null) {
-                      final path = result.files.single.path!;
-                      await repo.setStoreLogoPath(path);
-                      setSt(() => logoPath = path);
+                      try {
+                        final src = File(result.files.single.path!);
+                        final dir = await getApplicationDocumentsDirectory();
+                        final ext = p.extension(src.path);
+                        final destName = 'store_logo_${DateTime.now().millisecondsSinceEpoch}$ext';
+                        final destPath = p.join(dir.path, destName);
+                        await src.copy(destPath);
+                        await repo.setStoreLogoPath(destPath);
+                        setSt(() => logoPath = destPath);
+                        // Upload to cloud
+                        try {
+                          final uid = Supabase.instance.client.auth.currentUser?.id;
+                          if (uid != null) {
+                            ImageStorageService(Supabase.instance.client, uid)
+                                .uploadImage('settings', destPath);
+                          }
+                        } catch (_) {}
+                      } catch (_) {
+                        TopToast.error(context, 'Gagal menyimpan logo');
+                      }
                     }
                   },
                   icon: const Icon(Icons.image_outlined, size: 18),

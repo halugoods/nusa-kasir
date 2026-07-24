@@ -13,6 +13,7 @@ import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/core/services/notification_service.dart';
 import 'package:nusa_kasir/core/services/stok_alert_worker.dart';
+import 'package:nusa_kasir/core/services/image_storage_service.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/core/services/backup_crypto.dart';
@@ -105,6 +106,38 @@ Future<void> _applyPendingRestore() async {
   }
 }
 
+/// Sync images between local cache and Supabase Storage.
+/// Runs once on startup — first-time migration uploads local images,
+/// then downloads any cloud images missing from local cache.
+void _syncImagesFromCloud() {
+  Future.microtask(() async {
+    try {
+      final uid = Supabase.instance.client.auth.currentUser?.id;
+      if (uid == null) return;
+
+      final svc = ImageStorageService(Supabase.instance.client, uid);
+
+      // First-time: upload existing local images to cloud
+      final migrated = await SecureStore.getImagesMigrated();
+      if (!migrated) {
+        final uploaded = await svc.uploadAllLocal();
+        await SecureStore.setImagesMigrated(true);
+        if (uploaded > 0) {
+          debugPrint('[Sync] First-time migration: uploaded $uploaded images');
+        }
+      }
+
+      // Download any cloud images we don't have locally
+      final downloaded = await svc.syncAll();
+      if (downloaded > 0) {
+        debugPrint('[Sync] Downloaded $downloaded images from cloud');
+      }
+    } catch (e) {
+      debugPrint('[Sync] Image sync error: $e');
+    }
+  });
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   _setupErrorHandlers();
@@ -155,6 +188,9 @@ void main() async {
     } catch (_) {
       initialLocation = '/activation';
     }
+
+    // Background: sync images from cloud (first-time migration + download)
+    _syncImagesFromCloud();
 
     try { await db.close(); } catch (_) {}
   } catch (e) {
