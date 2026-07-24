@@ -12,7 +12,7 @@ import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
-import 'package:nusa_kasir/shared/widgets/pin_input.dart';
+import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -47,10 +47,9 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   String? _keyError;
 
   // PIN input (returning user)
-  final _pinKey = GlobalKey<PinInputState>();
   bool _pinLoading = false;
   String? _pinError;
-  bool _rememberPin = false;
+  Employee? _pinLoggedEmp;
 
   // Screen state: 'welcome' | 'google_loading' | 'pin' | 'key'
   String _screen = 'welcome';
@@ -262,65 +261,6 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     if (mounted) {
       TopToast.success(context, 'Aktivasi berhasil! 🎉');
       context.go('/setup');
-    }
-  }
-
-  // ── PIN Login Submit (returning user) ─────────────────────────────
-
-  Future<void> _submitPin(String pin) async {
-    if (pin.isEmpty) {
-      setState(() => _pinError = 'Masukkan PIN');
-      return;
-    }
-
-    setState(() {
-      _pinLoading = true;
-      _pinError = null;
-    });
-
-    try {
-      final db = ref.read(databaseProvider);
-      final repo = AttendanceRepository(db);
-      final emps = await repo.getEmployees();
-
-      final emp = emps.cast<Employee?>().firstWhere(
-            (e) => e!.pin == pin,
-            orElse: () => null,
-          );
-
-      if (emp == null) {
-        _pinKey.currentState?.clear();
-        setState(() {
-          _pinLoading = false;
-          _pinError = 'PIN salah';
-        });
-        return;
-      }
-
-      // Create session (only remembered if checkbox is checked)
-      final session = EmployeeSession(
-        employeeId: emp.id,
-        name: emp.name,
-        role: emp.role,
-        remember: _rememberPin,
-      );
-      ref.read(employeeSessionProvider.notifier).login(session, remember: _rememberPin);
-      ref.read(authProvider.notifier).state = emp.role;
-
-      // Auto check-in attendance
-      try {
-        await repo.checkIn(emp.id);
-      } catch (_) {}
-
-      // Check if setup needed
-      final settingsRepo = SettingsRepository(db);
-      final name = await settingsRepo.getStoreName();
-      if (mounted) context.go(name.isEmpty ? '/setup' : '/home');
-    } catch (e) {
-      setState(() {
-        _pinLoading = false;
-        _pinError = 'Terjadi kesalahan: $e';
-      });
     }
   }
 
@@ -747,61 +687,36 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                     Text('Masukkan PIN untuk melanjutkan',
                       style: TextStyle(fontSize: 13,
                         color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                    const SizedBox(height: 24),
-                    // PIN input — 6-box visual
-                    PinInput(
-                      key: _pinKey,
-                      onComplete: (pin) => _submitPin(pin),
-                      error: _pinError,
-                      onChanged: () { if (_pinError != null) setState(() => _pinError = null); },
-                    ),
-                    if (_pinError != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(_pinError!,
-                          style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13)),
-                      ),
-                    const SizedBox(height: 16),
-                    // Remember toggle
-                    InkWell(
-                      onTap: () => setState(() => _rememberPin = !_rememberPin),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 20, height: 20,
-                            child: Checkbox(
-                              value: _rememberPin,
-                              onChanged: (v) => setState(() => _rememberPin = v ?? false),
-                              activeColor: const Color(0xFF2D79F3),
-                              side: const BorderSide(color: Color(0xFFD1D5DB)),
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text('Ingat PIN selama 8 jam',
-                            style: TextStyle(fontSize: 13,
-                              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 28),
                     SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: _pinLoading ? null : () => _submitPin(_pinKey.currentState?.text ?? ''),
+                        onPressed: _pinLoading ? null : _showPinDialog,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF151717),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: Text(
-                          _pinLoading ? 'Memeriksa...' : 'Masuk',
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.lock_outline, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              _pinLoading ? 'Memeriksa...' : 'Masuk dengan PIN',
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                            ),
+                          ],
                         ),
                       ),
                     ),
+                    if (_pinError != null) ...[
+                      const SizedBox(height: 12),
+                      Text(_pinError!,
+                          style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13)),
+                    ],
                   ],
                 ),
               ),
@@ -815,6 +730,58 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showPinDialog() async {
+    final result = await PinDialog.show(
+      context: context,
+      title: 'Masuk',
+      subtitle: 'Masukkan PIN untuk melanjutkan',
+      pinLength: 6,
+      showRemember: true,
+      showFingerprint: false,
+      onVerify: (pin) async {
+        final db = ref.read(databaseProvider);
+        final repo = AttendanceRepository(db);
+        final emps = await repo.getEmployees();
+        final emp = emps.cast<Employee?>().firstWhere(
+              (e) => e!.pin == pin,
+              orElse: () => null,
+            );
+        if (emp == null) return false;
+
+        // Store matched employee for after dialog closes
+        _pinLoggedEmp = emp;
+        return true;
+      },
+    );
+
+    if (result == null || !result.success) return;
+    if (_pinLoggedEmp == null) return;
+
+    final emp = _pinLoggedEmp!;
+    _pinLoggedEmp = null;
+
+    // Create session
+    final session = EmployeeSession(
+      employeeId: emp.id,
+      name: emp.name,
+      role: emp.role,
+      remember: result.remember,
+    );
+    ref.read(employeeSessionProvider.notifier).login(session, remember: result.remember);
+    ref.read(authProvider.notifier).state = emp.role;
+
+    // Auto check-in
+    try {
+      final db = ref.read(databaseProvider);
+      final repo = AttendanceRepository(db);
+      await repo.checkIn(emp.id);
+    } catch (_) {}
+
+    final settingsRepo = SettingsRepository(ref.read(databaseProvider));
+    final name = await settingsRepo.getStoreName();
+    if (mounted) context.go(name.isEmpty ? '/setup' : '/home');
   }
 
   // ── Key Activation Screen (new user) ───────────────────────────────

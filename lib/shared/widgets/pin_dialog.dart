@@ -2,50 +2,85 @@ import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/shared/widgets/pin_keypad.dart';
 
-/// PIN authentication dialog — shows a branded keypad (EDC/ATM style)
-/// with employee name + role header.
-///
-/// Call [show] and check the returned [PinResult]:
-/// ```dart
-/// final result = await PinDialog.show(context: ..., ...);
-/// if (result?.success == true) { ... }
-/// ```
+/// Result of a PIN dialog authentication attempt.
 class PinResult {
   final bool success;
   final bool remember;
-  const PinResult({required this.success, required this.remember});
+  /// If NFC was used, the employee ID from the tag.
+  final int? nfcEmployeeId;
+  const PinResult({required this.success, required this.remember, this.nfcEmployeeId});
 }
 
+/// Unified PIN authentication dialog — used everywhere.
+///
+/// Two modes:
+/// - **Direct PIN match**: pass `correctPin` — dialog compares locally.
+/// - **Verify callback**: pass `onVerify` — dialog calls your async function
+///   with the entered PIN. Return `true` for success.
+///
+/// Also supports fingerprint (`onFingerprint`) and NFC (`onNfc`).
+///
+/// Usage:
+/// ```dart
+/// // Direct match
+/// final r = await PinDialog.show(context: context, correctPin: '123456', employeeName: 'Budi');
+///
+/// // Verify callback (e.g. login)
+/// final r = await PinDialog.show(
+///   context: context,
+///   title: 'Masuk',
+///   subtitle: 'Masukkan PIN karyawan kamu',
+///   pinLength: 6,
+///   showNfc: true,
+///   onNfc: () async => await NfcTagService.readEmployeeTag(),
+///   onVerify: (pin) async => await authRepo.verifyPin(pin),
+/// );
+/// ```
 class PinDialog extends StatelessWidget {
-  final String employeeName;
-  final String employeeRole;
-  final String correctPin;
+  final String? title;
+  final String? subtitle;
+  final String? employeeName;
+  final String? employeeRole;
+  final String? correctPin;
+  final Future<bool> Function(String pin)? onVerify;
   final bool showRemember;
   final int pinLength;
   final bool showFingerprint;
+  final bool showNfc;
   final Future<bool> Function()? onFingerprint;
+  final Future<String?> Function()? onNfc;
 
   const PinDialog({
     super.key,
-    required this.employeeName,
-    required this.employeeRole,
-    required this.correctPin,
+    this.title,
+    this.subtitle,
+    this.employeeName,
+    this.employeeRole,
+    this.correctPin,
+    this.onVerify,
     this.showRemember = true,
     this.pinLength = 6,
     this.showFingerprint = false,
+    this.showNfc = false,
     this.onFingerprint,
+    this.onNfc,
   });
 
-  /// Show the dialog. Returns [PinResult] or null if cancelled.
+  /// Show the dialog. Returns [PinResult] (success/failure) or null if cancelled.
   static Future<PinResult?> show({
     required BuildContext context,
-    required String employeeName,
-    required String employeeRole,
-    required String correctPin,
+    String? title,
+    String? subtitle,
+    String? employeeName,
+    String? employeeRole,
+    String? correctPin,
+    Future<bool> Function(String pin)? onVerify,
     bool showRemember = true,
     int pinLength = 6,
     bool showFingerprint = false,
+    bool showNfc = false,
     Future<bool> Function()? onFingerprint,
+    Future<String?> Function()? onNfc,
   }) async {
     return showDialog<PinResult>(
       context: context,
@@ -53,6 +88,7 @@ class PinDialog extends StatelessWidget {
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         String? error;
+        bool remember = false;
         final keypadKey = GlobalKey<_PinDialogKeypadState>();
 
         return StatefulBuilder(
@@ -75,48 +111,132 @@ class PinDialog extends StatelessWidget {
                   child: const Icon(Icons.lock_outline,
                       color: NusaConfig.primaryColor, size: 26),
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  employeeName,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: isDark
-                        ? NusaConfig.darkTextPrimary
-                        : NusaConfig.textPrimary,
+                if (title != null) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    title!,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isDark
+                          ? NusaConfig.darkTextPrimary
+                          : NusaConfig.textPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  employeeRole,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark
-                        ? NusaConfig.darkTextSecondary
-                        : NusaConfig.textSecondary,
+                ],
+                if (employeeName != null && title == null) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    employeeName!,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isDark
+                          ? NusaConfig.darkTextPrimary
+                          : NusaConfig.textPrimary,
+                    ),
                   ),
-                ),
+                ],
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark
+                          ? NusaConfig.darkTextSecondary
+                          : NusaConfig.textSecondary,
+                    ),
+                  ),
+                ],
+                if (employeeRole != null && title == null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    employeeRole!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark
+                          ? NusaConfig.darkTextSecondary
+                          : NusaConfig.textSecondary,
+                    ),
+                  ),
+                ],
               ]),
-              content: _PinDialogKeypad(
-                key: keypadKey,
-                pinLength: pinLength,
-                error: error,
-                showFingerprint: showFingerprint,
-                onFingerprint: onFingerprint,
-                onComplete: (pin) {
-                  final ok = pin.isNotEmpty && pin == correctPin;
-                  if (ok) {
-                    Navigator.of(ctx).pop(
-                        PinResult(success: true, remember: showRemember));
-                  } else {
-                    setSt(() {
-                      error = 'PIN salah';
-                      keypadKey.currentState?.clear();
-                    });
-                  }
-                },
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _PinDialogKeypad(
+                    key: keypadKey,
+                    pinLength: pinLength,
+                    error: error,
+                    showFingerprint: showFingerprint,
+                    showNfc: showNfc,
+                    onFingerprint: onFingerprint,
+                    onNfc: onNfc,
+                    onNfcSuccess: (employeeId) {
+                      Navigator.of(ctx).pop(PinResult(
+                          success: true, remember: remember, nfcEmployeeId: int.tryParse(employeeId)));
+                    },
+                    onComplete: (pin) async {
+                      if (pin.isEmpty) return;
+
+                      bool ok = false;
+
+                      // Mode 1: direct PIN match
+                      if (correctPin != null) {
+                        ok = pin == correctPin;
+                      }
+                      // Mode 2: verify callback
+                      else if (onVerify != null) {
+                        ok = await onVerify(pin);
+                      }
+
+                      if (ok) {
+                        if (ctx.mounted) {
+                          Navigator.of(ctx).pop(
+                              PinResult(success: true, remember: remember));
+                        }
+                      } else {
+                        setSt(() {
+                          error = 'PIN salah';
+                          keypadKey.currentState?.clear();
+                        });
+                      }
+                    },
+                  ),
+                ],
               ),
-              actions: [],
+              actions: [
+                if (showRemember)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, bottom: 4),
+                    child: GestureDetector(
+                      onTap: () => setSt(() => remember = !remember),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 22, height: 22,
+                            child: Checkbox(
+                              value: remember,
+                              onChanged: (v) => setSt(() => remember = v ?? false),
+                              activeColor: NusaConfig.primaryColor,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('Ingat PIN selama 8 jam',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark
+                                    ? NusaConfig.darkTextSecondary
+                                    : NusaConfig.textSecondary,
+                              )),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             );
           },
         );
@@ -126,7 +246,6 @@ class PinDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fallback — normally PinDialog.show() handles rendering
     return const SizedBox.shrink();
   }
 }
@@ -136,16 +255,22 @@ class _PinDialogKeypad extends StatefulWidget {
   final int pinLength;
   final String? error;
   final bool showFingerprint;
+  final bool showNfc;
   final Future<bool> Function()? onFingerprint;
+  final Future<String?> Function()? onNfc;
   final ValueChanged<String> onComplete;
+  final ValueChanged<String>? onNfcSuccess;
 
   const _PinDialogKeypad({
     super.key,
     required this.pinLength,
     this.error,
     this.showFingerprint = false,
+    this.showNfc = false,
     this.onFingerprint,
+    this.onNfc,
     required this.onComplete,
+    this.onNfcSuccess,
   });
 
   @override
@@ -156,8 +281,18 @@ class _PinDialogKeypadState extends State<_PinDialogKeypad> {
   int _resetCount = 0;
 
   void clear() {
-    // Force fresh PinKeypad so internal digits reset
     setState(() => _resetCount++);
+  }
+
+  Future<String?> _onNfcHandler() async {
+    if (widget.onNfc != null) {
+      final result = await widget.onNfc!();
+      if (result != null && mounted) {
+        widget.onNfcSuccess?.call(result);
+      }
+      return result;
+    }
+    return null;
   }
 
   @override
@@ -167,10 +302,12 @@ class _PinDialogKeypadState extends State<_PinDialogKeypad> {
       length: widget.pinLength,
       error: widget.error,
       showFingerprint: widget.showFingerprint,
+      showNfc: widget.showNfc,
       showCancel: true,
       onFingerprint: widget.onFingerprint,
       onFingerprintSuccess: () => Navigator.of(context)
-          .pop(PinResult(success: true, remember: true)),
+          .pop(const PinResult(success: true, remember: true)),
+      onNfc: _onNfcHandler,
       onComplete: widget.onComplete,
       onCancel: () => Navigator.of(context).pop(null),
     );

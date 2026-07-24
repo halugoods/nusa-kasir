@@ -15,12 +15,7 @@ import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
-import 'package:nusa_kasir/shared/widgets/employee_flip_card.dart';
-import 'package:nusa_kasir/shared/widgets/profile_stats_card.dart'
-    show EmployeeCardData;
-import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
 import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
-import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _avatarColors = [
@@ -96,7 +91,6 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
   final _imagePicker = ImagePicker();
-  EmployeeCardData? _cardData;
 
   @override
   void initState() {
@@ -655,39 +649,134 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                           separatorBuilder: (_, _) => const SizedBox(height: 12),
                           itemBuilder: (_, i) {
                             final e = employees[i];
-                            final session = ref.read(employeeSessionProvider);
-                            final viewerRole = session?.role ?? 'Owner';
-                            final viewerId = session?.employeeId;
-
-                            return EmployeeFlipCard(
-                              employee: e,
-                              viewerRole: viewerRole,
-                              viewerEmployeeId: viewerId,
-                              cardData: _cardData,
-                              onHubungiWa: e.phone != null && e.phone!.isNotEmpty
-                                  ? () => _openWA(e)
-                                  : null,
-                              onKontakWa: e.phone != null && e.phone!.isNotEmpty
-                                  ? () => _openWA(e)
-                                  : null,
-                              onAuthOwner: () async {
-                                if (viewerRole == 'Owner') return true;
-                                // Owner logged in as someone else — auth required
-                                final emp = _employees.cast<Employee?>().firstWhere(
-                                      (x) => x!.role == 'Owner',
-                                      orElse: () => null,
-                                    );
-                                if (emp == null) return false;
-                                final result = await PinDialog.show(
-                                  context: context,
-                                  employeeName: emp.name,
-                                  employeeRole: emp.role,
-                                  correctPin: emp.pin,
-                                  showRemember: false,
-                                  pinLength: ref.read(pinLengthProvider),
-                                );
-                                return result?.success == true;
-                              },
+                            final hasPhoto = e.photoPath != null && e.photoPath!.isNotEmpty;
+                            final statusColor = _statusColors[e.status ?? 'Aktif'] ?? NusaConfig.accentGreen;
+                            return NusaCard(
+                              Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        // Photo / Avatar
+                                        Container(
+                                          width: 52, height: 52,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(16),
+                                            color: _avatarColor(e.name),
+                                            image: hasPhoto
+                                                ? DecorationImage(
+                                                    image: FileImage(File(e.photoPath!)),
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                : null,
+                                            border: Border.all(
+                                              color: statusColor,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: hasPhoto
+                                              ? null
+                                              : Text(
+                                                  e.name.isNotEmpty ? e.name[0].toUpperCase() : '?',
+                                                  style: const TextStyle(
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                e.name,
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Row(children: [
+                                                _roleBadge(e.role),
+                                                if (e.status != null && e.status != 'Aktif') ...[
+                                                  const SizedBox(width: 6),
+                                                  _statusBadge(e.status!),
+                                                ],
+                                              ]),
+                                              if (e.startDate != null) ...[
+                                                const SizedBox(height: 4),
+                                                Row(children: [
+                                                  Icon(Icons.calendar_today, size: 13,
+                                                      color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                                                  const SizedBox(width: 4),
+                                                  Text('Mulai: ${_fmtDate(e.startDate)}',
+                                                      style: TextStyle(fontSize: 12,
+                                                          color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                                                ]),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        PopupMenuButton<String>(
+                                          color: isDark ? NusaConfig.darkSurface : null,
+                                          onSelected: (v) {
+                                            if (v == 'edit') _showForm(employee: e);
+                                            if (v == 'delete') _delete(e);
+                                          },
+                                          itemBuilder: (_) => [
+                                            const PopupMenuItem(
+                                                value: 'edit', child: Text('Edit')),
+                                            const PopupMenuItem(
+                                                value: 'delete', child: Text('Hapus')),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    // Bottom row: salary + WA
+                                    if (e.baseSalary != null || (e.phone != null && e.phone!.isNotEmpty)) ...[
+                                      const SizedBox(height: 10),
+                                      const Divider(height: 1),
+                                      const SizedBox(height: 8),
+                                      Row(children: [
+                                        if (e.baseSalary != null) ...[
+                                          Icon(Icons.payments_outlined, size: 14,
+                                              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                                          const SizedBox(width: 4),
+                                          Text('Gaji: ${formatRupiah(e.baseSalary!)}',
+                                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                                                  color: NusaConfig.accentGreenDark)),
+                                        ],
+                                        if (e.baseSalary != null &&
+                                            e.phone != null && e.phone!.isNotEmpty)
+                                          const Spacer(),
+                                        if (e.phone != null && e.phone!.isNotEmpty)
+                                          GestureDetector(
+                                            onTap: () => _openWA(e),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.phone_android, size: 14,
+                                                    color: const Color(0xFF25D366)),
+                                                const SizedBox(width: 4),
+                                                Text(e.phone!,
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                                                    )),
+                                              ],
+                                            ),
+                                          ),
+                                      ]),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             );
                           },
                         ),

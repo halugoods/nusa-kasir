@@ -7,14 +7,11 @@ import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
-import 'package:nusa_kasir/shared/widgets/pin_input.dart';
-import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
+import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 
-/// POST-SETUP login: user enters their personal PIN or taps an NFC tag.
-///
-/// Queries the local Employees table instead of using a hardcoded map.
+/// POST-SETUP login: user taps NFC or enters PIN via popup.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -22,10 +19,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _pinKey = GlobalKey<PinInputState>();
-  String? _error;
   bool _loading = false;
-  bool _remember = false;
   bool _nfcScanning = false;
   bool _nfcAvailable = false;
 
@@ -46,120 +40,96 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (mounted) setState(() => _nfcAvailable = available);
   }
 
-  /// Start NFC scanning for tap-to-login.
   Future<void> _startNfcLogin() async {
     if (_loading) return;
-
-    setState(() {
-      _nfcScanning = true;
-      _error = null;
-    });
-
+    setState(() { _nfcScanning = true; });
     final employeeId = await NfcTagService.readEmployeeTag();
-
     if (!mounted) return;
     setState(() => _nfcScanning = false);
-
-    if (employeeId == null) {
-      // Tag not recognized or user cancelled — silently return to PIN
-      return;
-    }
-
-    // Perform NFC-based login
+    if (employeeId == null) return;
     await _loginWithEmployeeId(employeeId);
   }
 
   Future<void> _loginWithEmployeeId(int employeeId) async {
     setState(() => _loading = true);
-
     try {
       final db = ref.read(databaseProvider);
       final repo = AttendanceRepository(db);
       final emp = await repo.getEmployee(employeeId);
-
       if (emp == null) {
-        if (mounted) {
-          setState(() {
-            _loading = false;
-            _error = 'Karyawan tidak ditemukan';
-          });
-        }
+        if (mounted) setState(() => _loading = false);
         return;
       }
-
-      final session = EmployeeSession(
-        employeeId: emp.id,
-        name: emp.name,
-        role: emp.role,
-        remember: _remember,
-      );
-      ref.read(employeeSessionProvider.notifier).login(session, remember: _remember);
-      ref.read(authProvider.notifier).state = emp.role;
-
-      final name = await ref.read(settingsRepoProvider).getStoreName();
-      if (mounted) context.go(name.isEmpty ? '/onboarding' : '/home');
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = 'Terjadi kesalahan';
-        });
-      }
+      _doLogin(emp);
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _submit() async {
-    final pin = _pinKey.currentState?.text ?? '';
-    if (pin.isEmpty) {
-      setState(() => _error = 'Masukkan PIN');
-      return;
-    }
+  Future<void> _doLogin(Employee emp) async {
+    final session = EmployeeSession(
+      employeeId: emp.id,
+      name: emp.name,
+      role: emp.role,
+    );
+    ref.read(employeeSessionProvider.notifier).login(session);
+    ref.read(authProvider.notifier).state = emp.role;
+    final name = await ref.read(settingsRepoProvider).getStoreName();
+    if (mounted) context.go(name.isEmpty ? '/onboarding' : '/home');
+  }
 
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _showPinLogin() async {
+    final pinLength = ref.read(pinLengthProvider);
+    Employee? matchedEmp;
 
-    try {
+    final result = await PinDialog.show(
+      context: context,
+      title: 'Masuk',
+      subtitle: 'Masukkan PIN karyawan kamu',
+      pinLength: pinLength,
+      showRemember: true,
+      showNfc: _nfcAvailable,
+      onNfc: () async {
+        final id = await NfcTagService.readEmployeeTag();
+        return id?.toString();
+      },
+      onVerify: (pin) async {
+        final db = ref.read(databaseProvider);
+        final repo = AttendanceRepository(db);
+        final emps = await repo.getEmployees();
+        final emp = emps.cast<Employee?>().firstWhere(
+              (e) => e!.pin == pin,
+              orElse: () => null,
+            );
+        if (emp == null) return false;
+        matchedEmp = emp;
+        return true;
+      },
+    );
+
+    if (result == null || !result.success) return;
+
+    // NFC login — lookup employee by tag id
+    if (result.nfcEmployeeId != null) {
       final db = ref.read(databaseProvider);
       final repo = AttendanceRepository(db);
-      final emps = await repo.getEmployees();
-
-      final emp = emps.cast<Employee?>().firstWhere(
-            (e) => e!.pin == pin,
-            orElse: () => null,
-          );
-
-      if (emp == null) {
-        if (mounted) {
-          _pinKey.currentState?.clear();
-          setState(() {
-            _loading = false;
-            _error = 'PIN salah';
-          });
-        }
-        return;
-      }
-
-      final session = EmployeeSession(
-        employeeId: emp.id,
-        name: emp.name,
-        role: emp.role,
-        remember: _remember,
-      );
-      ref.read(employeeSessionProvider.notifier).login(session, remember: _remember);
-      ref.read(authProvider.notifier).state = emp.role;
-
-      final name = await ref.read(settingsRepoProvider).getStoreName();
-      if (mounted) context.go(name.isEmpty ? '/onboarding' : '/home');
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = 'Terjadi kesalahan';
-        });
-      }
+      final emp = await repo.getEmployee(result.nfcEmployeeId!);
+      if (emp != null) matchedEmp = emp;
     }
+
+    if (matchedEmp == null) return;
+    if (!mounted) return;
+
+    final session = EmployeeSession(
+      employeeId: matchedEmp!.id,
+      name: matchedEmp!.name,
+      role: matchedEmp!.role,
+      remember: result.remember,
+    );
+    ref.read(employeeSessionProvider.notifier).login(session, remember: result.remember);
+    ref.read(authProvider.notifier).state = matchedEmp!.role;
+    final name = await ref.read(settingsRepoProvider).getStoreName();
+    if (mounted) context.go(name.isEmpty ? '/onboarding' : '/home');
   }
 
   @override
@@ -287,42 +257,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 16),
             ],
 
-            // ── PIN Input ───────────────────────────────────────
-            if (!_nfcAvailable) const SizedBox(height: 24),
-            PinInput(
-              key: _pinKey,
-              autoSubmit: false,
-              error: _error,
-              length: ref.watch(pinLengthProvider),
-              onChanged: () { if (_error != null) setState(() => _error = null); },
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(_error!,
-                  style: const TextStyle(color: NusaConfig.error, fontWeight: FontWeight.w600)),
-            ],
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () => setState(() => _remember = !_remember),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 22, height: 22,
-                    child: Checkbox(
-                      value: _remember,
-                      onChanged: (v) => setState(() => _remember = v ?? false),
-                      activeColor: NusaConfig.primaryColor,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            // ── PIN Button ──────────────────────────────────────
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _loading ? null : _showPinLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: NusaConfig.primaryColor,
+                  foregroundColor: Colors.white,
+                  elevation: 2,
+                  shadowColor: NusaConfig.primaryColor.withValues(alpha: 0.3),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.lock_outline, size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      _loading ? 'Memeriksa...' : 'Masuk dengan PIN',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text('Ingat PIN selama 8 jam', style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                ],
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-            NusaButton(_loading ? 'Memeriksa...' : 'Masuk',
-                onPressed: _loading ? null : _submit),
           ],
         ),
       ),

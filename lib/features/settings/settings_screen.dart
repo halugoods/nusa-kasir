@@ -15,7 +15,8 @@ import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
-import 'package:nusa_kasir/shared/widgets/pin_input.dart';
+import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:nusa_kasir/features/settings/backup_sheet.dart';
 import 'package:nusa_kasir/features/settings/printer_settings_sheet.dart';
 import 'package:nusa_kasir/core/services/update_service.dart';
@@ -144,116 +145,56 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<bool> _checkPin() async {
     final session = ref.read(employeeSessionProvider);
+    String name;
+    String correctPin;
+
     if (session != null) {
-      return await _showPinDialog(session.employeeId, session.name);
+      // Current session employee
+      final repo = AttendanceRepository(ref.read(databaseProvider));
+      final emp = await repo.getEmployee(session.employeeId);
+      if (emp == null) return false;
+      name = emp.name;
+      correctPin = emp.pin;
+    } else {
+      // No session — ask for Owner PIN
+      final repo = AttendanceRepository(ref.read(databaseProvider));
+      final all = await repo.getEmployees();
+      final ownerList = all.where((e) => e.role == 'Owner').toList();
+      if (ownerList.isEmpty) return true;
+      final owner = ownerList.first;
+      name = owner.name;
+      correctPin = owner.pin;
     }
-    // No session — ask for Owner PIN
-    final repo = AttendanceRepository(ref.read(databaseProvider));
-    final all = await repo.getEmployees();
-    final ownerList = all.where((e) => e.role == 'Owner').toList();
-    if (ownerList.isEmpty) return true;
-    return await _showPinDialog(ownerList.first.id, ownerList.first.name);
+
+    final result = await PinDialog.show(
+      context: context,
+      title: 'Verifikasi PIN',
+      subtitle: 'Masukkan PIN $name untuk mengakses pengaturan keamanan',
+      employeeName: name,
+      correctPin: correctPin,
+      pinLength: _pinLength,
+      showRemember: false,
+      showFingerprint: true,
+      onFingerprint: () async => await _authFingerprint(),
+    );
+
+    return result?.success == true;
   }
 
-  Future<bool> _showPinDialog(int employeeId, String name) async {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final pinKey = GlobalKey<PinInputState>();
-    String? error;
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-          contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-          title: Column(children: [
-            Container(
-              width: 56, height: 56,
-              decoration: BoxDecoration(
-                color: NusaConfig.primaryColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(Icons.lock_outline, color: NusaConfig.primaryColor, size: 28),
-            ),
-            const SizedBox(height: 16),
-            const Text('Verifikasi PIN', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 6),
-            Text('Masukkan PIN $name untuk mengakses pengaturan keamanan',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13,
-                    color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-          ]),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            PinInput(
-              key: pinKey,
-              autoSubmit: false,
-              error: error,
-              length: _pinLength,
-              onChanged: () { if (error != null) setSt(() => error = null); },
-            ),
-            if (error != null) ...[
-              const SizedBox(height: 12),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.error_outline, size: 14, color: NusaConfig.primaryColor),
-                const SizedBox(width: 6),
-                Text(error!, style: const TextStyle(fontSize: 12, color: NusaConfig.primaryColor, fontWeight: FontWeight.w600)),
-              ]),
-            ],
-          ]),
-          actions: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async {
-                  final pin = pinKey.currentState?.text ?? '';
-                  if (pin.length < _pinLength) {
-                    setSt(() => error = 'PIN harus $_pinLength digit');
-                    return;
-                  }
-                  final repo = AttendanceRepository(ref.read(databaseProvider));
-                  final all = await repo.getEmployees();
-                  final emp = all.where((e) => e.id == employeeId).firstOrNull;
-                  if (emp != null && emp.pin == pin) {
-                    if (ctx.mounted) Navigator.pop(ctx, true);
-                  } else {
-                    pinKey.currentState?.clear();
-                    setSt(() => error = 'PIN salah — coba lagi');
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: NusaConfig.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  elevation: 0,
-                ),
-                child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.lock_open, size: 20),
-                  SizedBox(width: 8),
-                  Text('Verifikasi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                ]),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  side: BorderSide(color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
-                ),
-                child: Text('Batal', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600,
-                    color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-              ),
-            ),
-          ],
+  Future<bool> _authFingerprint() async {
+    try {
+      final localAuth = LocalAuthentication();
+      final authenticated = await localAuth.authenticate(
+        localizedReason: 'Verifikasi sidik jari untuk melanjutkan',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: true,
         ),
-      ),
-    );
-    return result == true;
+      );
+      return authenticated;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _pinGate(VoidCallback action) async {
@@ -285,7 +226,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
 
     // Verify PIN before toggling
-    final ok = await _showPinDialog(session.employeeId, session.name);
+    final ok = await _checkPin();
     if (!ok) {
       TopToast.error(context, 'Verifikasi PIN gagal');
       return;
@@ -322,7 +263,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (session == null || session.role != 'Owner') return;
 
     // Verify PIN first
-    final ok = await _showPinDialog(session.employeeId, session.name);
+    final ok = await _checkPin();
     if (!ok) {
       if (mounted) TopToast.error(context, 'Verifikasi PIN gagal');
       return;

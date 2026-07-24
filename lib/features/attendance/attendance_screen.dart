@@ -12,7 +12,8 @@ import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
-import 'package:nusa_kasir/shared/widgets/pin_input.dart';
+import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _avatarColors = [
@@ -146,10 +147,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     return 'Belum';
   }
 
-  // ── Bottom sheet: Absen Masuk / Pulang (card-based redesign) ──────
+  // ── Bottom sheet: Absen Masuk / Pulang (PIN popup on submit) ──────
 
   void _showAbsenSheet(Employee e, {required bool isCheckIn}) {
-    final pinKey = GlobalKey<PinInputState>();
     final cashCtrl = TextEditingController();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final title = isCheckIn ? 'Absen Masuk' : 'Absen Pulang';
@@ -233,15 +233,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                 ),
               ]),
               const SizedBox(height: 20),
-              // PIN input — 6-box visual
-              Text('PIN', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                  color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-              const SizedBox(height: 8),
-              PinInput(
-                key: pinKey,
-                autoSubmit: false,
-              ),
-              const SizedBox(height: 14),
               // Cash input
               _bsInput(
                 controller: cashCtrl,
@@ -272,17 +263,27 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   flex: 2,
                   child: ElevatedButton(
                     onPressed: () async {
-                      final pin = pinKey.currentState?.text ?? '';
-                      if (pin != e.pin) {
-                        TopToast.error(context, 'PIN salah');
-                        return;
-                      }
-                      final amount = int.tryParse(cashCtrl.text.trim());
+                      final amountText = cashCtrl.text.trim();
+                      final amount = int.tryParse(amountText);
                       if (amount == null || amount <= 0) {
                         TopToast.error(context, '$cashLabel wajib diisi');
                         return;
                       }
+                      // Show PIN dialog before processing
                       Navigator.pop(ctx);
+                      final pinOk = await PinDialog.show(
+                        context: context,
+                        title: title,
+                        subtitle: 'Masukkan PIN ${e.name}',
+                        employeeName: e.name,
+                        employeeRole: e.role,
+                        correctPin: e.pin,
+                        showRemember: false,
+                        showFingerprint: true,
+                        onFingerprint: () async => await _authFingerprint(),
+                      );
+                      if (pinOk?.success != true) return;
+
                       final repo = AttendanceRepository(ref.read(databaseProvider));
                       if (isCheckIn) {
                         await repo.checkInWithCash(e.id, amount);
@@ -312,6 +313,22 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     ).then((_) {
       cashCtrl.dispose();
     });
+  }
+
+  Future<bool> _authFingerprint() async {
+    try {
+      final localAuth = LocalAuthentication();
+      final authenticated = await localAuth.authenticate(
+        localizedReason: 'Verifikasi sidik jari untuk melanjutkan',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: true,
+        ),
+      );
+      return authenticated;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ── Bottom sheet: Izin ──────────────────────────────────────────

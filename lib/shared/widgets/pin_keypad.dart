@@ -28,24 +28,28 @@ class PinKeypad extends StatefulWidget {
   final int length;
   final String? error;
   final bool showFingerprint;
+  final bool showNfc;
   final bool showCancel;
   final Future<bool> Function()? onFingerprint;
   final VoidCallback? onFingerprintSuccess;
   final ValueChanged<String>? onComplete;
   final VoidCallback? onCancel;
   final ValueChanged<String>? onChanged;
+  final Future<String?> Function()? onNfc;
 
   const PinKeypad({
     super.key,
     this.length = 6,
     this.error,
     this.showFingerprint = false,
+    this.showNfc = false,
     this.showCancel = true,
     this.onFingerprint,
     this.onFingerprintSuccess,
     this.onComplete,
     this.onCancel,
     this.onChanged,
+    this.onNfc,
   }) : assert(length == 4 || length == 6);
 
   @override
@@ -55,6 +59,7 @@ class PinKeypad extends StatefulWidget {
 class _PinKeypadState extends State<PinKeypad>
     with SingleTickerProviderStateMixin {
   String _digits = '';
+  bool _nfcScanning = false;
 
   late final AnimationController _shakeCtrl;
   late final Animation<double> _shakeAnim;
@@ -116,6 +121,19 @@ class _PinKeypadState extends State<PinKeypad>
     final ok = await widget.onFingerprint!();
     if (ok && mounted) {
       widget.onFingerprintSuccess?.call();
+    }
+  }
+
+  Future<void> _onNfcTap() async {
+    if (widget.onNfc == null || _nfcScanning) return;
+    setState(() => _nfcScanning = true);
+    try {
+      final result = await widget.onNfc!();
+      if (result != null && mounted) {
+        widget.onComplete?.call(result);
+      }
+    } finally {
+      if (mounted) setState(() => _nfcScanning = false);
     }
   }
 
@@ -183,6 +201,28 @@ class _PinKeypadState extends State<PinKeypad>
           ],
 
           const SizedBox(height: 24),
+          
+          // ── NFC scanning indicator ─────────────────
+          if (widget.showNfc && _nfcScanning) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: NusaConfig.accentPurple.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: NusaConfig.accentPurple.withValues(alpha: 0.3)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(
+                  width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: NusaConfig.accentPurple),
+                ),
+                const SizedBox(width: 12),
+                const Text('Dekatkan kartu NFC...',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: NusaConfig.accentPurple)),
+              ]),
+            ),
+          ],
 
           // ── Keypad grid ─────────────────────────────
           _buildKeypadRow(['1', '2', '3'], isDark),
@@ -191,13 +231,7 @@ class _PinKeypadState extends State<PinKeypad>
           Row(
             children: [
               Expanded(
-                child: _keyButton(
-                  child: widget.showFingerprint
-                      ? Icon(Icons.fingerprint,
-                          color: NusaConfig.primaryColor, size: 28)
-                      : const SizedBox.shrink(),
-                  onTap: widget.showFingerprint ? _onFingerprintTap : null,
-                ),
+                child: _bottomLeftCell(),
               ),
               Expanded(
                 child: _keyButton(
@@ -215,6 +249,41 @@ class _PinKeypadState extends State<PinKeypad>
               ),
             ],
           ),
+
+          // ── NFC tap card (below keypad) ────────────
+          if (widget.showNfc && !_nfcScanning) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: _onNfcTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor,
+                  ),
+                  color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: NusaConfig.accentPurple.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.nfc, size: 18, color: NusaConfig.accentPurple),
+                    ),
+                    const SizedBox(width: 10),
+                    Text('Tap Kartu NFC',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                  ],
+                ),
+              ),
+            ),
+          ],
 
           // ── Cancel ──────────────────────────────────
           if (widget.showCancel) ...[
@@ -235,6 +304,23 @@ class _PinKeypadState extends State<PinKeypad>
         ],
       ),
     );
+  }
+
+  Widget _bottomLeftCell() {
+    if (widget.showNfc) {
+      return _keyButton(
+        child: Icon(Icons.nfc, color: NusaConfig.accentPurple, size: 28),
+        onTap: _nfcScanning ? null : _onNfcTap,
+      );
+    }
+    if (widget.showFingerprint) {
+      return _keyButton(
+        child: Icon(Icons.fingerprint,
+            color: NusaConfig.primaryColor, size: 28),
+        onTap: _onFingerprintTap,
+      );
+    }
+    return _keyButton(child: const SizedBox.shrink());
   }
 
   Widget _buildKeypadRow(List<String> digits, bool isDark) {
