@@ -14,6 +14,7 @@ import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _avatarColors = [
@@ -280,7 +281,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                         correctPin: e.pin,
                         showRemember: false,
                         showFingerprint: true,
+                        showNfc: true,
                         onFingerprint: () async => await _authFingerprint(),
+                        onNfc: () async {
+                          final id = await NfcTagService.readEmployeeTag();
+                          return id?.toString();
+                        },
                       );
                       if (pinOk?.success != true) return;
 

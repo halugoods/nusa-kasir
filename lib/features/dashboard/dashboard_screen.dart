@@ -21,7 +21,9 @@ import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/profile_stats_card.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:nusa_kasir/shared/services/biometric_service.dart';
+import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // ignore_for_file: use_build_context_synchronously
@@ -169,15 +171,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // Sync PIN length to provider on every load
     final pinLen = await ref.read(settingsRepoProvider).getPinLength();
     ref.read(pinLengthProvider.notifier).state = pinLen;
+
+    // Auto-repair PIN length mismatch (e.g., user changed length without migration)
+    final attRepo = AttendanceRepository(ref.read(databaseProvider));
+    final emps = await attRepo.getEmployees();
+    if (emps.isNotEmpty) {
+      final actualPinLen = emps.first.pin.length;
+      if (actualPinLen != pinLen) {
+        // Setting doesn't match actual PINs — auto-migrate to fix
+        await attRepo.migrateAllPins(actualPinLen, pinLen);
+      }
+    }
     final branches =
         await BranchRepository(ref.read(databaseProvider)).getAll();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final reportRepo = ReportRepository(ref.read(databaseProvider));
     final sum = await reportRepo.summary(from: today, to: now);
-
-    final attRepo = AttendanceRepository(ref.read(databaseProvider));
-    final emps = await attRepo.getEmployees();
 
     final cashierRepo =
         CashierSessionRepository(ref.read(databaseProvider));
@@ -545,6 +555,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       employeeRole: emp.role,
       correctPin: emp.pin,
       showRemember: false,
+      showFingerprint: true,
+      showNfc: true,
+      onFingerprint: () async => await _authFingerprint(),
+      onNfc: () async {
+        final id = await NfcTagService.readEmployeeTag();
+        return id?.toString();
+      },
       pinLength: ref.read(pinLengthProvider),
     );
 
@@ -555,6 +572,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // Touch session on successful PIN
     ref.read(employeeSessionProvider.notifier).touch();
     return true;
+  }
+
+  Future<bool> _authFingerprint() async {
+    try {
+      final localAuth = LocalAuthentication();
+      final authenticated = await localAuth.authenticate(
+        localizedReason: 'Verifikasi sidik jari untuk melanjutkan',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: true,
+        ),
+      );
+      return authenticated;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ── Employee Picker + Login ────────────────────────────────────────
@@ -575,6 +608,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       employeeName: emp.name,
       employeeRole: emp.role,
       correctPin: emp.pin,
+      showFingerprint: true,
+      showNfc: true,
+      onFingerprint: () async => await _authFingerprint(),
+      onNfc: () async {
+        final id = await NfcTagService.readEmployeeTag();
+        return id?.toString();
+      },
       pinLength: ref.read(pinLengthProvider),
     );
 
@@ -1059,6 +1099,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   employeeRole: 'Owner',
                                   correctPin: owner.pin,
                                   showRemember: false,
+                                  showFingerprint: true,
+                                  showNfc: true,
+                                  onFingerprint: () async => await _authFingerprint(),
+                                  onNfc: () async {
+                                    final id = await NfcTagService.readEmployeeTag();
+                                    return id?.toString();
+                                  },
                                   pinLength: ref.read(pinLengthProvider),
                                 );
                                 return result?.success ?? false;

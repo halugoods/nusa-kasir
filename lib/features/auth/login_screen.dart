@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:nusa_kasir/core/auth/employee_session.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -78,6 +79,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (mounted) context.go(name.isEmpty ? '/onboarding' : '/home');
   }
 
+  Future<bool> _authFingerprint() async {
+    try {
+      final localAuth = LocalAuthentication();
+      final authenticated = await localAuth.authenticate(
+        localizedReason: 'Verifikasi sidik jari untuk melanjutkan',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: true,
+        ),
+      );
+      return authenticated;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _showPinLogin() async {
     final pinLength = ref.read(pinLengthProvider);
     Employee? matchedEmp;
@@ -88,7 +105,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       subtitle: 'Masukkan PIN karyawan kamu',
       pinLength: pinLength,
       showRemember: true,
+      showFingerprint: true,
       showNfc: _nfcAvailable,
+      onFingerprint: () async => await _authFingerprint(),
       onNfc: () async {
         final id = await NfcTagService.readEmployeeTag();
         return id?.toString();

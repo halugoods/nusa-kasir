@@ -76,6 +76,26 @@ class AttendanceRepository {
         EmployeesCompanion(status: Value(status)),
       );
 
+  /// Bulk-migrate all employee PINs when changing PIN length.
+  /// - When shrinking (e.g. 6→4): take the first [newLength] digits
+  /// - When expanding (e.g. 4→6): pad with '0' on the right
+  Future<void> migrateAllPins(int oldLength, int newLength) async {
+    if (oldLength == newLength) return;
+    final emps = await getEmployees();
+    for (final e in emps) {
+      String newPin;
+      if (newLength < oldLength) {
+        // 6→4: take first 4 digits
+        newPin = e.pin.substring(0, newLength);
+      } else {
+        // 4→6: pad with zeros on the right
+        newPin = e.pin.padRight(newLength, '0');
+      }
+      await (db.update(db.employees)..where((t) => t.id.equals(e.id)))
+          .write(EmployeesCompanion(pin: Value(newPin)));
+    }
+  }
+
   Future<void> deleteEmployee(int id) =>
       (db.delete(db.employees)..where((t) => t.id.equals(id))).go();
 

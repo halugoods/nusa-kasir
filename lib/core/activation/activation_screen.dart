@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +13,8 @@ import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -112,6 +114,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   }
 
   /// Check if employees exist. If not, try cloud restore first, then redirect to /setup.
+  /// If employees exist, directly show PIN dialog.
   Future<void> _goToPinOrSetup() async {
     try {
       final db = ref.read(databaseProvider);
@@ -126,7 +129,12 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
         return;
       }
     } catch (_) {}
-    if (mounted) setState(() => _screen = 'pin');
+    if (mounted) {
+      final success = await _showPinDialog();
+      if (!success && mounted) {
+        setState(() => _screen = 'pin');
+      }
+    }
   }
 
   /// Auto-restore cloud backup if cloud is newer than local.
@@ -186,7 +194,15 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     final isActivated = await ref.read(activationRepoProvider).isActivated;
 
     if (isActivated) {
-      _goToPinOrSetup();
+      if (mounted) {
+        // Directly show PIN dialog — no intermediate screen
+        _googleLoading = false;
+        final success = await _showPinDialog();
+        if (!success && mounted) {
+          // Fallback: show PIN screen with retry button
+          setState(() => _screen = 'pin');
+        }
+      }
       return;
     }
 
@@ -214,7 +230,12 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
         // Has valid license → go to PIN or setup (handles auto-restore)
         final key = data['key'] as String;
         await SecureStore.saveActivation(key);
-        _goToPinOrSetup();
+        if (mounted) {
+          final success = await _showPinDialog();
+          if (!success && mounted) {
+            setState(() => _screen = 'pin');
+          }
+        }
         return;
       }
     } catch (_) {
@@ -692,7 +713,13 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: _pinLoading ? null : _showPinDialog,
+                        onPressed: _pinLoading ? null : () async {
+                          setState(() => _pinLoading = true);
+                          final success = await _showPinDialog();
+                          if (mounted) setState(() => _pinLoading = false);
+                          if (success) return;
+                          if (mounted) setState(() => _pinError = 'PIN salah — coba lagi');
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF151717),
                           foregroundColor: Colors.white,
@@ -732,14 +759,27 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     );
   }
 
-  Future<void> _showPinDialog() async {
+  Future<bool> _showPinDialog() async {
+    final pinLen = ref.read(pinLengthProvider);
+    // Ensure pinLength is synced from DB
+    if (pinLen != 6) {
+      final dbLen = await ref.read(settingsRepoProvider).getPinLength();
+      ref.read(pinLengthProvider.notifier).state = dbLen;
+    }
+
     final result = await PinDialog.show(
       context: context,
       title: 'Masuk',
       subtitle: 'Masukkan PIN untuk melanjutkan',
-      pinLength: 6,
+      pinLength: ref.read(pinLengthProvider),
       showRemember: true,
-      showFingerprint: false,
+      showFingerprint: true,
+      showNfc: true,
+      onFingerprint: () async => await _authFingerprint(),
+      onNfc: () async {
+        final id = await NfcTagService.readEmployeeTag();
+        return id?.toString();
+      },
       onVerify: (pin) async {
         final db = ref.read(databaseProvider);
         final repo = AttendanceRepository(db);
@@ -756,8 +796,17 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
       },
     );
 
-    if (result == null || !result.success) return;
-    if (_pinLoggedEmp == null) return;
+    if (result == null || !result.success) return false;
+
+    // NFC login
+    if (result.nfcEmployeeId != null) {
+      final db = ref.read(databaseProvider);
+      final repo = AttendanceRepository(db);
+      final emp = await repo.getEmployee(result.nfcEmployeeId!);
+      if (emp != null) _pinLoggedEmp = emp;
+    }
+
+    if (_pinLoggedEmp == null) return false;
 
     final emp = _pinLoggedEmp!;
     _pinLoggedEmp = null;
@@ -782,6 +831,23 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     final settingsRepo = SettingsRepository(ref.read(databaseProvider));
     final name = await settingsRepo.getStoreName();
     if (mounted) context.go(name.isEmpty ? '/setup' : '/home');
+    return true;
+  }
+
+  Future<bool> _authFingerprint() async {
+    try {
+      final localAuth = LocalAuthentication();
+      final authenticated = await localAuth.authenticate(
+        localizedReason: 'Verifikasi sidik jari untuk melanjutkan',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: true,
+        ),
+      );
+      return authenticated;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ── Key Activation Screen (new user) ───────────────────────────────
