@@ -403,99 +403,70 @@ class _ProfileStatsCardState extends State<ProfileStatsCard>
   }
 
   // ────────────────────────────────────────────────────
-  // BACK SIDE (role-adaptive)
+  // BACK CONTENT (role-adaptive, inside same red gradient card)
   // ────────────────────────────────────────────────────
 
-  Widget _buildBack() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildBackContent() {
     final data = widget.cardData;
 
     switch (widget.viewerRole) {
       case 'Kasir':
-        return _buildKasirBack(isDark, data);
+        return _buildKasirBack(data);
       case 'Manager':
-        return _buildManagerBack(isDark, data);
+        return _buildManagerBack(data);
       default:
-        return _buildOwnerBack(isDark, data);
+        return _buildOwnerBack(data);
     }
   }
 
   // ── Kasir: Cash Drawer ────────────────────────────
 
-  Widget _buildKasirBack(bool isDark, EmployeeCardData? data) {
-    final surfaceColor =
-        isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor;
-    final textColor =
-        isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
-    final subColor =
-        isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
+  Widget _buildKasirBack(EmployeeCardData? data) {
     final isRed = (data?.selisihLaci ?? 0) < 0;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+    return Padding(
+      padding: const EdgeInsets.all(20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Header
-          _backHeader(Icons.point_of_sale, 'Shift Saya', isDark, textColor),
-          const SizedBox(height: 12),
-          _statRow('Modal Awal', formatRupiah(data?.modalAwal ?? 0), subColor,
-              textColor),
-          _statRow(
-              'Penjualan', formatRupiah(data?.penjualan ?? 0), subColor, textColor),
-          Divider(
-              color: isDark ? NusaConfig.darkDivider : NusaConfig.dividerColor,
-              height: 16),
-          _statRow('Total di Laci', formatRupiah(data?.totalLaci ?? 0),
-              subColor, textColor,
+          _backHeader(Icons.point_of_sale, 'Shift Saya'),
+          const SizedBox(height: 14),
+          _statRowW('Modal Awal', formatRupiah(data?.modalAwal ?? 0)),
+          _statRowW('Penjualan', formatRupiah(data?.penjualan ?? 0)),
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            height: 1,
+            color: Colors.white.withValues(alpha: 0.18),
+          ),
+          _statRowW('Total di Laci', formatRupiah(data?.totalLaci ?? 0),
               bold: true),
-          _statRow(
+          _statRowW(
             'Selisih',
             formatRupiah(data?.selisihLaci.abs() ?? 0),
-            subColor,
-            isRed ? NusaConfig.primaryColor : NusaConfig.accentGreen,
+            valueColor: isRed
+                ? NusaConfig.accentGold
+                : const Color(0xFF4ADE80),
             suffix: isRed ? ' (kurang)' : '',
           ),
           if (data?.shiftHours != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text('Shift: ${data!.shiftHours}',
-                style: TextStyle(fontSize: 11, color: subColor)),
+                style: TextStyle(
+                    fontSize: 12, color: Colors.white.withValues(alpha: 0.75))),
           ],
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           // Action buttons
           Row(
             children: [
               Expanded(
-                child: _backButton(
-                  'Absen Masuk',
-                  Icons.login,
-                  NusaConfig.accentGreen,
-                  widget.onAbsenMasuk,
-                ),
+                child: _backButton('Absen Masuk', Icons.login,
+                    Colors.white.withValues(alpha: 0.9), widget.onAbsenMasuk),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _backButton(
-                  'Absen Keluar',
-                  Icons.logout,
-                  NusaConfig.primaryColor,
-                  widget.onAbsenKeluar,
-                ),
+                child: _backButton('Absen Keluar', Icons.logout,
+                    Colors.white.withValues(alpha: 0.9), widget.onAbsenKeluar),
               ),
             ],
           ),
@@ -506,52 +477,23 @@ class _ProfileStatsCardState extends State<ProfileStatsCard>
 
   // ── Manager: Performance ──────────────────────────
 
-  Widget _buildManagerBack(bool isDark, EmployeeCardData? data) {
-    final surfaceColor =
-        isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor;
-    final textColor =
-        isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
-    final subColor =
-        isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+  Widget _buildManagerBack(EmployeeCardData? data) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _backHeader(
-              Icons.trending_up, 'Performa Bulan Ini', isDark, textColor),
-          const SizedBox(height: 12),
-          _statRow(
-              'Omzet', formatRupiah(data?.omzet ?? 0), subColor, textColor),
-          _statRow('Transaksi', '${data?.transaksiBulan ?? 0}', subColor,
-              textColor),
-          _statRow('Hadir', '${data?.hadirDays ?? 0}/${data?.totalDays ?? 0} hari',
-              subColor, textColor),
+          _backHeader(Icons.trending_up, 'Performa Bulan Ini'),
           const SizedBox(height: 14),
+          _statRowW('Omzet', formatRupiah(data?.omzet ?? 0)),
+          _statRowW('Transaksi', '${data?.transaksiBulan ?? 0}'),
+          _statRowW(
+              'Hadir', '${data?.hadirDays ?? 0}/${data?.totalDays ?? 0} hari'),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: _backButton(
-              'Hubungi WA',
-              Icons.chat,
-              NusaConfig.accentGreen,
-              widget.onKontakWa,
-            ),
+            child: _backButton('Hubungi WA', Icons.chat,
+                Colors.white.withValues(alpha: 0.9), widget.onKontakWa),
           ),
         ],
       ),
@@ -560,43 +502,21 @@ class _ProfileStatsCardState extends State<ProfileStatsCard>
 
   // ── Owner: Command Center ─────────────────────────
 
-  Widget _buildOwnerBack(bool isDark, EmployeeCardData? data) {
-    final surfaceColor =
-        isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor;
-    final textColor =
-        isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+  Widget _buildOwnerBack(EmployeeCardData? data) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _backHeader(Icons.insights, 'Live Hari Ini', isDark, textColor),
-          const SizedBox(height: 12),
+          _backHeader(Icons.insights, 'Live Hari Ini'),
+          const SizedBox(height: 14),
           // Mini stats row
           Row(
             children: [
-              _ownerMiniStat(
-                  'Penjualan', formatRupiah(data?.penjualan ?? 0), textColor),
-              _ownerMiniStat('Laba', formatRupiah(data?.laba ?? 0),
-                  NusaConfig.accentGreen),
-              _ownerMiniStat(
-                  'Trx', '${data?.trxCount ?? 0}', NusaConfig.accentPurple),
+              _ownerMiniStatW(
+                  'Penjualan', formatRupiah(data?.penjualan ?? 0)),
+              _ownerMiniStatW('Laba', formatRupiah(data?.laba ?? 0)),
+              _ownerMiniStatW('Trx', '${data?.trxCount ?? 0}'),
             ],
           ),
           const SizedBox(height: 12),
@@ -605,89 +525,91 @@ class _ProfileStatsCardState extends State<ProfileStatsCard>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: NusaConfig.warning.withValues(alpha: 0.1),
+                color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.notifications_active,
-                      size: 16, color: NusaConfig.warning),
+                  Icon(Icons.notifications_active,
+                      size: 16, color: NusaConfig.accentGold),
                   const SizedBox(width: 6),
                   Text('${data!.pendingItems} item perlu tindakan',
                       style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: NusaConfig.warning)),
+                          color: Colors.white)),
                 ],
               ),
             ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: _backButton('Hubungi WA', Icons.chat, NusaConfig.accentGreen,
-                widget.onKontakWa),
+            child: _backButton('Hubungi WA', Icons.chat,
+                Colors.white.withValues(alpha: 0.9), widget.onKontakWa),
           ),
         ],
       ),
     );
   }
 
-  // ── Shared back-side helpers ──────────────────────
+  // ── Shared back-side helpers (white-on-red theme) ──
 
-  Widget _backHeader(
-      IconData icon, String title, bool isDark, Color textColor) {
+  Widget _backHeader(IconData icon, String title) {
     return Row(
       children: [
         Container(
-          width: 32,
-          height: 32,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
-            color: NusaConfig.primaryColor.withValues(alpha: 0.1),
+            color: Colors.white.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: NusaConfig.primaryColor, size: 18),
+          child: Icon(icon, color: Colors.white, size: 20),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: Text(title,
-              style:
-                  TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textColor)),
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white)),
         ),
         // Flip-back hint
         GestureDetector(
           onTap: _toggleFlip,
           child: Container(
-            width: 28,
-            height: 28,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
-              color: isDark
-                  ? NusaConfig.darkDivider.withValues(alpha: 0.5)
-                  : NusaConfig.dividerColor.withValues(alpha: 0.5),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
-            child: const Icon(Icons.flip_to_front, size: 16, color: NusaConfig.textSecondary),
+            child: Icon(Icons.flip_to_front,
+                size: 16, color: Colors.white.withValues(alpha: 0.85)),
           ),
         ),
       ],
     );
   }
 
-  Widget _statRow(String label, String value, Color subColor, Color valueColor,
-      {bool bold = false, String suffix = ''}) {
+  Widget _statRowW(String label, String value,
+      {bool bold = false, String suffix = '', Color? valueColor}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 12, color: subColor)),
+          Text(label,
+              style:
+                  TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.8))),
           Text(
             '$value$suffix',
             style: TextStyle(
-              fontSize: 13,
-              fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
-              color: valueColor,
+              fontSize: 14,
+              fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+              color: valueColor ?? Colors.white,
             ),
           ),
         ],
@@ -695,19 +617,20 @@ class _ProfileStatsCardState extends State<ProfileStatsCard>
     );
   }
 
-  Widget _ownerMiniStat(String label, String value, Color color) {
+  Widget _ownerMiniStatW(String label, String value) {
     return Expanded(
       child: Column(
         children: [
           Text(value,
-              style: TextStyle(
-                  fontSize: 16,
+              style: const TextStyle(
+                  fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: color,
+                  color: Colors.white,
                   letterSpacing: -0.3)),
           const SizedBox(height: 2),
           Text(label,
-              style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.7))),
+              style:
+                  TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.7))),
         ],
       ),
     );
@@ -716,13 +639,13 @@ class _ProfileStatsCardState extends State<ProfileStatsCard>
   Widget _backButton(
       String label, IconData icon, Color color, VoidCallback? onTap) {
     return Material(
-      color: color.withValues(alpha: 0.1),
+      color: Colors.white.withValues(alpha: 0.15),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 13),
           alignment: Alignment.center,
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -742,25 +665,89 @@ class _ProfileStatsCardState extends State<ProfileStatsCard>
   }
 
   // ────────────────────────────────────────────────────
+  // BACK WRAPPER (same red gradient card as front)
+  // ────────────────────────────────────────────────────
+
+  Widget _buildBack() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [NusaConfig.primaryColor, NusaConfig.primaryDark],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: NusaConfig.primaryColor.withValues(alpha: 0.28),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // Decorative circles (same as front)
+          Positioned(
+            top: -40,
+            right: -30,
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -50,
+            left: -20,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+          ),
+          _buildBackContent(),
+        ],
+      ),
+    );
+  }
+
+  // ────────────────────────────────────────────────────
   // 3D FLIP BUILD
   // ────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _toggleFlip,
-      child: NusaAnimatedBuilder(
-        animation: _anim,
-        builder: (context, child) {
-          final isFrontVisible = _anim.value <= 0.5;
-          return Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.001)
-              ..rotateY(_anim.value * 3.14159),
-            child: isFrontVisible ? _buildFront() : _buildBack(),
-          );
-        },
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GestureDetector(
+        onTap: _toggleFlip,
+        child: NusaAnimatedBuilder(
+          animation: _anim,
+          builder: (context, child) {
+            final isFrontVisible = _anim.value <= 0.5;
+            return Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.001)
+                ..rotateY(_anim.value * 3.14159),
+              child: isFrontVisible
+                  ? _buildFront()
+                  : Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()..rotateY(3.14159),
+                      child: _buildBack(),
+                    ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -779,22 +766,4 @@ class _Stat {
     required this.value,
     required this.label,
   });
-}
-
-/// Local AnimatedBuilder (shared with pin_keypad; keep here for self-containment).
-class AnimatedBuilder extends AnimatedWidget {
-  final Widget Function(BuildContext, Widget?) builder;
-  final Widget? child;
-
-  const AnimatedBuilder({
-    super.key,
-    required Animation<double> animation,
-    required this.builder,
-    this.child,
-  }) : super(listenable: animation);
-
-  Animation<double> get animation => listenable as Animation<double>;
-
-  @override
-  Widget build(BuildContext context) => builder(context, child);
 }

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/core/utils/format_rupiah.dart' show formatRupiah;
+import 'package:nusa_kasir/shared/widgets/animated_builder.dart'
+    show NusaAnimatedBuilder;
 // EmployeeCardData is defined in profile_stats_card.dart
 import 'package:nusa_kasir/shared/widgets/profile_stats_card.dart'
     show EmployeeCardData;
@@ -113,7 +115,7 @@ class _EmployeeFlipCardState extends State<EmployeeFlipCard>
 
     return GestureDetector(
       onTap: _toggleFlip,
-      child: AnimatedBuilder(
+      child: NusaAnimatedBuilder(
         animation: _flipAnim,
         builder: (context, child) {
           final angle = _flipAnim.value * 3.14159; // 0 to PI

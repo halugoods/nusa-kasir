@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../config/nusa_config.dart';
+import 'package:nusa_kasir/shared/widgets/animated_builder.dart'
+    show NusaAnimatedBuilder;
 
 /// Splash screen — centered SVG logo with bouncing-dots overlay.
 ///
@@ -99,12 +100,12 @@ class _SplashScreenState extends State<SplashScreen>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Centered SVG logo — contain ensures no cropping, full visibility
+            // Centered PNG logo — contain ensures no cropping, full visibility
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
-                child: SvgPicture.asset(
-                  'assets/icons/splash_nusa.svg',
+                child: Image.asset(
+                  'assets/icons/splash_nusa.png',
                   fit: BoxFit.contain,
                   alignment: Alignment.center,
                 ),
@@ -119,7 +120,7 @@ class _SplashScreenState extends State<SplashScreen>
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(3, (i) {
-                  return AnimatedBuilder(
+                  return NusaAnimatedBuilder(
                     animation: _dotAnims[i],
                     builder: (context, child) {
                       return Transform.translate(
@@ -145,22 +146,4 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
   }
-}
-
-/// Same AnimatedBuilder pattern used elsewhere in the project.
-class AnimatedBuilder extends AnimatedWidget {
-  final Widget Function(BuildContext, Widget?) builder;
-  final Widget? child;
-
-  const AnimatedBuilder({
-    super.key,
-    required Animation<double> animation,
-    required this.builder,
-    this.child,
-  }) : super(listenable: animation);
-
-  Animation<double> get animation => listenable as Animation<double>;
-
-  @override
-  Widget build(BuildContext context) => builder(context, child);
 }
