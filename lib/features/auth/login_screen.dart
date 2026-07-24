@@ -96,14 +96,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _showPinLogin() async {
-    final pinLength = ref.read(pinLengthProvider);
     Employee? matchedEmp;
 
     final result = await PinDialog.show(
       context: context,
       title: 'Masuk',
       subtitle: 'Masukkan PIN karyawan kamu',
-      pinLength: pinLength,
+      pinLength: 6,
       showRemember: true,
       showFingerprint: true,
       showNfc: _nfcAvailable,

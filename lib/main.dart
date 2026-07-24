@@ -16,6 +16,42 @@ import 'package:nusa_kasir/core/services/stok_alert_worker.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/core/services/backup_crypto.dart';
+import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
+import 'package:drift/drift.dart';
+
+/// Ensure PIN length in the database is always 6 digits.
+/// If the setting was changed to 4 (or corrupted), fix it.
+/// If any employee PIN is not 6 digits, pad/truncate it.
+Future<void> _repairPinLength() async {
+  try {
+    final db = AppDatabase();
+    final settingsRepo = SettingsRepository(db);
+    final pinLen = await settingsRepo.getPinLength();
+
+    // Force setting back to 6
+    if (pinLen != 6) {
+      await settingsRepo.setPinLength(6);
+    }
+
+    // Fix any employee PINs that don't match 6 digits
+    final attRepo = AttendanceRepository(db);
+    final emps = await attRepo.getEmployees();
+    for (final e in emps) {
+      if (e.pin.length == 6) continue;
+      String fixed;
+      if (e.pin.length > 6) {
+        fixed = e.pin.substring(0, 6);
+      } else {
+        fixed = e.pin.padRight(6, '0');
+      }
+      await (db.update(db.employees)..where((t) => t.id.equals(e.id)))
+          .write(EmployeesCompanion(pin: Value(fixed)));
+    }
+    await db.close();
+  } catch (_) {
+    // Non-fatal — app continues even if repair fails
+  }
+}
 
 /// Catch all unhandled Flutter errors and display them instead of blank screen.
 void _setupErrorHandlers() {
@@ -73,46 +109,58 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   _setupErrorHandlers();
 
-  // Workmanager
-  await Workmanager().initialize(stokCallbackDispatcher, isInDebugMode: false);
+  // Default fallback values in case any init step throws.
+  // runApp() MUST be called — a white screen is worse than missing features.
+  String persistedTheme = 'system';
+  String initialLocation = '/activation';
 
-  // Local notifications
-  await NotificationService.init();
+  // Auto-repair PIN length BEFORE anything opens — ensures 6-digit PINs always
+  try { await _repairPinLength(); } catch (_) {}
 
-  if (NusaConfig.supabaseUrl.isNotEmpty && NusaConfig.supabaseAnon.isNotEmpty) {
-    await Supabase.initialize(
-        url: NusaConfig.supabaseUrl, publishableKey: NusaConfig.supabaseAnon);
+  try {
+    // Workmanager
+    try { await Workmanager().initialize(stokCallbackDispatcher, isInDebugMode: false); } catch (_) {}
+
+    // Local notifications
+    try { await NotificationService.init(); } catch (_) {}
+
+    if (NusaConfig.supabaseUrl.isNotEmpty && NusaConfig.supabaseAnon.isNotEmpty) {
+      try { await Supabase.initialize(url: NusaConfig.supabaseUrl, publishableKey: NusaConfig.supabaseAnon); } catch (_) {}
+    }
+
+    // Apply pending device-migration backup BEFORE opening the database.
+    try { await _applyPendingRestore(); } catch (_) {}
+
+    // Register background tasks
+    try { registerStokCheck(); } catch (_) {}
+    try { registerOnlineCheck(); } catch (_) {}
+
+    // Load persisted theme mode before app starts.
+    final db = AppDatabase();
+    try {
+      persistedTheme = await SettingsRepository(db).getThemeMode() ?? 'system';
+    } catch (_) {}
+
+    // Determine initial route.
+    try {
+      final activated = (await SecureStore.getActivation()) != null;
+      if (!activated) {
+        initialLocation = '/activation';
+      } else {
+        final session = await EmployeeSession.restore();
+        initialLocation = (session != null && !session.isExpired)
+            ? '/home'
+            : '/activation';
+      }
+    } catch (_) {
+      initialLocation = '/activation';
+    }
+
+    try { await db.close(); } catch (_) {}
+  } catch (e) {
+    debugPrint('[Main] Startup error: $e');
+    // Fall through — runApp() always executes
   }
-
-  // Apply pending device-migration backup BEFORE opening the database.
-  await _applyPendingRestore();
-
-  // Register background tasks
-  registerStokCheck();
-  registerOnlineCheck();
-
-  // Load persisted theme mode before app starts.
-  final db = AppDatabase();
-  final persistedTheme =
-      await SettingsRepository(db).getThemeMode() ?? 'system';
-
-  // New startup flow: always go to /activation first
-  // ActivationScreen handles Google Sign-In → key activation or PIN login
-  // If already activated AND has valid session → skip to /home
-  String initialLocation;
-  final activated = (await SecureStore.getActivation()) != null;
-
-  if (!activated) {
-    // Not activated — go through activation flow (Google → key input)
-    initialLocation = '/activation';
-  } else {
-    // Activated — try to restore session
-    final session = await EmployeeSession.restore();
-    initialLocation = (session != null && !session.isExpired)
-        ? '/home'   // valid session → skip to dashboard
-        : '/activation';  // need Google sign-in again (PIN screen in activation)
-  }
-  await db.close();
 
   runApp(
     ProviderScope(

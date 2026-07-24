@@ -46,9 +46,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _fingerprintEnabled = false;
   bool _fingerprintAvailable = false;  // hardware check
 
-  // PIN length
-  int _pinLength = 6;
-
   // Feature toggles — all true by default
   Map<String, bool> _featureToggles = {};
   static const _featureToggleKey = 'nusa_feature_toggles';
@@ -121,10 +118,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _fingerprintEnabled = await BiometricService.isEnabled();
       _fingerprintAvailable = await BiometricService.isHardwareAvailable();
 
-      // Load PIN length
-      _pinLength = await repo.getPinLength();
-      ref.read(pinLengthProvider.notifier).state = _pinLength;
-
       setState(() {});
     }
   }
@@ -172,7 +165,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       subtitle: 'Masukkan PIN $name untuk mengakses pengaturan keamanan',
       employeeName: name,
       correctPin: correctPin,
-      pinLength: _pinLength,
+      pinLength: 6,
       showRemember: false,
       showFingerprint: true,
       onFingerprint: () async => await _authFingerprint(),
@@ -255,152 +248,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       setState(() => _fingerprintEnabled = newVal);
       TopToast.success(context, newVal ? 'Fingerprint diaktifkan' : 'Fingerprint dinonaktifkan');
     }
-  }
-
-  /// Change PIN length: 4 or 6 digits. Owner only. Requires PIN verification.
-  Future<void> _changePinLength(bool isDark) async {
-    final session = ref.read(employeeSessionProvider);
-    if (session == null || session.role != 'Owner') return;
-
-    // Verify PIN first
-    final ok = await _checkPin();
-    if (!ok) {
-      if (mounted) TopToast.error(context, 'Verifikasi PIN gagal');
-      return;
-    }
-
-    final currentLen = _pinLength;
-    final targetLen = currentLen == 6 ? 4 : 6;
-    final isDarkLocal = Theme.of(context).brightness == Brightness.dark;
-
-    // ── Step 1: Pilih panjang PIN ──
-    final chosen = await showDialog<int>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(children: [
-          Icon(Icons.pin, color: NusaConfig.primaryColor, size: 24),
-          SizedBox(width: 10),
-          Text('Panjang PIN', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-        ]),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Pilih panjang PIN untuk seluruh karyawan:',
-                style: TextStyle(fontSize: 13,
-                    color: isDarkLocal ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-            const SizedBox(height: 16),
-            Row(children: [
-              Expanded(child: _pinLengthOption(4, currentLen, isDarkLocal, ctx)),
-              const SizedBox(width: 12),
-              Expanded(child: _pinLengthOption(6, currentLen, isDarkLocal, ctx)),
-            ]),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-        ],
-      ),
-    );
-    if (chosen == null || chosen == currentLen) return;
-
-    // ── Step 2: Konfirmasi ──
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: NusaConfig.accentGold, size: 24),
-          SizedBox(width: 10),
-          Text('Konfirmasi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-        ]),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Ubah panjang PIN dari $currentLen ke $chosen digit?',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
-                    color: isDarkLocal ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
-            const SizedBox(height: 12),
-            Text(
-              chosen < currentLen
-                  ? 'PIN akan diambil ${chosen} digit pertama.\nContoh: 280303 → 2803'
-                  : 'PIN akan ditambah 0 di belakang.\nContoh: 2803 → 280300',
-              style: TextStyle(fontSize: 13,
-                  color: isDarkLocal ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary, height: 1.5),
-            ),
-            const SizedBox(height: 12),
-            Text('Semua PIN karyawan akan otomatis disesuaikan.',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                    color: isDarkLocal ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Ya, Ubah Semua PIN'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    // ── Step 3: Bulk migrate + save ──
-    final repo = ref.read(settingsRepoProvider);
-    final attRepo = AttendanceRepository(ref.read(databaseProvider));
-    await attRepo.migrateAllPins(currentLen, chosen);
-    await repo.setPinLength(chosen);
-
-    if (mounted) {
-      setState(() => _pinLength = chosen);
-      ref.read(pinLengthProvider.notifier).state = chosen;
-      TopToast.success(context, 'PIN diubah ke $chosen digit. Semua PIN karyawan disesuaikan.');
-    }
-  }
-
-  Widget _pinLengthOption(int value, int current, bool isDark, BuildContext dialogCtx) {
-    final selected = value == current;
-    return GestureDetector(
-      onTap: () {
-        if (value != current) Navigator.pop(dialogCtx, value);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: selected
-              ? NusaConfig.primarySoft
-              : (isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? NusaConfig.primaryColor : (isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Column(children: [
-          Text('$value', style: TextStyle(
-            fontSize: 32, fontWeight: FontWeight.w800,
-            color: selected ? NusaConfig.primaryColor
-                : (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-            height: 1.1,
-          )),
-          const SizedBox(height: 4),
-          Text('Digit', style: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w600,
-            color: selected ? NusaConfig.primaryColor
-                : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-          )),
-          if (selected) ...[
-            const SizedBox(height: 6),
-            Icon(Icons.check_circle, size: 18, color: NusaConfig.primaryColor),
-          ],
-        ]),
-      ),
-    );
   }
 
   // ── Backups ───────────────────────────────────────────────
@@ -1367,17 +1214,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     : null,
               ),
             ),
-            // PIN Length — Owner only
-            const SizedBox(height: 12),
-            _menuRow(
-              icon: Icons.pin, iconColor: NusaConfig.primaryColor,
-              title: 'Panjang PIN',
-              subtitle: '$_pinLength digit — semua PIN di aplikasi mengikuti ini',
-              isDark: isDark,
-              onTap: () => _changePinLength(isDark),
-              trailing: Icon(Icons.chevron_right, size: 20,
-                  color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-            ),
+            // PIN length — fixed at 6 digits, not user-changeable
           ],
 
           const SizedBox(height: 24),

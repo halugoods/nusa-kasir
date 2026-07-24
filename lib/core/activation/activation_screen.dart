@@ -740,18 +740,11 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   }
 
   Future<void> _showPinDialog() async {
-    final pinLen = ref.read(pinLengthProvider);
-    // Ensure pinLength is synced from DB
-    if (pinLen != 6) {
-      final dbLen = await ref.read(settingsRepoProvider).getPinLength();
-      ref.read(pinLengthProvider.notifier).state = dbLen;
-    }
-
     final result = await PinDialog.show(
       context: context,
       title: 'Masuk',
       subtitle: 'Masukkan PIN untuk melanjutkan',
-      pinLength: ref.read(pinLengthProvider),
+      pinLength: 6,
       showRemember: true,
       showFingerprint: true,
       showNfc: true,

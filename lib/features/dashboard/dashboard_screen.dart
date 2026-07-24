@@ -168,20 +168,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Future<void> _load() async {
     final name = await ref.read(settingsRepoProvider).getStoreName();
-    // Sync PIN length to provider on every load
-    final pinLen = await ref.read(settingsRepoProvider).getPinLength();
-    ref.read(pinLengthProvider.notifier).state = pinLen;
-
-    // Auto-repair PIN length mismatch (e.g., user changed length without migration)
-    final attRepo = AttendanceRepository(ref.read(databaseProvider));
+    final db = ref.read(databaseProvider);
+    final attRepo = AttendanceRepository(db);
     final emps = await attRepo.getEmployees();
-    if (emps.isNotEmpty) {
-      final actualPinLen = emps.first.pin.length;
-      if (actualPinLen != pinLen) {
-        // Setting doesn't match actual PINs — auto-migrate to fix
-        await attRepo.migrateAllPins(actualPinLen, pinLen);
-      }
-    }
     final branches =
         await BranchRepository(ref.read(databaseProvider)).getAll();
     final now = DateTime.now();
@@ -562,7 +551,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         final id = await NfcTagService.readEmployeeTag();
         return id?.toString();
       },
-      pinLength: ref.read(pinLengthProvider),
+      pinLength: 6,
     );
 
     if (result == null || !result.success) {
@@ -615,7 +604,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         final id = await NfcTagService.readEmployeeTag();
         return id?.toString();
       },
-      pinLength: ref.read(pinLengthProvider),
+      pinLength: 6,
     );
 
     if (result == null || !result.success || !mounted) return;
@@ -1106,7 +1095,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     final id = await NfcTagService.readEmployeeTag();
                                     return id?.toString();
                                   },
-                                  pinLength: ref.read(pinLengthProvider),
+                                  pinLength: 6,
                                 );
                                 return result?.success ?? false;
                               }
