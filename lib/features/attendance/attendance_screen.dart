@@ -120,29 +120,41 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
   // ── Status helper ──────────────────────────────────────────────────
 
-  Color _statusColor(AttendanceData? att) {
+  /// Returns true if the check-in time is past the late threshold
+  /// (work start + 15 min). Defaults to 08:15 if no work hours set.
+  bool _isLate(String checkIn, Employee? emp) {
+    final parts = checkIn.split(':');
+    final h = int.tryParse(parts.isNotEmpty ? parts[0] : '0') ?? 0;
+    final m = parts.length >= 2 ? (int.tryParse(parts[1]) ?? 0) : 0;
+    final checkInMin = h * 60 + m;
+
+    // Use employee's work start + 15 min as late threshold
+    final ws = emp?.workStart ?? '08:00';
+    final wsParts = ws.split(':');
+    final wsH = int.tryParse(wsParts.isNotEmpty ? wsParts[0] : '8') ?? 8;
+    final wsM = wsParts.length >= 2 ? (int.tryParse(wsParts[1]) ?? 0) : 0;
+    final lateThreshold = wsH * 60 + wsM + 15; // 15 min grace period
+
+    return checkInMin > lateThreshold;
+  }
+
+  Color _statusColor(AttendanceData? att, Employee? emp) {
     if (att == null) return NusaConfig.primaryColor; // belum
     if (att.status == 'Izin' || att.status == 'Sakit') return const Color(0xFF3B82F6);
     if (att.checkOut != null) return const Color(0xFF9CA3AF); // selesai
     if (att.checkIn != null) {
-      final parts = att.checkIn!.split(':');
-      final h = int.tryParse(parts.isNotEmpty ? parts[0] : '0') ?? 0;
-      final m = parts.length >= 2 ? (int.tryParse(parts[1]) ?? 0) : 0;
-      if (h > 8 || (h == 8 && m > 15)) return NusaConfig.accentGold;
+      if (_isLate(att.checkIn!, emp)) return NusaConfig.accentGold;
       return NusaConfig.accentGreen;
     }
     return NusaConfig.primaryColor;
   }
 
-  String _statusLabel(AttendanceData? att) {
+  String _statusLabel(AttendanceData? att, Employee? emp) {
     if (att == null) return 'Belum';
     if (att.status == 'Izin' || att.status == 'Sakit') return 'Izin';
     if (att.checkOut != null) return 'Selesai';
     if (att.checkIn != null) {
-      final parts = att.checkIn!.split(':');
-      final h = int.tryParse(parts.isNotEmpty ? parts[0] : '0') ?? 0;
-      final m = parts.length >= 2 ? (int.tryParse(parts[1]) ?? 0) : 0;
-      if (h > 8 || (h == 8 && m > 15)) return 'Terlambat';
+      if (_isLate(att.checkIn!, emp)) return 'Terlambat';
       return 'Aktif';
     }
     return 'Belum';
@@ -200,6 +212,19 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               Text('${e.name} • ${e.role}',
                   style: TextStyle(fontSize: 13,
                       color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+              const SizedBox(height: 4),
+              // Show work hours
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.schedule, size: 13,
+                      color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                  const SizedBox(width: 4),
+                  Text('${e.workStart ?? '08:00'} - ${e.workEnd ?? '17:00'}',
+                      style: TextStyle(fontSize: 12,
+                          color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                ],
+              ),
               const SizedBox(height: 20),
               // Employee avatar header
               Row(children: [
@@ -855,8 +880,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     final isIzin = att?.status == 'Izin' || att?.status == 'Sakit';
     final hasPhone = e.phone != null && e.phone!.isNotEmpty;
     final isShiftActive = isCheckedIn && !isCheckedOut && !isIzin && expectedCash != null;
-    final statusColor = _statusColor(att);
-    final statusLabel = _statusLabel(att);
+    final statusColor = _statusColor(att, e);
+    final statusLabel = _statusLabel(att, e);
     final borderClr = isDark ? NusaConfig.darkBorder : NusaConfig.borderColor;
     final surf = isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor;
     final textPri = isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
@@ -920,6 +945,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                   ),
                   child: Text(e.role, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
                 ),
+                const SizedBox(width: 6),
+                Icon(Icons.schedule, size: 11, color: textTer),
+                const SizedBox(width: 3),
+                Text('${e.workStart ?? '08:00'} - ${e.workEnd ?? '17:00'}',
+                    style: TextStyle(fontSize: 11, color: textTer)),
                 if (hasPhone) ...[
                   const SizedBox(width: 6),
                   Icon(Icons.phone_android, size: 11, color: const Color(0xFF10B981).withValues(alpha: 0.8)),

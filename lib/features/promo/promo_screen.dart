@@ -23,6 +23,7 @@ class PromoScreen extends ConsumerStatefulWidget {
 class _PromoScreenState extends ConsumerState<PromoScreen> {
   List<Promo> _promos = [];
   bool _loading = true;
+  String _filter = 'Aktif'; // 'Aktif' | 'Nonaktif' | 'Kadaluarsa'
 
   @override
   void initState() {
@@ -35,6 +36,21 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
     final all = await repo.getPromos();
     if (mounted) setState(() { _promos = all; _loading = false; });
   }
+
+  List<Promo> get _filtered {
+    final now = DateTime.now();
+    return _promos.where((p) {
+      if (_filter == 'Aktif') return p.status == 'Aktif' && (p.endDate == null || p.endDate!.isAfter(now));
+      if (_filter == 'Nonaktif') return p.status == 'Nonaktif';
+      // Kadaluarsa
+      return p.endDate != null && p.endDate!.isBefore(now);
+    }).toList();
+  }
+
+  int get _activeCount => _promos.where((p) => p.status == 'Aktif' && (p.endDate == null || p.endDate!.isAfter(DateTime.now()))).length;
+  int get _inactiveCount => _promos.where((p) => p.status == 'Nonaktif').length;
+  int get _expiredCount => _promos.where((p) => p.endDate != null && p.endDate!.isBefore(DateTime.now())).length;
+  int get _totalClaims => _promos.fold<int>(0, (sum, p) => sum + p.usedCount);
 
   Future<void> _toggle(Promo p) async {
     final repo = PromoRepository(ref.read(databaseProvider));
@@ -348,30 +364,257 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
       'Promo',
       _loading
           ? const SkeletonList()
-          : _promos.isEmpty
-              ? const EmptyState(
-                  icon: Icons.local_offer_outlined,
-                  message: 'Belum ada promo',
-                )
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _promos.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) => _PromoTile(
-                      promo: _promos[i],
-                      onTap: () => _showForm(existing: _promos[i]),
-                      onToggle: () => _toggle(_promos[i]),
-                    ),
-                  ),
+          : Column(
+              children: [
+                // ── Stats cards ──
+                if (_promos.isNotEmpty) _buildStatsBar(isDark),
+                // ── Filter tabs ──
+                _buildFilterTabs(isDark),
+                // ── Content ──
+                Expanded(
+                  child: _filtered.isEmpty
+                      ? _buildEmptyState(isDark)
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _filtered.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            itemBuilder: (_, i) => _PromoTile(
+                              promo: _filtered[i],
+                              onTap: () => _showForm(existing: _filtered[i]),
+                              onToggle: () => _toggle(_filtered[i]),
+                            ),
+                          ),
+                        ),
                 ),
+              ],
+            ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: NusaConfig.primaryColor,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Tambah Promo'),
         onPressed: () => _showForm(),
+      ),
+    );
+  }
+
+  Widget _buildStatsBar(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Row(
+        children: [
+          _statCard('Aktif', _activeCount, NusaConfig.accentGreen, isDark),
+          const SizedBox(width: 10),
+          _statCard('Nonaktif', _inactiveCount, Colors.orange, isDark),
+          const SizedBox(width: 10),
+          _statCard('Klaim', _totalClaims, NusaConfig.primaryColor, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _statCard(String label, int value, Color color, bool isDark) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Text('$value',
+                style: TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.w800, color: color)),
+            const SizedBox(height: 2),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterTabs(bool isDark) {
+    const tabs = [
+      ('Aktif', Icons.check_circle_outline),
+      ('Nonaktif', Icons.pause_circle_outline),
+      ('Kadaluarsa', Icons.event_busy_outlined),
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Row(
+        children: tabs.map((t) {
+          final selected = _filter == t.$1;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: t.$1 != 'Kadaluarsa' ? 8 : 0),
+              child: GestureDetector(
+                onTap: () => setState(() => _filter = t.$1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? NusaConfig.primaryColor.withValues(alpha: isDark ? 0.2 : 0.1)
+                        : (isDark ? NusaConfig.darkSurface2 : Colors.grey.shade100),
+                    borderRadius: BorderRadius.circular(12),
+                    border: selected
+                        ? Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.4))
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(t.$2, size: 14,
+                          color: selected
+                              ? NusaConfig.primaryColor
+                              : (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                      const SizedBox(width: 5),
+                      Text(t.$1,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: selected
+                                ? NusaConfig.primaryColor
+                                : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                          )),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool isDark) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          const SizedBox(height: 24),
+          // Illustration icon
+          Container(
+            width: 80, height: 80,
+            decoration: BoxDecoration(
+              color: NusaConfig.primaryColor.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.local_offer_outlined,
+                size: 36, color: NusaConfig.primaryColor),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _promos.isEmpty ? 'Belum ada promo' : 'Tidak ada promo $_filter',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _promos.isEmpty
+                ? 'Buat promo pertama untuk menarik pelanggan dengan diskon spesial.'
+                : 'Coba ubah filter atau buat promo baru.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (_promos.isEmpty) ...[
+            // Quick templates
+            Text('Template Cepat',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+            const SizedBox(height: 10),
+            _quickTemplate(isDark, 'Diskon 10%', 'HEMAT10', 'persen', 10, 50000),
+            const SizedBox(height: 8),
+            _quickTemplate(isDark, 'Potongan 5rb', 'FLASH5', 'nominal', 5000, 30000),
+            const SizedBox(height: 8),
+            _quickTemplate(isDark, 'Beli 2 Gratis 1', 'B2G1', 'persen', 50, 0),
+          ] else ...[
+            // Button to add promo
+            ElevatedButton.icon(
+              onPressed: () => _showForm(),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Buat Promo Baru'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: NusaConfig.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _quickTemplate(bool isDark, String title, String code, String type, int value, int minBelanja) {
+    return GestureDetector(
+      onTap: () async {
+        final repo = PromoRepository(ref.read(databaseProvider));
+        await repo.addPromo(
+          name: title, code: code, type: type, value: value,
+          minBelanja: minBelanja, maxUses: 100,
+        );
+        _load();
+        if (mounted) TopToast.success(context, 'Promo "$title" dibuat!');
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface2 : NusaConfig.surfaceColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                color: NusaConfig.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.bolt, size: 18, color: NusaConfig.primaryColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Kode: $code • ${type == 'persen' ? '$value%' : formatRupiah(value)} • Min: ${formatRupiah(minBelanja)}',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.add_circle_outline, size: 20,
+                color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+          ],
+        ),
       ),
     );
   }

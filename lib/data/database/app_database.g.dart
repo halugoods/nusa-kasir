@@ -3550,6 +3550,28 @@ class $EmployeesTable extends Employees
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _workStartMeta = const VerificationMeta(
+    'workStart',
+  );
+  @override
+  late final GeneratedColumn<String> workStart = GeneratedColumn<String>(
+    'work_start',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _workEndMeta = const VerificationMeta(
+    'workEnd',
+  );
+  @override
+  late final GeneratedColumn<String> workEnd = GeneratedColumn<String>(
+    'work_end',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3575,6 +3597,8 @@ class $EmployeesTable extends Employees
     baseSalary,
     startDate,
     nfcTag,
+    workStart,
+    workEnd,
     createdAt,
   ];
   @override
@@ -3658,6 +3682,18 @@ class $EmployeesTable extends Employees
         nfcTag.isAcceptableOrUnknown(data['nfc_tag']!, _nfcTagMeta),
       );
     }
+    if (data.containsKey('work_start')) {
+      context.handle(
+        _workStartMeta,
+        workStart.isAcceptableOrUnknown(data['work_start']!, _workStartMeta),
+      );
+    }
+    if (data.containsKey('work_end')) {
+      context.handle(
+        _workEndMeta,
+        workEnd.isAcceptableOrUnknown(data['work_end']!, _workEndMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3717,6 +3753,14 @@ class $EmployeesTable extends Employees
         DriftSqlType.string,
         data['${effectivePrefix}nfc_tag'],
       ),
+      workStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}work_start'],
+      ),
+      workEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}work_end'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -3742,6 +3786,8 @@ class Employee extends DataClass implements Insertable<Employee> {
   final int? baseSalary;
   final DateTime? startDate;
   final String? nfcTag;
+  final String? workStart;
+  final String? workEnd;
   final DateTime createdAt;
   const Employee({
     required this.id,
@@ -3755,6 +3801,8 @@ class Employee extends DataClass implements Insertable<Employee> {
     this.baseSalary,
     this.startDate,
     this.nfcTag,
+    this.workStart,
+    this.workEnd,
     required this.createdAt,
   });
   @override
@@ -3784,6 +3832,12 @@ class Employee extends DataClass implements Insertable<Employee> {
     }
     if (!nullToAbsent || nfcTag != null) {
       map['nfc_tag'] = Variable<String>(nfcTag);
+    }
+    if (!nullToAbsent || workStart != null) {
+      map['work_start'] = Variable<String>(workStart);
+    }
+    if (!nullToAbsent || workEnd != null) {
+      map['work_end'] = Variable<String>(workEnd);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -3816,6 +3870,12 @@ class Employee extends DataClass implements Insertable<Employee> {
       nfcTag: nfcTag == null && nullToAbsent
           ? const Value.absent()
           : Value(nfcTag),
+      workStart: workStart == null && nullToAbsent
+          ? const Value.absent()
+          : Value(workStart),
+      workEnd: workEnd == null && nullToAbsent
+          ? const Value.absent()
+          : Value(workEnd),
       createdAt: Value(createdAt),
     );
   }
@@ -3837,6 +3897,8 @@ class Employee extends DataClass implements Insertable<Employee> {
       baseSalary: serializer.fromJson<int?>(json['baseSalary']),
       startDate: serializer.fromJson<DateTime?>(json['startDate']),
       nfcTag: serializer.fromJson<String?>(json['nfcTag']),
+      workStart: serializer.fromJson<String?>(json['workStart']),
+      workEnd: serializer.fromJson<String?>(json['workEnd']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -3855,6 +3917,8 @@ class Employee extends DataClass implements Insertable<Employee> {
       'baseSalary': serializer.toJson<int?>(baseSalary),
       'startDate': serializer.toJson<DateTime?>(startDate),
       'nfcTag': serializer.toJson<String?>(nfcTag),
+      'workStart': serializer.toJson<String?>(workStart),
+      'workEnd': serializer.toJson<String?>(workEnd),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -3871,6 +3935,8 @@ class Employee extends DataClass implements Insertable<Employee> {
     Value<int?> baseSalary = const Value.absent(),
     Value<DateTime?> startDate = const Value.absent(),
     Value<String?> nfcTag = const Value.absent(),
+    Value<String?> workStart = const Value.absent(),
+    Value<String?> workEnd = const Value.absent(),
     DateTime? createdAt,
   }) => Employee(
     id: id ?? this.id,
@@ -3884,6 +3950,8 @@ class Employee extends DataClass implements Insertable<Employee> {
     baseSalary: baseSalary.present ? baseSalary.value : this.baseSalary,
     startDate: startDate.present ? startDate.value : this.startDate,
     nfcTag: nfcTag.present ? nfcTag.value : this.nfcTag,
+    workStart: workStart.present ? workStart.value : this.workStart,
+    workEnd: workEnd.present ? workEnd.value : this.workEnd,
     createdAt: createdAt ?? this.createdAt,
   );
   Employee copyWithCompanion(EmployeesCompanion data) {
@@ -3901,6 +3969,8 @@ class Employee extends DataClass implements Insertable<Employee> {
           : this.baseSalary,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       nfcTag: data.nfcTag.present ? data.nfcTag.value : this.nfcTag,
+      workStart: data.workStart.present ? data.workStart.value : this.workStart,
+      workEnd: data.workEnd.present ? data.workEnd.value : this.workEnd,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -3919,6 +3989,8 @@ class Employee extends DataClass implements Insertable<Employee> {
           ..write('baseSalary: $baseSalary, ')
           ..write('startDate: $startDate, ')
           ..write('nfcTag: $nfcTag, ')
+          ..write('workStart: $workStart, ')
+          ..write('workEnd: $workEnd, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3937,6 +4009,8 @@ class Employee extends DataClass implements Insertable<Employee> {
     baseSalary,
     startDate,
     nfcTag,
+    workStart,
+    workEnd,
     createdAt,
   );
   @override
@@ -3954,6 +4028,8 @@ class Employee extends DataClass implements Insertable<Employee> {
           other.baseSalary == this.baseSalary &&
           other.startDate == this.startDate &&
           other.nfcTag == this.nfcTag &&
+          other.workStart == this.workStart &&
+          other.workEnd == this.workEnd &&
           other.createdAt == this.createdAt);
 }
 
@@ -3969,6 +4045,8 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
   final Value<int?> baseSalary;
   final Value<DateTime?> startDate;
   final Value<String?> nfcTag;
+  final Value<String?> workStart;
+  final Value<String?> workEnd;
   final Value<DateTime> createdAt;
   const EmployeesCompanion({
     this.id = const Value.absent(),
@@ -3982,6 +4060,8 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     this.baseSalary = const Value.absent(),
     this.startDate = const Value.absent(),
     this.nfcTag = const Value.absent(),
+    this.workStart = const Value.absent(),
+    this.workEnd = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   EmployeesCompanion.insert({
@@ -3996,6 +4076,8 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     this.baseSalary = const Value.absent(),
     this.startDate = const Value.absent(),
     this.nfcTag = const Value.absent(),
+    this.workStart = const Value.absent(),
+    this.workEnd = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name),
        pin = Value(pin),
@@ -4012,6 +4094,8 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     Expression<int>? baseSalary,
     Expression<DateTime>? startDate,
     Expression<String>? nfcTag,
+    Expression<String>? workStart,
+    Expression<String>? workEnd,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -4026,6 +4110,8 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
       if (baseSalary != null) 'base_salary': baseSalary,
       if (startDate != null) 'start_date': startDate,
       if (nfcTag != null) 'nfc_tag': nfcTag,
+      if (workStart != null) 'work_start': workStart,
+      if (workEnd != null) 'work_end': workEnd,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -4042,6 +4128,8 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     Value<int?>? baseSalary,
     Value<DateTime?>? startDate,
     Value<String?>? nfcTag,
+    Value<String?>? workStart,
+    Value<String?>? workEnd,
     Value<DateTime>? createdAt,
   }) {
     return EmployeesCompanion(
@@ -4056,6 +4144,8 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
       baseSalary: baseSalary ?? this.baseSalary,
       startDate: startDate ?? this.startDate,
       nfcTag: nfcTag ?? this.nfcTag,
+      workStart: workStart ?? this.workStart,
+      workEnd: workEnd ?? this.workEnd,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -4096,6 +4186,12 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
     if (nfcTag.present) {
       map['nfc_tag'] = Variable<String>(nfcTag.value);
     }
+    if (workStart.present) {
+      map['work_start'] = Variable<String>(workStart.value);
+    }
+    if (workEnd.present) {
+      map['work_end'] = Variable<String>(workEnd.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -4116,6 +4212,8 @@ class EmployeesCompanion extends UpdateCompanion<Employee> {
           ..write('baseSalary: $baseSalary, ')
           ..write('startDate: $startDate, ')
           ..write('nfcTag: $nfcTag, ')
+          ..write('workStart: $workStart, ')
+          ..write('workEnd: $workEnd, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -13764,6 +13862,358 @@ class StockCountItemsCompanion extends UpdateCompanion<StockCountItem> {
   }
 }
 
+class $ChatSessionsTable extends ChatSessions
+    with TableInfo<$ChatSessionsTable, ChatSession> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChatSessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _messagesJsonMeta = const VerificationMeta(
+    'messagesJson',
+  );
+  @override
+  late final GeneratedColumn<String> messagesJson = GeneratedColumn<String>(
+    'messages_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    messagesJson,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'chat_sessions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ChatSession> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('messages_json')) {
+      context.handle(
+        _messagesJsonMeta,
+        messagesJson.isAcceptableOrUnknown(
+          data['messages_json']!,
+          _messagesJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_messagesJsonMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ChatSession map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ChatSession(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      messagesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}messages_json'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ChatSessionsTable createAlias(String alias) {
+    return $ChatSessionsTable(attachedDatabase, alias);
+  }
+}
+
+class ChatSession extends DataClass implements Insertable<ChatSession> {
+  final int id;
+  final String title;
+  final String messagesJson;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const ChatSession({
+    required this.id,
+    required this.title,
+    required this.messagesJson,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['title'] = Variable<String>(title);
+    map['messages_json'] = Variable<String>(messagesJson);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ChatSessionsCompanion toCompanion(bool nullToAbsent) {
+    return ChatSessionsCompanion(
+      id: Value(id),
+      title: Value(title),
+      messagesJson: Value(messagesJson),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ChatSession.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ChatSession(
+      id: serializer.fromJson<int>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      messagesJson: serializer.fromJson<String>(json['messagesJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'title': serializer.toJson<String>(title),
+      'messagesJson': serializer.toJson<String>(messagesJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ChatSession copyWith({
+    int? id,
+    String? title,
+    String? messagesJson,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => ChatSession(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    messagesJson: messagesJson ?? this.messagesJson,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ChatSession copyWithCompanion(ChatSessionsCompanion data) {
+    return ChatSession(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      messagesJson: data.messagesJson.present
+          ? data.messagesJson.value
+          : this.messagesJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatSession(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('messagesJson: $messagesJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, title, messagesJson, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChatSession &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.messagesJson == this.messagesJson &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ChatSessionsCompanion extends UpdateCompanion<ChatSession> {
+  final Value<int> id;
+  final Value<String> title;
+  final Value<String> messagesJson;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const ChatSessionsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.messagesJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  ChatSessionsCompanion.insert({
+    this.id = const Value.absent(),
+    required String title,
+    required String messagesJson,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : title = Value(title),
+       messagesJson = Value(messagesJson);
+  static Insertable<ChatSession> custom({
+    Expression<int>? id,
+    Expression<String>? title,
+    Expression<String>? messagesJson,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (messagesJson != null) 'messages_json': messagesJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  ChatSessionsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? title,
+    Value<String>? messagesJson,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return ChatSessionsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      messagesJson: messagesJson ?? this.messagesJson,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (messagesJson.present) {
+      map['messages_json'] = Variable<String>(messagesJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChatSessionsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('messagesJson: $messagesJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -13800,6 +14250,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $StockCountItemsTable stockCountItems = $StockCountItemsTable(
     this,
   );
+  late final $ChatSessionsTable chatSessions = $ChatSessionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -13830,6 +14281,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     debtPayments,
     stockCounts,
     stockCountItems,
+    chatSessions,
   ];
 }
 
@@ -15528,6 +15980,8 @@ typedef $$EmployeesTableCreateCompanionBuilder =
       Value<int?> baseSalary,
       Value<DateTime?> startDate,
       Value<String?> nfcTag,
+      Value<String?> workStart,
+      Value<String?> workEnd,
       Value<DateTime> createdAt,
     });
 typedef $$EmployeesTableUpdateCompanionBuilder =
@@ -15543,6 +15997,8 @@ typedef $$EmployeesTableUpdateCompanionBuilder =
       Value<int?> baseSalary,
       Value<DateTime?> startDate,
       Value<String?> nfcTag,
+      Value<String?> workStart,
+      Value<String?> workEnd,
       Value<DateTime> createdAt,
     });
 
@@ -15607,6 +16063,16 @@ class $$EmployeesTableFilterComposer
 
   ColumnFilters<String> get nfcTag => $composableBuilder(
     column: $table.nfcTag,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workStart => $composableBuilder(
+    column: $table.workStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workEnd => $composableBuilder(
+    column: $table.workEnd,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15680,6 +16146,16 @@ class $$EmployeesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get workStart => $composableBuilder(
+    column: $table.workStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workEnd => $composableBuilder(
+    column: $table.workEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -15730,6 +16206,12 @@ class $$EmployeesTableAnnotationComposer
   GeneratedColumn<String> get nfcTag =>
       $composableBuilder(column: $table.nfcTag, builder: (column) => column);
 
+  GeneratedColumn<String> get workStart =>
+      $composableBuilder(column: $table.workStart, builder: (column) => column);
+
+  GeneratedColumn<String> get workEnd =>
+      $composableBuilder(column: $table.workEnd, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -15773,6 +16255,8 @@ class $$EmployeesTableTableManager
                 Value<int?> baseSalary = const Value.absent(),
                 Value<DateTime?> startDate = const Value.absent(),
                 Value<String?> nfcTag = const Value.absent(),
+                Value<String?> workStart = const Value.absent(),
+                Value<String?> workEnd = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => EmployeesCompanion(
                 id: id,
@@ -15786,6 +16270,8 @@ class $$EmployeesTableTableManager
                 baseSalary: baseSalary,
                 startDate: startDate,
                 nfcTag: nfcTag,
+                workStart: workStart,
+                workEnd: workEnd,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -15801,6 +16287,8 @@ class $$EmployeesTableTableManager
                 Value<int?> baseSalary = const Value.absent(),
                 Value<DateTime?> startDate = const Value.absent(),
                 Value<String?> nfcTag = const Value.absent(),
+                Value<String?> workStart = const Value.absent(),
+                Value<String?> workEnd = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => EmployeesCompanion.insert(
                 id: id,
@@ -15814,6 +16302,8 @@ class $$EmployeesTableTableManager
                 baseSalary: baseSalary,
                 startDate: startDate,
                 nfcTag: nfcTag,
+                workStart: workStart,
+                workEnd: workEnd,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -20688,6 +21178,202 @@ typedef $$StockCountItemsTableProcessedTableManager =
       StockCountItem,
       PrefetchHooks Function()
     >;
+typedef $$ChatSessionsTableCreateCompanionBuilder =
+    ChatSessionsCompanion Function({
+      Value<int> id,
+      required String title,
+      required String messagesJson,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$ChatSessionsTableUpdateCompanionBuilder =
+    ChatSessionsCompanion Function({
+      Value<int> id,
+      Value<String> title,
+      Value<String> messagesJson,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$ChatSessionsTableFilterComposer
+    extends Composer<_$AppDatabase, $ChatSessionsTable> {
+  $$ChatSessionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get messagesJson => $composableBuilder(
+    column: $table.messagesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ChatSessionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ChatSessionsTable> {
+  $$ChatSessionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get messagesJson => $composableBuilder(
+    column: $table.messagesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ChatSessionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ChatSessionsTable> {
+  $$ChatSessionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get messagesJson => $composableBuilder(
+    column: $table.messagesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ChatSessionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ChatSessionsTable,
+          ChatSession,
+          $$ChatSessionsTableFilterComposer,
+          $$ChatSessionsTableOrderingComposer,
+          $$ChatSessionsTableAnnotationComposer,
+          $$ChatSessionsTableCreateCompanionBuilder,
+          $$ChatSessionsTableUpdateCompanionBuilder,
+          (
+            ChatSession,
+            BaseReferences<_$AppDatabase, $ChatSessionsTable, ChatSession>,
+          ),
+          ChatSession,
+          PrefetchHooks Function()
+        > {
+  $$ChatSessionsTableTableManager(_$AppDatabase db, $ChatSessionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ChatSessionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ChatSessionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ChatSessionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> messagesJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ChatSessionsCompanion(
+                id: id,
+                title: title,
+                messagesJson: messagesJson,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String title,
+                required String messagesJson,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ChatSessionsCompanion.insert(
+                id: id,
+                title: title,
+                messagesJson: messagesJson,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ChatSessionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ChatSessionsTable,
+      ChatSession,
+      $$ChatSessionsTableFilterComposer,
+      $$ChatSessionsTableOrderingComposer,
+      $$ChatSessionsTableAnnotationComposer,
+      $$ChatSessionsTableCreateCompanionBuilder,
+      $$ChatSessionsTableUpdateCompanionBuilder,
+      (
+        ChatSession,
+        BaseReferences<_$AppDatabase, $ChatSessionsTable, ChatSession>,
+      ),
+      ChatSession,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -20742,4 +21428,6 @@ class $AppDatabaseManager {
       $$StockCountsTableTableManager(_db, _db.stockCounts);
   $$StockCountItemsTableTableManager get stockCountItems =>
       $$StockCountItemsTableTableManager(_db, _db.stockCountItems);
+  $$ChatSessionsTableTableManager get chatSessions =>
+      $$ChatSessionsTableTableManager(_db, _db.chatSessions);
 }

@@ -16,6 +16,16 @@ class ChatMessage {
         'role': role,
         'content': content,
       };
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    return ChatMessage(
+      role: json['role'] as String? ?? '',
+      content: json['content'] as String? ?? '',
+      timestamp: json['timestamp'] != null
+          ? DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
 }
 
 /// Calls the Supabase Edge Function `ai-assistant` for AI chat.
@@ -28,13 +38,16 @@ class AiService {
   /// Send a conversation and get the assistant's reply.
   /// [messages] includes the full history (user + assistant turns).
   /// [storeName] is optional — adds store context to the prompt.
+  /// [dbContext] is optional — real-time database snapshot for analysis.
   Future<String> chat({
     required List<ChatMessage> messages,
     String? storeName,
+    String? dbContext,
   }) async {
     final body = <String, dynamic>{
       'messages': messages.map((m) => m.toJson()).toList(),
       if (storeName != null) 'store_name': storeName,
+      if (dbContext != null) 'db_context': dbContext,
     };
 
     try {

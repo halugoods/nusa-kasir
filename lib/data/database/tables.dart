@@ -83,6 +83,8 @@ class Employees extends Table {
   IntColumn get baseSalary => integer().nullable()();
   DateTimeColumn get startDate => dateTime().nullable()();
   TextColumn get nfcTag => text().nullable()();   // NFC tag hash for tap-to-login
+  TextColumn get workStart => text().nullable()(); // "HH:mm" default "08:00"
+  TextColumn get workEnd => text().nullable()();   // "HH:mm" default "17:00"
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 class Attendance extends Table {
@@ -282,4 +284,13 @@ class StockCountItems extends Table {
   IntColumn get buyPrice => integer().withDefault(const Constant(0))();
   IntColumn get sellPrice => integer().withDefault(const Constant(0))();
   TextColumn get notes => text().nullable()();
+}
+
+/// AI chat session history — stored locally with message JSON + metadata.
+class ChatSessions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text()();           // auto-generated from first message
+  TextColumn get messagesJson => text()();    // JSON array of {role, content}
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

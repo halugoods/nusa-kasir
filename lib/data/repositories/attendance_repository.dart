@@ -26,6 +26,8 @@ class AttendanceRepository {
     int? baseSalary,
     DateTime? startDate,
     String? status,
+    String? workStart,
+    String? workEnd,
   }) {
     return db.into(db.employees).insert(EmployeesCompanion.insert(
           name: name,
@@ -37,6 +39,8 @@ class AttendanceRepository {
           baseSalary: Value(baseSalary),
           startDate: Value(startDate),
           status: Value(status),
+          workStart: Value(workStart),
+          workEnd: Value(workEnd),
         ));
   }
 
@@ -51,6 +55,8 @@ class AttendanceRepository {
     int? baseSalary,
     DateTime? startDate,
     String? status,
+    String? workStart,
+    String? workEnd,
   }) =>
       (db.update(db.employees)..where((t) => t.id.equals(id))).write(
         EmployeesCompanion(
@@ -63,6 +69,8 @@ class AttendanceRepository {
           baseSalary: Value(baseSalary),
           startDate: Value(startDate),
           status: Value(status),
+          workStart: Value(workStart),
+          workEnd: Value(workEnd),
         ),
       );
 

@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -156,10 +160,11 @@ class ReceiptSheet extends ConsumerWidget {
       });
     }
 
-    return FutureBuilder<String>(
-      future: SettingsRepository(db).getStoreName(),
+    return FutureBuilder<_ReceiptSettings>(
+      future: _loadSettings(db),
       builder: (context, snap) {
-        final storeName = snap.data ?? 'NUSA Kasir';
+        final storeName = snap.data?.storeName ?? 'NUSA Kasir';
+        final settings = snap.data ?? _ReceiptSettings();
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -228,7 +233,7 @@ class ReceiptSheet extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        child: _buildReceipt(context, storeName, isDark),
+                        child: _buildReceipt(context, storeName, isDark, settings),
                       ),
                     ),
                   ),
@@ -294,6 +299,53 @@ class ReceiptSheet extends ConsumerWidget {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      // Share WhatsApp + Unduh PDF (side by side)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 44,
+                              child: ElevatedButton.icon(
+                                onPressed: () => _shareWA(context, storeName, settings),
+                                icon: const Icon(Icons.share, size: 16),
+                                label: const Text('Share WA',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF25D366),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: SizedBox(
+                              height: 44,
+                              child: ElevatedButton.icon(
+                                onPressed: () => _downloadPdf(context, ref, storeName, settings),
+                                icon: const Icon(Icons.download, size: 16),
+                                label: const Text('Unduh',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isDark
+                                      ? NusaConfig.darkSurface2
+                                      : Colors.grey.shade200,
+                                  foregroundColor: isDark
+                                      ? NusaConfig.darkTextPrimary
+                                      : Colors.grey.shade700,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -305,8 +357,29 @@ class ReceiptSheet extends ConsumerWidget {
     );
   }
 
-  /// Builds the thermal-style receipt content.
-  Widget _buildReceipt(BuildContext context, String storeName, bool isDark) {
+  /// Load receipt settings + store name.
+  Future<_ReceiptSettings> _loadSettings(AppDatabase db) async {
+    final settingsRepo = SettingsRepository(db);
+    final storeName = await settingsRepo.getStoreName();
+    final toggles = await settingsRepo.getReceiptToggles();
+    final header = await settingsRepo.getReceiptHeader() ?? '';
+    final footer = await settingsRepo.getReceiptFooter() ?? '';
+    final logoPath = await settingsRepo.getStoreLogoPath();
+    return _ReceiptSettings(
+      storeName: storeName,
+      showLogo: toggles['showLogo'] ?? true,
+      showCashier: toggles['showCashier'] ?? true,
+      showInvoice: toggles['showInvoice'] ?? true,
+      showDate: toggles['showDate'] ?? true,
+      showBarcode: toggles['showBarcode'] ?? false,
+      header: header,
+      footer: footer,
+      logoPath: logoPath,
+    );
+  }
+
+  /// Builds the thermal-style receipt content with settings applied.
+  Widget _buildReceipt(BuildContext context, String storeName, bool isDark, _ReceiptSettings s) {
     final textColor = isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
     final subtleColor = isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
     final mono = TextStyle(
@@ -346,22 +419,37 @@ class ReceiptSheet extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // ── Logo (dari pengaturan printer) ──
+        if (s.showLogo && s.logoPath != null && s.logoPath!.isNotEmpty) ...[
+          Center(
+            child: Image.file(
+              File(s.logoPath!),
+              height: 48,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+          ),
+          const SizedBox(height: 4),
+        ],
+
         // ── Store header ──
         Center(child: Text(storeName, style: monoHeader, textAlign: TextAlign.center)),
-        if (invoice != null) ...[
+
+        // Custom header text
+        if (s.header.isNotEmpty) ...[
           const SizedBox(height: 2),
-          Center(child: Text(invoice!, style: mono, textAlign: TextAlign.center)),
+          Center(child: Text(s.header, style: monoGrey, textAlign: TextAlign.center)),
         ],
         const SizedBox(height: 6),
         _dashedLine(isDark: isDark),
         const SizedBox(height: 6),
 
         // ── Transaction info ──
-        if (invoice != null)
+        if (s.showInvoice && invoice != null)
           _monoRow('ID  : ', invoice!, mono, mono),
-        if (dateStr != null)
+        if (s.showDate && dateStr != null)
           _monoRow('Tgl : ', dateStr!, mono, mono),
-        if (cashierName != null && cashierName!.isNotEmpty)
+        if (s.showCashier && cashierName != null && cashierName!.isNotEmpty)
           _monoRow('Kasir:', cashierName!, mono, mono),
         if (customerName != null && customerName!.isNotEmpty)
           _monoRow('Pel  : ', customerName!, mono, mono),
@@ -439,9 +527,18 @@ class ReceiptSheet extends ConsumerWidget {
         _dashedLine(isDark: isDark),
         const SizedBox(height: 8),
 
+        // ── Barcode (toggle) ──
+        if (s.showBarcode && invoice != null) ...[
+          Center(
+            child: Text(invoice!, style: monoBold, textAlign: TextAlign.center),
+          ),
+          const SizedBox(height: 4),
+        ],
+
         // ── Footer ──
         Center(
-          child: Text('Terima Kasih!', style: monoBold, textAlign: TextAlign.center),
+          child: Text(s.footer.isNotEmpty ? s.footer : 'Terima Kasih!',
+              style: monoBold, textAlign: TextAlign.center),
         ),
       ],
     );
@@ -589,6 +686,109 @@ class ReceiptSheet extends ConsumerWidget {
     }
   }
 
+  // ── Share via WhatsApp ──
+  Future<void> _shareWA(BuildContext context, String storeName, _ReceiptSettings s) async {
+    final sb = StringBuffer();
+    sb.writeln('*$storeName*');
+    if (s.header.isNotEmpty) sb.writeln(s.header);
+    sb.writeln('━━━━━━━━━━━━━━━━━');
+    if (s.showInvoice && invoice != null) sb.writeln('ID  : $invoice');
+    if (s.showDate && dateStr != null) sb.writeln('Tgl : $dateStr');
+    if (s.showCashier && cashierName != null && cashierName!.isNotEmpty) {
+      sb.writeln('Kasir: $cashierName');
+    }
+    if (customerName != null && customerName!.isNotEmpty) {
+      sb.writeln('Pel  : $customerName');
+    }
+    sb.writeln('━━━━━━━━━━━━━━━━━');
+    for (final item in items) {
+      sb.writeln(item.name);
+      sb.writeln('  ${item.qty} x ${formatRupiah(item.price)}  = ${formatRupiah(item.subtotal)}');
+    }
+    sb.writeln('━━━━━━━━━━━━━━━━━');
+    if (discount > 0) sb.writeln('Diskon      : -${formatRupiah(discount)}');
+    if (pointsUsed > 0) sb.writeln('Tukar Poin  : -${formatRupiah(pointsUsed)}');
+    sb.writeln('*TOTAL       : ${formatRupiah(total)}*');
+    sb.writeln('Bayar ($paymentMethod) : ${formatRupiah(cashGiven ?? total)}');
+    if (cashReturn != null && cashReturn! > 0) {
+      sb.writeln('Kembali     : ${formatRupiah(cashReturn!)}');
+    }
+    sb.writeln('━━━━━━━━━━━━━━━━━');
+    sb.writeln(s.footer.isNotEmpty ? s.footer : 'Terima Kasih!');
+
+    try {
+      final encoded = Uri.encodeComponent(sb.toString());
+      final uri = Uri.parse('https://wa.me/?text=$encoded');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      if (context.mounted) TopToast.error(context, 'Gagal membuka WhatsApp');
+    }
+  }
+
+  // ── Unduh PDF receipt ──
+  Future<void> _downloadPdf(BuildContext context, WidgetRef ref, String storeName, _ReceiptSettings s) async {
+    try {
+      // Generate PDF using the existing receipt structure as text
+      final sb = StringBuffer();
+      sb.writeln(storeName);
+      if (s.header.isNotEmpty) sb.writeln(s.header);
+      sb.writeln('─' * 32);
+      if (s.showInvoice && invoice != null) sb.writeln('ID  : $invoice');
+      if (s.showDate && dateStr != null) sb.writeln('Tgl : $dateStr');
+      if (s.showCashier && cashierName != null && cashierName!.isNotEmpty) sb.writeln('Kasir: $cashierName');
+      if (customerName != null && customerName!.isNotEmpty) sb.writeln('Pel  : $customerName');
+      sb.writeln('─' * 32);
+      for (final item in items) {
+        sb.writeln(item.name);
+        sb.writeln('  ${item.qty} x ${formatRupiah(item.price)}  = ${formatRupiah(item.subtotal)}');
+      }
+      sb.writeln('─' * 32);
+      if (discount > 0) sb.writeln('Diskon      : -${formatRupiah(discount)}');
+      if (pointsUsed > 0) sb.writeln('Tukar Poin  : -${formatRupiah(pointsUsed)}');
+      sb.writeln('TOTAL       : ${formatRupiah(total)}');
+      sb.writeln('Bayar ($paymentMethod) : ${formatRupiah(cashGiven ?? total)}');
+      if (cashReturn != null && cashReturn! > 0) sb.writeln('Kembali     : ${formatRupiah(cashReturn!)}');
+      sb.writeln('─' * 32);
+      sb.writeln(s.footer.isNotEmpty ? s.footer : 'Terima Kasih!');
+
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/struk_${invoice ?? DateTime.now().millisecondsSinceEpoch}.txt');
+      await file.writeAsString(sb.toString());
+      await Share.shareXFiles([XFile(file.path)], subject: 'Struk $storeName');
+
+      if (context.mounted) TopToast.success(context, 'Struk berhasil dibagikan');
+    } catch (_) {
+      if (context.mounted) TopToast.error(context, 'Gagal mengunduh struk');
+    }
+  }
+
+}
+
+/// Holds receipt display settings loaded from DB.
+class _ReceiptSettings {
+  final String storeName;
+  final bool showLogo;
+  final bool showCashier;
+  final bool showInvoice;
+  final bool showDate;
+  final bool showBarcode;
+  final String header;
+  final String footer;
+  final String? logoPath;
+
+  _ReceiptSettings({
+    this.storeName = '',
+    this.showLogo = true,
+    this.showCashier = true,
+    this.showInvoice = true,
+    this.showDate = true,
+    this.showBarcode = false,
+    this.header = '',
+    this.footer = '',
+    this.logoPath,
+  });
 }
 
 /// Custom painter for dashed horizontal line (mimics GAS border-top: dashed).

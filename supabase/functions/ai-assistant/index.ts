@@ -41,6 +41,7 @@ serve(async (req: Request) => {
     const body = await req.json();
     const messages: { role: string; content: string }[] = body.messages ?? [];
     const storeName: string | undefined = body.store_name;
+    const dbContext: string | undefined = body.db_context;
 
     if (!messages || messages.length === 0) {
       return new Response(
@@ -63,6 +64,10 @@ serve(async (req: Request) => {
     let fullSystemPrompt = systemPrompt;
     if (storeName) {
       fullSystemPrompt = `Konteks: kamu sedang membantu pemilik toko "${storeName}".\n\n${systemPrompt}`;
+    }
+    // Inject database context if available (real-time store data)
+    if (dbContext && dbContext.trim().length > 0) {
+      fullSystemPrompt = `${fullSystemPrompt}\n\nBerikut adalah data real-time toko saat ini (gunakan untuk menjawab pertanyaan dengan akurat):\n${dbContext}`;
     }
 
     // Build message array with system prompt

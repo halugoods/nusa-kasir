@@ -377,7 +377,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
               itemCount: 3,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (_, i) {
-                const labels = ['Semua', 'Aktif', 'Non Aktif'];
+                const labels = ['Semua', 'Aktif', 'Habis'];
                 final label = labels[i];
                 final selected = label == _statusFilter;
                 return FilterChip(

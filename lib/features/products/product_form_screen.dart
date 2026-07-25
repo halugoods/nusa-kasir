@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/activation/activation_key.dart';
@@ -172,7 +173,30 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final result = await FilePicker.pickFiles(type: FileType.image, allowMultiple: false);
     if (result == null || result.files.single.path == null) return;
     try {
-      final src = File(result.files.single.path!);
+      // Crop ke 1:1 — user bisa adjust area yg dipakai
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: result.files.single.path!,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Sesuaikan Foto',
+            toolbarColor: const Color(0xFF2563EB),
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            hideBottomControls: false,
+            statusBarColor: const Color(0xFF1D4ED8),
+          ),
+          IOSUiSettings(
+            title: 'Sesuaikan Foto',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+          ),
+        ],
+      );
+
+      final srcPath = cropped?.path ?? result.files.single.path!;
+      final src = File(srcPath);
       final dir = await getApplicationDocumentsDirectory();
       final ext = p.extension(src.path);
       final destName = 'product_${DateTime.now().millisecondsSinceEpoch}$ext';

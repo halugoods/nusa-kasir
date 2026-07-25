@@ -59,7 +59,7 @@ class ProductRepository {
     // server-side status filter
     if (status == 'Aktif') {
       q.where((t) => t.stock.isBiggerThanValue(0));
-    } else if (status == 'Non Aktif') {
+    } else if (status == 'Non Aktif' || status == 'Habis') {
       q.where((t) => t.stock.equals(0));
     }
     return q.get();

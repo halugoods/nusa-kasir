@@ -158,6 +158,8 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     String? photoPath = employee?.photoPath;
     String? error;
     int? branchId = employee?.branchId;
+    String workStart = employee?.workStart ?? '08:00';
+    String workEnd = employee?.workEnd ?? '17:00';
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
@@ -388,6 +390,79 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                 ],
                 const SizedBox(height: 16),
 
+                // ── Jam Kerja ──
+                Row(
+                  children: [
+                    Icon(Icons.schedule_outlined, size: 16,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                    const SizedBox(width: 6),
+                    Text('Jam Kerja',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                        )),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _timeField(
+                        label: 'Masuk',
+                        value: workStart,
+                        isDark: isDark,
+                        onTap: () async {
+                          final parts = workStart.split(':');
+                          final now = TimeOfDay(hour: int.tryParse(parts[0]) ?? 8, minute: int.tryParse(parts[1]) ?? 0);
+                          final picked = await showTimePicker(context: ctx, initialTime: now, helpText: 'Jam Masuk', cancelText: 'BATAL', confirmText: 'PILIH');
+                          if (picked != null) {
+                            setSt(() => workStart = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}');
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // "sampai" label
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text('s.d', style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _timeField(
+                        label: 'Pulang',
+                        value: workEnd,
+                        isDark: isDark,
+                        onTap: () async {
+                          final parts = workEnd.split(':');
+                          final now = TimeOfDay(hour: int.tryParse(parts[0]) ?? 17, minute: int.tryParse(parts[1]) ?? 0);
+                          final picked = await showTimePicker(context: ctx, initialTime: now, helpText: 'Jam Pulang', cancelText: 'BATAL', confirmText: 'PILIH');
+                          if (picked != null) {
+                            setSt(() => workEnd = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}');
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                // late threshold info
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 13,
+                          color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                      const SizedBox(width: 4),
+                      Text('Terlambat jika absen > 15 menit setelah jam masuk',
+                          style: TextStyle(fontSize: 11,
+                              color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
                 // ── NFC Tag Registration ──
                 _NfcRegisterButton(
                   isDark: isDark,
@@ -447,7 +522,9 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                               baseSalary: salary,
                               startDate: startDate,
                               status: status,
-                              branchId: branchId);
+                              branchId: branchId,
+                              workStart: workStart,
+                              workEnd: workEnd);
                         } else {
                           await repo.updateEmployee(
                               id: employee.id, name: name, pin: pin, role: role,
@@ -456,7 +533,9 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                               baseSalary: salary,
                               startDate: startDate,
                               status: status,
-                              branchId: branchId);
+                              branchId: branchId,
+                              workStart: workStart,
+                              workEnd: workEnd);
                         }
                         // Upload photo to cloud in background
                         if (photoPath != null) {
@@ -551,6 +630,40 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _timeField({
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+    bool isDark = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkInputFill : NusaConfig.inputFill,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? NusaConfig.darkInputBorder : NusaConfig.inputBorder,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.access_time, size: 15, color: NusaConfig.primaryColor),
+            const SizedBox(width: 8),
+            Text(value,
+                style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: NusaConfig.primaryColor)),
+          ],
+        ),
+      ),
     );
   }
 

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/core/utils/contact_picker.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/supplier_repository.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
@@ -117,9 +118,46 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                 const SizedBox(height: 16),
                 NusaInput('Nama', controller: nameC, hint: 'Cth: PT Maju Jaya'),
                 const SizedBox(height: 12),
-                NusaInput('Telepon', controller: phoneC, type: TextInputType.phone, hint: 'Cth: 08123456789',
-                    prefixIcon: Icon(Icons.phone, size: 18,
-                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: NusaInput('Telepon', controller: phoneC, type: TextInputType.phone, hint: 'Cth: 08123456789',
+                          prefixIcon: Icon(Icons.phone, size: 18,
+                              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        final contact = await pickContact();
+                        if (contact != null) {
+                          final name = contact['name'] ?? '';
+                          final phone = contact['phone'] ?? '';
+                          if (name.isNotEmpty && nameC.text.trim().isEmpty) {
+                            nameC.text = name;
+                          }
+                          if (phone.isNotEmpty) {
+                            phoneC.text = phone;
+                          }
+                          // Auto-fill contact person field if still empty
+                          if (name.isNotEmpty && cpC.text.trim().isEmpty) {
+                            cpC.text = name;
+                          }
+                          setSt(() {}); // refresh UI
+                        }
+                      },
+                      child: Container(
+                        width: 48, height: 48,
+                        decoration: BoxDecoration(
+                          color: NusaConfig.primaryColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.contacts_outlined,
+                            color: NusaConfig.primaryColor, size: 22),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 NusaInput('Alamat', controller: addrC, hint: 'Cth: Jl. Merdeka No. 10',
                     prefixIcon: Icon(Icons.location_on_outlined, size: 18,

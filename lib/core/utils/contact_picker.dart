@@ -11,7 +11,16 @@ Future<Map<String, String>?> pickContact() async {
       'name': (result['name'] as String?) ?? '',
       'phone': (result['phone'] as String?) ?? '',
     };
+  } on MissingPluginException {
+    // Platform channel not implemented (e.g. iOS without native handler,
+    // or running on desktop/web). Silently return null — caller should handle.
+    return null;
+  } on PlatformException catch (e) {
+    // Native error — log and return null. Caller may show toast.
+    debugPrint('[ContactPicker] PlatformException: ${e.code} — ${e.message}');
+    return null;
   } catch (e) {
+    debugPrint('[ContactPicker] Unexpected error: $e');
     return null;
   }
 }
