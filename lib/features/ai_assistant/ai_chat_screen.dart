@@ -18,6 +18,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   final _messages = <ChatMessage>[];
   bool _loading = false;
   String? _storeName;
+  final List<String> _hints = [
+    "Analisis penjualan",
+    "Stok habis",
+    "Laporan mingguan",
+    "Top produk",
+    "Tips bisnis",
+  ];
 
   @override
   void initState() {
@@ -147,6 +154,41 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               },
             ),
           ),
+
+          // Quick hints
+          if (_hints.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _hints.map((hint) {
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ActionChip(
+                        label: Text(hint, style: const TextStyle(fontSize: 12)),
+                        onPressed: _loading ? null : () {
+                          _inputCtrl.text = hint;
+                          _send();
+                        },
+                        backgroundColor: isDark
+                            ? NusaConfig.darkSurface2
+                            : NusaConfig.backgroundColor,
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          color: isDark
+                              ? NusaConfig.darkTextSecondary
+                              : NusaConfig.textSecondary,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
 
           // Input
           Container(

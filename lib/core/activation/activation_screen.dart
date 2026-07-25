@@ -12,7 +12,7 @@ import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
-import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
+import 'package:nusa_kasir/shared/widgets/pin_keypad.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -51,7 +51,6 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   // PIN input (returning user)
   bool _pinLoading = false;
   String? _pinError;
-  Employee? _pinLoggedEmp;
 
   // Screen state: 'welcome' | 'google_loading' | 'pin' | 'key'
   String _screen = 'welcome';
@@ -690,37 +689,72 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                     Text('Masukkan PIN untuk melanjutkan',
                       style: TextStyle(fontSize: 13,
                         color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                    const SizedBox(height: 28),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _pinLoading ? null : () async {
-                          setState(() => _pinLoading = true);
-                          await _showPinDialog();
+                    const SizedBox(height: 16),
+                    PinKeypad(
+                      length: 6,
+                      showFingerprint: true,
+                      showNfc: true,
+                      showCancel: false,
+                      onFingerprint: () async => await _authFingerprint(),
+                      onNfc: () async {
+                        final id = await NfcTagService.readEmployeeTag();
+                        if (id == null || !mounted) return null;
+                        // NFC login: lookup employee, create session, navigate
+                        final db = ref.read(databaseProvider);
+                        final repo = AttendanceRepository(db);
+                        final emp = await repo.getEmployee(id);
+                        if (emp == null || !mounted) return null;
+                        final session = EmployeeSession(
+                          employeeId: emp.id, name: emp.name, role: emp.role, remember: false,
+                        );
+                        ref.read(employeeSessionProvider.notifier).login(session, remember: false);
+                        ref.read(authProvider.notifier).state = emp.role;
+                        try { await AttendanceRepository(ref.read(databaseProvider)).checkIn(emp.id); } catch (_) {}
+                        final storeName = await SettingsRepository(ref.read(databaseProvider)).getStoreName();
+                        if (mounted) context.go(storeName.isEmpty ? '/setup' : '/home');
+                        return null; // already handled
+                      },
+                      onComplete: (pin) async {
+                        setState(() => _pinLoading = true);
+                        final db = ref.read(databaseProvider);
+                        final repo = AttendanceRepository(db);
+                        final emps = await repo.getEmployees();
+                        final emp = emps.cast<Employee?>().firstWhere(
+                              (e) => e!.pin == pin,
+                              orElse: () => null,
+                            );
+                        if (emp != null) {
                           if (mounted) setState(() => _pinLoading = false);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF151717),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.lock_outline, size: 18),
-                            const SizedBox(width: 8),
-                            Text(
-                              _pinLoading ? 'Memeriksa...' : 'Masuk dengan PIN',
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
-                      ),
+                          // Create session
+                          final session = EmployeeSession(
+                            employeeId: emp.id,
+                            name: emp.name,
+                            role: emp.role,
+                            remember: false,
+                          );
+                          ref.read(employeeSessionProvider.notifier).login(session, remember: false);
+                          ref.read(authProvider.notifier).state = emp.role;
+
+                          // Auto check-in
+                          try {
+                            final db = ref.read(databaseProvider);
+                            final repo = AttendanceRepository(db);
+                            await repo.checkIn(emp.id);
+                          } catch (_) {}
+
+                          final settingsRepo = SettingsRepository(ref.read(databaseProvider));
+                          final storeName = await settingsRepo.getStoreName();
+                          if (mounted) context.go(storeName.isEmpty ? '/setup' : '/home');
+                        } else {
+                          if (mounted) setState(() {
+                            _pinLoading = false;
+                            _pinError = 'PIN salah';
+                          });
+                        }
+                      },
                     ),
                     if (_pinError != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       Text(_pinError!,
                           style: const TextStyle(color: NusaConfig.primaryColor, fontSize: 13)),
                     ],
@@ -737,73 +771,6 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _showPinDialog() async {
-    final result = await PinDialog.show(
-      context: context,
-      title: 'Masuk',
-      subtitle: 'Masukkan PIN untuk melanjutkan',
-      pinLength: 6,
-      showRemember: true,
-      showFingerprint: true,
-      showNfc: true,
-      onFingerprint: () async => await _authFingerprint(),
-      onNfc: () async {
-        final id = await NfcTagService.readEmployeeTag();
-        return id?.toString();
-      },
-      onVerify: (pin) async {
-        final db = ref.read(databaseProvider);
-        final repo = AttendanceRepository(db);
-        final emps = await repo.getEmployees();
-        final emp = emps.cast<Employee?>().firstWhere(
-              (e) => e!.pin == pin,
-              orElse: () => null,
-            );
-        if (emp == null) return false;
-
-        // Store matched employee for after dialog closes
-        _pinLoggedEmp = emp;
-        return true;
-      },
-    );
-
-    if (result == null || !result.success) return;
-
-    // NFC login
-    if (result.nfcEmployeeId != null) {
-      final db = ref.read(databaseProvider);
-      final repo = AttendanceRepository(db);
-      final emp = await repo.getEmployee(result.nfcEmployeeId!);
-      if (emp != null) _pinLoggedEmp = emp;
-    }
-
-    if (_pinLoggedEmp == null) return;
-
-    final emp = _pinLoggedEmp!;
-    _pinLoggedEmp = null;
-
-    // Create session
-    final session = EmployeeSession(
-      employeeId: emp.id,
-      name: emp.name,
-      role: emp.role,
-      remember: result.remember,
-    );
-    ref.read(employeeSessionProvider.notifier).login(session, remember: result.remember);
-    ref.read(authProvider.notifier).state = emp.role;
-
-    // Auto check-in
-    try {
-      final db = ref.read(databaseProvider);
-      final repo = AttendanceRepository(db);
-      await repo.checkIn(emp.id);
-    } catch (_) {}
-
-    final settingsRepo = SettingsRepository(ref.read(databaseProvider));
-    final name = await settingsRepo.getStoreName();
-    if (mounted) context.go(name.isEmpty ? '/setup' : '/home');
   }
 
   Future<bool> _authFingerprint() async {

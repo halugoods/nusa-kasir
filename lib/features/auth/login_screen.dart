@@ -8,7 +8,8 @@ import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
-import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
+import 'package:nusa_kasir/shared/widgets/pin_keypad.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 
@@ -95,57 +96,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _showPinLogin() async {
-    Employee? matchedEmp;
-
-    final result = await PinDialog.show(
-      context: context,
-      title: 'Masuk',
-      subtitle: 'Masukkan PIN karyawan kamu',
-      pinLength: 6,
-      showRemember: true,
-      showFingerprint: true,
-      showNfc: _nfcAvailable,
-      onFingerprint: () async => await _authFingerprint(),
-      onNfc: () async {
-        final id = await NfcTagService.readEmployeeTag();
-        return id?.toString();
-      },
-      onVerify: (pin) async {
-        final db = ref.read(databaseProvider);
-        final repo = AttendanceRepository(db);
-        final emps = await repo.getEmployees();
-        final emp = emps.cast<Employee?>().firstWhere(
-              (e) => e!.pin == pin,
-              orElse: () => null,
-            );
-        if (emp == null) return false;
-        matchedEmp = emp;
-        return true;
-      },
-    );
-
-    if (result == null || !result.success) return;
-
-    // NFC login — lookup employee by tag id
-    if (result.nfcEmployeeId != null) {
-      final db = ref.read(databaseProvider);
-      final repo = AttendanceRepository(db);
-      final emp = await repo.getEmployee(result.nfcEmployeeId!);
-      if (emp != null) matchedEmp = emp;
+  /// Verify PIN directly (used by PinKeypad on login screen).
+  Future<void> _verifyPin(String pin) async {
+    final db = ref.read(databaseProvider);
+    final repo = AttendanceRepository(db);
+    final emps = await repo.getEmployees();
+    final emp = emps.cast<Employee?>().firstWhere(
+          (e) => e!.pin == pin,
+          orElse: () => null,
+        );
+    if (emp == null) {
+      if (mounted) TopToast.error(context, 'PIN salah');
+      return;
     }
 
-    if (matchedEmp == null) return;
-    if (!mounted) return;
-
     final session = EmployeeSession(
-      employeeId: matchedEmp!.id,
-      name: matchedEmp!.name,
-      role: matchedEmp!.role,
-      remember: result.remember,
+      employeeId: emp.id,
+      name: emp.name,
+      role: emp.role,
+      remember: false,
     );
-    ref.read(employeeSessionProvider.notifier).login(session, remember: result.remember);
-    ref.read(authProvider.notifier).state = matchedEmp!.role;
+    ref.read(employeeSessionProvider.notifier).login(session, remember: false);
+    ref.read(authProvider.notifier).state = emp.role;
     final name = await ref.read(settingsRepoProvider).getStoreName();
     if (mounted) context.go(name.isEmpty ? '/onboarding' : '/home');
   }
@@ -275,31 +247,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 16),
             ],
 
-            // ── PIN Button ──────────────────────────────────────
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _showPinLogin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: NusaConfig.primaryColor,
-                  foregroundColor: Colors.white,
-                  elevation: 2,
-                  shadowColor: NusaConfig.primaryColor.withValues(alpha: 0.3),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.lock_outline, size: 20),
-                    const SizedBox(width: 10),
-                    Text(
-                      _loading ? 'Memeriksa...' : 'Masuk dengan PIN',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              ),
+            // ── PIN Keypad ──────────────────────────────────────
+            const SizedBox(height: 16),
+            PinKeypad(
+              length: 6,
+              showFingerprint: true,
+              showNfc: _nfcAvailable,
+              showCancel: false,
+              onFingerprint: () async => await _authFingerprint(),
+              onNfc: () async {
+                final id = await NfcTagService.readEmployeeTag();
+                if (id == null || !mounted) return null;
+                await _loginWithEmployeeId(id);
+                return null; // already handled, don't trigger onComplete
+              },
+              onComplete: (pin) async {
+                setState(() => _loading = true);
+                await _verifyPin(pin);
+                if (mounted) setState(() => _loading = false);
+              },
             ),
           ],
         ),

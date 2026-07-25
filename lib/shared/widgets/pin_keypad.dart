@@ -285,18 +285,32 @@ class _PinKeypadState extends State<PinKeypad>
             ),
           ],
 
-          // ── Cancel ──────────────────────────────────
+          // ── Cancel (card style) ──────────────────────
           if (widget.showCancel) ...[
-            const SizedBox(height: 4),
-            TextButton(
-              onPressed: widget.onCancel,
-              child: Text(
-                'Batal',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark
-                      ? NusaConfig.darkTextSecondary
-                      : NusaConfig.textSecondary,
+            const SizedBox(height: 8),
+            Card(
+              elevation: 1,
+              shadowColor: Colors.black12,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              color: isDark ? NusaConfig.darkSurface : Colors.white,
+              child: InkWell(
+                onTap: widget.onCancel,
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Batal',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? NusaConfig.darkTextSecondary
+                          : NusaConfig.textSecondary,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -307,17 +321,18 @@ class _PinKeypadState extends State<PinKeypad>
   }
 
   Widget _bottomLeftCell() {
-    if (widget.showNfc) {
-      return _keyButton(
-        child: Icon(Icons.nfc, color: NusaConfig.accentPurple, size: 28),
-        onTap: _nfcScanning ? null : _onNfcTap,
-      );
-    }
+    // FP takes priority — user wants fp/0/backspace layout
     if (widget.showFingerprint) {
       return _keyButton(
         child: Icon(Icons.fingerprint,
             color: NusaConfig.primaryColor, size: 28),
         onTap: _onFingerprintTap,
+      );
+    }
+    if (widget.showNfc) {
+      return _keyButton(
+        child: Icon(Icons.nfc, color: NusaConfig.accentPurple, size: 28),
+        onTap: _nfcScanning ? null : _onNfcTap,
       );
     }
     return _keyButton(child: const SizedBox.shrink());

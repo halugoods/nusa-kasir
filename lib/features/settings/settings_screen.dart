@@ -30,6 +30,7 @@ import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/core/auth/employee_session.dart';
 import 'package:nusa_kasir/shared/services/biometric_service.dart';
+import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -172,7 +173,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       pinLength: 6,
       showRemember: false,
       showFingerprint: true,
+      showNfc: true,
       onFingerprint: () async => await _authFingerprint(),
+      onNfc: () async {
+        final id = await NfcTagService.readEmployeeTag();
+        return id?.toString();
+      },
     );
 
     return result?.success == true;
