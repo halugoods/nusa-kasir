@@ -1,9 +1,18 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/core/services/image_storage_service.dart';
 import 'package:nusa_kasir/core/services/online_order_service.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
@@ -12,19 +21,22 @@ import 'package:nusa_kasir/shared/widgets/nusa_card.dart';
 import 'package:nusa_kasir/shared/widgets/nusa_input.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class OnlineStoreSetupScreen extends ConsumerStatefulWidget {
   const OnlineStoreSetupScreen({super.key});
   @override
-  ConsumerState<OnlineStoreSetupScreen> createState() => _OnlineStoreSetupScreenState();
+  ConsumerState<OnlineStoreSetupScreen> createState() =>
+      _OnlineStoreSetupScreenState();
 }
 
-class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen> {
+class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
+    with SingleTickerProviderStateMixin {
   bool _loading = true;
   bool _saving = false;
   String? _storeUrl;
   bool _isActive = false;
+  String? _logoPath;
+  int _onlineProductCount = 0;
 
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
@@ -32,14 +44,33 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
   final _addressCtrl = TextEditingController();
   final _hoursCtrl = TextEditingController(text: '08:00 - 21:00');
 
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulseAnim;
+
   @override
   void initState() {
     super.initState();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _pulseAnim = Tween(begin: 0.94, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+    );
     _load();
   }
 
-  /// Convert store name to URL-safe slug.
-  /// Example: "Toko Berkah Jaya 99" → "toko-berkah-jaya-99"
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descCtrl.dispose();
+    _waCtrl.dispose();
+    _addressCtrl.dispose();
+    _hoursCtrl.dispose();
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
   String _slugify(String name) {
     return name
         .trim()
@@ -50,16 +81,6 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
         .replaceAll(RegExp(r'^-|-$'), '');
   }
 
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _descCtrl.dispose();
-    _waCtrl.dispose();
-    _addressCtrl.dispose();
-    _hoursCtrl.dispose();
-    super.dispose();
-  }
-
   Future<void> _load() async {
     final key = await SecureStore.getActivation();
     if (key == null) {
@@ -67,18 +88,23 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
       return;
     }
 
-    // activation key stays as storeId for internal API — never exposed in URL
-
-    // Load store name from local settings as fallback
     final repo = ref.read(settingsRepoProvider);
     final name = await repo.getStoreName();
     if (name.isNotEmpty) _nameCtrl.text = name;
 
-    // Build fallback URL from local name
+    // Load store logo from local settings
+    _logoPath = await repo.getStoreLogoPath();
+
     final fallbackSlug = _slugify(name);
     _storeUrl = 'https://nusa-online.vercel.app/toko/$fallbackSlug';
 
-    // Load from Supabase
+    // Count online products
+    try {
+      final db = ref.read(databaseProvider);
+      final products = await ProductRepository(db).getProducts();
+      _onlineProductCount = products.where((p) => p.isOnline).length;
+    } catch (_) {}
+
     try {
       final svc = OnlineOrderService(Supabase.instance.client);
       final store = await svc.getStoreSettings();
@@ -89,14 +115,10 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
         _waCtrl.text = store['whatsapp'] as String? ?? '';
         _addressCtrl.text = store['address'] as String? ?? '';
         _hoursCtrl.text = store['open_hours'] as String? ?? '08:00 - 21:00';
-        // Use cloud slug if available, otherwise regenerate from name
         final cloudSlug = store['slug'] as String?;
         _storeUrl = 'https://nusa-online.vercel.app/toko/${cloudSlug ?? _slugify(_nameCtrl.text)}';
       }
-      // Note: if store is null (never saved), keep isActive = false — that's correct
-    } catch (e) {
-      // Cached state preserved — don't reset _isActive on failed fetch
-    }
+    } catch (_) {}
 
     if (mounted) setState(() => _loading = false);
   }
@@ -109,7 +131,6 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
     }
 
     setState(() => _saving = true);
-
     final isActive = activate ?? _isActive;
 
     try {
@@ -126,16 +147,10 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
       );
 
       if (ok) {
-        // Also save store name locally
         await ref.read(settingsRepoProvider).setStoreName(name);
-
-        // Update store URL with clean slug
         _storeUrl = 'https://nusa-online.vercel.app/toko/$slug';
 
-        // If activating, sync all online products
-        if (isActive) {
-          await _syncProducts();
-        }
+        if (isActive) await _syncProducts();
 
         if (mounted) {
           setState(() {
@@ -147,7 +162,9 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
               : 'Pengaturan disimpan');
         }
       } else {
-        if (mounted) TopToast.error(context, 'Gagal menyimpan. Cek koneksi internet.');
+        if (mounted) {
+          TopToast.error(context, 'Gagal menyimpan. Cek koneksi internet.');
+        }
       }
     } catch (e) {
       if (mounted) TopToast.error(context, 'Error: $e');
@@ -179,275 +196,709 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
         await svc.syncProducts(onlineProducts);
       }
     } catch (e) {
-      // ignore: avoid_print
-      print('[OnlineStoreSetup] Gagal sinkronisasi produk: $e');
+      debugPrint('[OnlineStoreSetup] Gagal sinkronisasi produk: $e');
+    }
+  }
+
+  Future<void> _pickLogo() async {
+    final result = await FilePicker.pickFiles(type: FileType.image);
+    if (result == null || result.files.single.path == null) return;
+    try {
+      final src = File(result.files.single.path!);
+      final dir = await getApplicationDocumentsDirectory();
+      final ext = p.extension(src.path);
+      final destName = 'store_logo_${DateTime.now().millisecondsSinceEpoch}$ext';
+      final destPath = p.join(dir.path, destName);
+      await src.copy(destPath);
+      await ref.read(settingsRepoProvider).setStoreLogoPath(destPath);
+      setState(() => _logoPath = destPath);
+
+      // Cloud upload
+      try {
+        final uid = Supabase.instance.client.auth.currentUser?.id;
+        if (uid != null) {
+          ImageStorageService(Supabase.instance.client, uid)
+              .uploadImage('settings', destPath);
+        }
+      } catch (_) {}
+    } catch (_) {
+      if (mounted) TopToast.error(context, 'Gagal menyimpan logo');
     }
   }
 
   Future<void> _openPreview() async {
-    final raw = _storeUrl;
-    if (raw == null || raw.isEmpty) {
+    if (_storeUrl == null || _storeUrl!.isEmpty) {
       if (mounted) TopToast.error(context, 'URL toko belum diatur.');
       return;
     }
-    var uri = Uri.parse(raw);
-    if (!uri.hasScheme) uri = Uri.parse('https://$raw');
+    var uri = Uri.parse(_storeUrl!);
+    if (!uri.hasScheme) uri = Uri.parse('https://$_storeUrl');
     try {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else if (mounted) {
         TopToast.error(context, 'Tidak dapat membuka browser.');
       }
-    } catch (e) {
-      if (mounted) TopToast.error(context, 'Gagal membuka website: $e');
+    } catch (_) {
+      if (mounted) TopToast.error(context, 'Gagal membuka website');
     }
   }
 
-  Widget _textarea(String label, TextEditingController ctrl) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: ctrl,
-          maxLines: 2,
-          style: TextStyle(fontSize: 15, color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary),
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.all(14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            filled: true,
-            fillColor: isDark ? NusaConfig.darkSurface2 : NusaConfig.surfaceColor,
-          ),
-        ),
-      ],
-    );
+  void _copyLink() {
+    if (_storeUrl != null) {
+      Clipboard.setData(ClipboardData(text: _storeUrl!));
+      TopToast.success(context, 'Link disalin! 📋');
+    }
+  }
+
+  void _shareLink() {
+    if (_storeUrl != null) {
+      final name = _nameCtrl.text.trim();
+      Share.share(
+        '🛒 $name\n\nPesan online di: $_storeUrl',
+        subject: 'Toko Online $name',
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary;
+    final subColor = isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary;
+    final cardBg = isDark ? NusaConfig.darkSurface : Colors.white;
+    final borderC = isDark ? NusaConfig.darkBorder : NusaConfig.borderColor;
+
+    if (_loading) {
+      return const ScreenScaffold(
+        'Toko Online',
+        Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return ScreenScaffold(
       'Toko Online',
-      _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Status banner
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: _isActive
-                          ? const LinearGradient(colors: [NusaConfig.accentGreen, NusaConfig.accentGreenDark])
-                          : const LinearGradient(colors: [NusaConfig.textSecondary, NusaConfig.textTertiary]),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          _isActive ? '🟢 Toko Online Aktif' : '⚪ Toko Online Nonaktif',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _isActive
-                              ? 'Pelanggan sudah bisa memesan via link di bawah ini'
-                              : 'Lengkapi info toko & aktifkan untuk mulai',
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+      SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ═══════════════════════════════════════════════
+            // STATUS CARD — Active/Inactive
+            // ═══════════════════════════════════════════════
+            _buildStatusCard(isDark),
+
+            const SizedBox(height: 16),
+
+            // ═══════════════════════════════════════════════
+            // STORE PREVIEW MOCKUP
+            // ═══════════════════════════════════════════════
+            _buildStorePreview(isDark, textColor, subColor, cardBg, borderC),
+
+            const SizedBox(height: 16),
+
+            // ═══════════════════════════════════════════════
+            // STORE INFO FORM
+            // ═══════════════════════════════════════════════
+            _buildStoreInfoForm(isDark, textColor, subColor, cardBg, borderC),
+
+            const SizedBox(height: 16),
+
+            // ═══════════════════════════════════════════════
+            // PRODUCTS CARD
+            // ═══════════════════════════════════════════════
+            _buildProductsCard(isDark, textColor, subColor, cardBg, borderC),
+
+            const SizedBox(height: 20),
+
+            // ═══════════════════════════════════════════════
+            // ACTIVATION TOGGLE
+            // ═══════════════════════════════════════════════
+            _buildActivationToggle(isDark, textColor, subColor, cardBg, borderC),
+
+            const SizedBox(height: 24),
+
+            // ═══════════════════════════════════════════════
+            // SAVE BUTTON
+            // ═══════════════════════════════════════════════
+            NusaButton(
+              _saving ? 'Menyimpan...' : '💾 Simpan Semua',
+              onPressed: _saving ? null : () => _save(),
+            ),
+            const SizedBox(height: 12),
+
+            // Help text
+            Text(
+              'Produk yang dicentang "Tampil di Toko Online" saat edit produk '
+              'akan otomatis muncul di website toko kamu.',
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Status Card
+  // ─────────────────────────────────────────────────────────
+  Widget _buildStatusCard(bool isDark) {
+    return AnimatedBuilder(
+      animation: _pulseAnim,
+      builder: (context, child) => Transform.scale(
+        scale: _isActive ? _pulseAnim.value : 1.0,
+        child: child,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: _isActive
+              ? const LinearGradient(
+                  colors: [Color(0xFF059669), Color(0xFF047857)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF374151), const Color(0xFF1F2937)]
+                      : [const Color(0xFF9CA3AF), const Color(0xFF6B7280)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          boxShadow: _isActive
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF059669).withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
                   ),
-                  const SizedBox(height: 20),
-
-                  // Store link (only visible when active)
-                  if (_isActive && _storeUrl != null) ...[
-                    // ── Link URL card (bottom) ──
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isDark ? NusaConfig.darkBorder : NusaConfig.borderColor),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('💰 Link Toko Online',
-                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: isDark ? NusaConfig.darkSurface2 : NusaConfig.backgroundColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    _storeUrl!,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontFamily: 'monospace',
-                                      color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                GestureDetector(
-                                  onTap: () {
-                                    Clipboard.setData(ClipboardData(text: _storeUrl!));
-                                    TopToast.success(context, 'Link disalin! 📋');
-                                  },
-                                  child: Container(
-                                    width: 36,
-                                    height: 36,
-                                    decoration: BoxDecoration(
-                                      color: NusaConfig.primarySoft,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(Icons.copy, size: 18, color: NusaConfig.primaryColor),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    // ── "Buka Website" button as its own separate card (above the link) ──
-                    GestureDetector(
-                      onTap: _openPreview,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [NusaConfig.primaryColor, NusaConfig.primaryDark],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: NusaConfig.primaryColor.withValues(alpha: 0.35),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.open_in_browser, size: 20, color: Colors.white),
-                            SizedBox(width: 10),
-                            Text('Buka Website',
-                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Store info form
-                  NusaCard(
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Info Toko',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                        const SizedBox(height: 12),
-                        NusaInput('Nama Toko *', controller: _nameCtrl),
-                        const SizedBox(height: 12),
-                        _textarea('Deskripsi singkat', _descCtrl),
-                        const SizedBox(height: 12),
-                        NusaInput('Nomor WhatsApp untuk order', controller: _waCtrl,
-                            hint: '08xx, untuk konfirmasi pesanan'),
-                        const SizedBox(height: 12),
-                        NusaInput('Alamat (opsional)', controller: _addressCtrl,
-                            hint: 'Jl. ...'),
-                        const SizedBox(height: 12),
-                        NusaInput('Jam Buka', controller: _hoursCtrl,
-                            hint: '08:00 - 21:00'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Toggle activation
-                  NusaCard(
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _isActive ? 'Nonaktifkan Toko' : 'Aktifkan Toko Online',
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _isActive
-                                    ? 'Toko tidak akan muncul di web'
-                                    : 'Produk dg centang Online akan tampil',
-                                style: TextStyle(fontSize: 12, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _isActive,
-                          activeColor: NusaConfig.primaryColor,
-                          activeTrackColor: NusaConfig.primaryColor.withValues(alpha: 0.4),
-                          onChanged: (v) {
-                            setState(() => _isActive = v);
-                            _save(activate: v);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Sync products button
-                  if (_isActive) ...[
-                    NusaButton('🔄 Sinkronkan Produk Sekarang',
-                        onPressed: _saving ? null : () async {
-                          setState(() => _saving = true);
-                          await _syncProducts();
-                          if (mounted) {
-                            TopToast.success(context, 'Produk disinkronkan!');
-                            setState(() => _saving = false);
-                          }
-                        }),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Produk yang dicentang "Tampil di Toko Online" saat edit produk akan muncul di website.',
-                      style: TextStyle(fontSize: 11, color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ],
+                ]
+              : null,
+        ),
+        child: Column(
+          children: [
+            // Icon
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _isActive ? Icons.store : Icons.store_outlined,
+                size: 28,
+                color: Colors.white,
               ),
             ),
+            const SizedBox(height: 12),
+            Text(
+              _isActive ? '🟢 Toko Online Kamu Aktif' : '⚪ Toko Online Nonaktif',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _isActive
+                  ? 'Pelanggan bisa langsung order via web kamu! 🎉'
+                  : 'Lengkapi info di bawah & aktifkan untuk mulai jualan online',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Store Preview Mockup
+  // ─────────────────────────────────────────────────────────
+  Widget _buildStorePreview(
+    bool isDark, Color textColor, Color subColor, Color cardBg, Color borderC,
+  ) {
+    final name = _nameCtrl.text.trim();
+    final desc = _descCtrl.text.trim();
+    final hours = _hoursCtrl.text.trim();
+    final addr = _addressCtrl.text.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          Icon(Icons.preview, size: 18, color: textColor),
+          const SizedBox(width: 8),
+          Text('Tampilan Toko', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textColor)),
+          const Spacer(),
+          Text('Preview', style: TextStyle(fontSize: 10, color: subColor,
+              fontStyle: FontStyle.italic)),
+        ]),
+        const SizedBox(height: 10),
+
+        // Phone mockup frame
+        Container(
+          width: 300,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [const Color(0xFF4B5563), const Color(0xFF1F2937)]
+                  : [const Color(0xFFD1D5DB), const Color(0xFF9CA3AF)],
+            ),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                // Store header
+                if (_logoPath != null && _logoPath!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(File(_logoPath!), height: 44, fit: BoxFit.contain),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.store, size: 24, color: Color(0xFF9CA3AF)),
+                    ),
+                  ),
+
+                Text(
+                  name.isNotEmpty ? name : 'Nama Toko Kamu',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                ),
+                if (desc.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(desc, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+                      textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                ],
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _isActive ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _isActive ? 'Buka' : 'Tutup',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: _isActive ? const Color(0xFF059669) : const Color(0xFFE63946),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.access_time, size: 10, color: Color(0xFF9CA3AF)),
+                  const SizedBox(width: 4),
+                  Text(hours.isNotEmpty ? hours : '08:00 - 21:00',
+                      style: const TextStyle(fontSize: 9, color: Color(0xFF9CA3AF))),
+                ]),
+                if (addr.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    const Icon(Icons.location_on, size: 10, color: Color(0xFF9CA3AF)),
+                    const SizedBox(width: 4),
+                    Flexible(child: Text(addr, style: const TextStyle(fontSize: 9, color: Color(0xFF9CA3AF)),
+                        overflow: TextOverflow.ellipsis)),
+                  ]),
+                ],
+                const SizedBox(height: 10),
+                // Dummy product grid
+                Row(children: [
+                  _miniProduct('Indomie Goreng', 'Rp 3.500', const Color(0xFFEFF6FF)),
+                  const SizedBox(width: 6),
+                  _miniProduct('Beras 5kg', 'Rp 72.000', const Color(0xFFF0FDF4)),
+                  const SizedBox(width: 6),
+                  _miniProduct('Minyak 2L', 'Rp 38.000', const Color(0xFFFFF7ED)),
+                ]),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // URL & action buttons
+        if (_isActive && _storeUrl != null) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: borderC),
+            ),
+            child: Column(children: [
+              // URL row
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? NusaConfig.darkSurface2 : NusaConfig.surfaceColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.25)),
+                ),
+                child: Row(children: [
+                  Icon(Icons.link, size: 16, color: NusaConfig.primaryColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(_storeUrl!, style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: textColor),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  const SizedBox(width: 8),
+                  _iconButton(Icons.copy, 'Salin', NusaConfig.primaryColor, _copyLink),
+                ]),
+              ),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _openPreview,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [NusaConfig.primaryColor, NusaConfig.primaryDark]),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.open_in_browser, size: 16, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text('Buka Website', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                      ]),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _shareLink,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.4)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.share, size: 18, color: NusaConfig.primaryColor),
+                  ),
+                ),
+              ]),
+            ]),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _miniProduct(String name, String price, Color bg) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(children: [
+          Container(
+            width: double.infinity, height: 24,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Icon(Icons.shopping_bag, size: 12, color: Color(0xFFD1D5DB)),
+          ),
+          const SizedBox(height: 4),
+          Text(name, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+              overflow: TextOverflow.ellipsis),
+          Text(price, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Color(0xFFE63946))),
+        ]),
+      ),
+    );
+  }
+
+  Widget _iconButton(IconData icon, String tooltip, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Tooltip(
+        message: tooltip,
+        child: Container(
+          width: 34, height: 34,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Store Info Form
+  // ─────────────────────────────────────────────────────────
+  Widget _buildStoreInfoForm(
+    bool isDark, Color textColor, Color subColor, Color cardBg, Color borderC,
+  ) {
+    return NusaCard(Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          Icon(Icons.edit_note, size: 18, color: textColor),
+          const SizedBox(width: 8),
+          Text('Info Toko', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textColor)),
+        ]),
+        const SizedBox(height: 16),
+
+        // ── Logo ──
+        Row(children: [
+          GestureDetector(
+            onTap: _pickLogo,
+            child: Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(
+                color: isDark ? NusaConfig.darkSurface2 : NusaConfig.surfaceColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderC, width: 1.5),
+              ),
+              child: _logoPath != null && _logoPath!.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(File(_logoPath!), fit: BoxFit.cover),
+                    )
+                  : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(Icons.add_photo_alternate, size: 24, color: subColor),
+                      const SizedBox(height: 2),
+                      Text('Logo', style: TextStyle(fontSize: 8, color: subColor)),
+                    ]),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Logo Toko', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textColor)),
+                const SizedBox(height: 2),
+                Text('Tampil di halaman toko & preview',
+                    style: TextStyle(fontSize: 11, color: subColor)),
+                const SizedBox(height: 6),
+                Row(children: [
+                  TextButton.icon(
+                    onPressed: _pickLogo,
+                    icon: const Icon(Icons.upload, size: 16),
+                    label: Text(_logoPath != null ? 'Ganti' : 'Upload', style: const TextStyle(fontSize: 12)),
+                  ),
+                  if (_logoPath != null)
+                    TextButton.icon(
+                      onPressed: () {
+                        ref.read(settingsRepoProvider).setStoreLogoPath('');
+                        setState(() => _logoPath = null);
+                      },
+                      icon: const Icon(Icons.delete, size: 16, color: Colors.redAccent),
+                      label: const Text('Hapus', style: TextStyle(fontSize: 12, color: Colors.redAccent)),
+                    ),
+                ]),
+              ],
+            ),
+          ),
+        ]),
+        const SizedBox(height: 16),
+
+        NusaInput('Nama Toko *', controller: _nameCtrl,
+            hint: 'Cth: Toko Berkah Jaya', prefixIcon: const Icon(Icons.store)),
+        const SizedBox(height: 12),
+
+        // Deskripsi
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Deskripsi Singkat', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textColor)),
+            const SizedBox(height: 6),
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? NusaConfig.darkSurface2 : NusaConfig.surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderC),
+              ),
+              child: TextField(
+                controller: _descCtrl, maxLines: 2,
+                style: TextStyle(fontSize: 14, color: textColor),
+                decoration: InputDecoration(
+                  hintText: 'Jelaskan toko kamu dalam 1-2 kalimat...',
+                  hintStyle: TextStyle(fontSize: 13, color: subColor),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.all(14),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        Row(children: [
+          Expanded(
+            child: NusaInput('WhatsApp', controller: _waCtrl,
+                hint: '08xxxxxxxxxx', prefixIcon: const Icon(Icons.phone_android)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: NusaInput('Jam Buka', controller: _hoursCtrl,
+                hint: '08:00 - 21:00', prefixIcon: const Icon(Icons.access_time)),
+          ),
+        ]),
+        const SizedBox(height: 14),
+        NusaInput('Alamat', controller: _addressCtrl,
+            hint: 'Jl. ... (opsional)', prefixIcon: const Icon(Icons.location_on_outlined)),
+      ],
+    ));
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Products Card
+  // ─────────────────────────────────────────────────────────
+  Widget _buildProductsCard(
+    bool isDark, Color textColor, Color subColor, Color cardBg, Color borderC,
+  ) {
+    return NusaCard(Row(children: [
+      Container(
+        width: 42, height: 42,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.inventory_2, size: 22, color: Color(0xFFF59E0B)),
+      ),
+      const SizedBox(width: 14),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Produk Online', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textColor)),
+            const SizedBox(height: 2),
+            Text(
+              _onlineProductCount > 0
+                  ? '$_onlineProductCount produk siap tampil di website'
+                  : 'Belum ada produk online. Tandai produk saat edit.',
+              style: TextStyle(fontSize: 12, color: subColor),
+            ),
+          ],
+        ),
+      ),
+      // Sync button
+      if (_isActive)
+        TextButton(
+          onPressed: _saving ? null : () async {
+            setState(() => _saving = true);
+            await _syncProducts();
+            try {
+              final db = ref.read(databaseProvider);
+              final products = await ProductRepository(db).getProducts();
+              if (mounted) setState(() {
+                _onlineProductCount = products.where((p) => p.isOnline).length;
+              });
+            } catch (_) {}
+            if (mounted) {
+              TopToast.success(context, '$_onlineProductCount produk disinkronkan!');
+              setState(() => _saving = false);
+            }
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFFF59E0B),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+          ),
+          child: const Text('Sinkronkan', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+        ),
+    ]));
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Activation Toggle
+  // ─────────────────────────────────────────────────────────
+  Widget _buildActivationToggle(
+    bool isDark, Color textColor, Color subColor, Color cardBg, Color borderC,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _isActive
+            ? const Color(0xFF059669).withValues(alpha: 0.06)
+            : cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _isActive
+              ? const Color(0xFF059669).withValues(alpha: 0.25)
+              : borderC,
+        ),
+      ),
+      child: Row(children: [
+        Container(
+          width: 42, height: 42,
+          decoration: BoxDecoration(
+            color: _isActive
+                ? const Color(0xFF059669).withValues(alpha: 0.15)
+                : NusaConfig.primarySoft,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            _isActive ? Icons.toggle_on : Icons.toggle_off,
+            size: 24,
+            color: _isActive ? const Color(0xFF059669) : NusaConfig.primaryColor,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _isActive ? 'Toko Online Aktif' : 'Aktifkan Toko Online',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textColor),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _isActive
+                    ? 'Pelanggan bisa melihat & order di website'
+                    : 'Produk dengan centang "Online" akan tampil',
+                style: TextStyle(fontSize: 12, color: subColor),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Switch(
+          value: _isActive,
+          activeColor: const Color(0xFF059669),
+          activeTrackColor: const Color(0xFF059669).withValues(alpha: 0.3),
+          onChanged: (v) {
+            setState(() => _isActive = v);
+            _save(activate: v);
+          },
+        ),
+      ]),
     );
   }
 }

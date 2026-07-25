@@ -707,56 +707,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ]),
                 const SizedBox(height: 20),
 
-                // ── Logo Toko ──
-                Text('Logo Toko', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
-                    color: setDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
-                const SizedBox(height: 8),
-                if (logoPath != null && logoPath!.isNotEmpty)
-                  Padding(padding: const EdgeInsets.only(bottom: 8),
-                    child: ClipRRect(borderRadius: BorderRadius.circular(12),
-                      child: Image.file(File(logoPath!), height: 80, fit: BoxFit.contain))),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final result = await FilePicker.pickFiles(type: FileType.image);
-                    if (result != null && result.files.single.path != null) {
-                      try {
-                        final src = File(result.files.single.path!);
-                        final dir = await getApplicationDocumentsDirectory();
-                        final ext = p.extension(src.path);
-                        final destName = 'store_logo_${DateTime.now().millisecondsSinceEpoch}$ext';
-                        final destPath = p.join(dir.path, destName);
-                        await src.copy(destPath);
-                        await repo.setStoreLogoPath(destPath);
-                        setSt(() => logoPath = destPath);
-                        // Upload to cloud
-                        try {
-                          final uid = Supabase.instance.client.auth.currentUser?.id;
-                          if (uid != null) {
-                            ImageStorageService(Supabase.instance.client, uid)
-                                .uploadImage('settings', destPath);
-                          }
-                        } catch (_) {}
-                      } catch (_) {
-                        TopToast.error(context, 'Gagal menyimpan logo');
-                      }
-                    }
-                  },
-                  icon: const Icon(Icons.image_outlined, size: 18),
-                  label: Text(logoPath != null && logoPath!.isNotEmpty ? 'Ganti Logo' : 'Pilih Logo'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: NusaConfig.primaryColor,
-                    side: const BorderSide(color: NusaConfig.primaryColor),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                // ── Info: logo diatur di Pengaturan Printer ──
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: NusaConfig.primarySoft.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.2)),
                   ),
+                  child: Row(children: [
+                    const Icon(Icons.info_outline, size: 18, color: NusaConfig.primaryColor),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(
+                      'Logo struk diatur di menu Pengaturan Printer',
+                      style: TextStyle(fontSize: 12, color: setDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                    )),
+                  ]),
                 ),
-                if (logoPath != null && logoPath!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  TextButton(
-                    onPressed: () async { await repo.setStoreLogoPath(''); setSt(() => logoPath = null); },
-                    child: const Text('Hapus Logo', style: TextStyle(color: NusaConfig.primaryColor)),
-                  ),
-                ],
                 const SizedBox(height: 20),
 
                 // ── Header Struk ──
@@ -811,45 +778,140 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: setDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    border: Border.all(color: const Color(0xFFD1D5DB)),
                   ),
-                  child: Column(children: [
-                    if (togs['showLogo'] == true && logoPath != null && logoPath!.isNotEmpty)
-                      Padding(padding: const EdgeInsets.only(bottom: 6),
-                        child: Image.file(File(logoPath!), height: 40)),
-                    Text(headerCtrl.text.isNotEmpty ? headerCtrl.text : (storeName.isNotEmpty ? storeName : 'NUSA MART'),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1F2937))),
-                    const SizedBox(height: 2),
-                    const Text('────────────────────',
-                        style: TextStyle(fontSize: 9, color: Color(0xFF9CA3AF))),
-                    if (togs['showInvoice'] == true) ...[
-                      const SizedBox(height: 2),
-                      const Text('INV-001 / Kasir: Budi',
-                          style: TextStyle(fontSize: 9, color: Color(0xFF6B7280))),
-                    ],
-                    if (togs['showDate'] == true) ...[
-                      const SizedBox(height: 1),
-                      const Text('22 Jul 2026 14:30',
-                          style: TextStyle(fontSize: 9, color: Color(0xFF6B7280))),
-                    ],
-                    const SizedBox(height: 2),
-                    const Text('────────────────────',
-                        style: TextStyle(fontSize: 9, color: Color(0xFF9CA3AF))),
-                    if (togs['showBarcode'] == true) ...[
-                      const SizedBox(height: 4),
-                      Container(width: double.infinity, height: 24,
-                          color: const Color(0xFF1F2937)),
-                      const SizedBox(height: 2),
-                    ],
-                    const SizedBox(height: 4),
-                    Text(footerCtrl.text.isNotEmpty ? footerCtrl.text : 'Terima kasih!',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // ── Logo ──
+                      if (togs['showLogo'] == true && logoPath != null && logoPath!.isNotEmpty)
+                        Padding(padding: const EdgeInsets.only(bottom: 6),
+                          child: Image.file(File(logoPath!), height: 44, fit: BoxFit.contain)),
+
+                      // ── Store header ──
+                      Text(
+                        headerCtrl.text.isNotEmpty ? headerCtrl.text : (storeName.isNotEmpty ? storeName : 'NUSA MART'),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 8, color: Color(0xFF6B7280))),
-                  ]),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        'Jl. Merdeka No. 123, Jakarta',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 9, color: Color(0xFF6B7280)),
+                      ),
+                      const SizedBox(height: 6),
+
+                      // ── Dashed line ──
+                      _dashedLine(false),
+                      const SizedBox(height: 4),
+
+                      // ── Invoice + Kasir ──
+                      if (togs['showInvoice'] == true)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Row(children: [
+                            const Text('INV-001', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF374151))),
+                            const Spacer(),
+                            Text('Kasir: ${togs['showCashier'] == true ? 'Budi' : '—'}',
+                                style: const TextStyle(fontSize: 9, color: Color(0xFF6B7280))),
+                          ]),
+                        ),
+                      if (togs['showDate'] == true)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(children: [
+                            const Text('25 Jul 2026  14:30 WIB',
+                                style: TextStyle(fontSize: 9, color: Color(0xFF6B7280))),
+                          ]),
+                        ),
+                      _dashedLine(false),
+                      const SizedBox(height: 4),
+
+                      // ── Dummy items ──
+                      _receiptItem('Indomie Goreng', 4, 3500, false),
+                      _receiptItem('Beras 5kg', 1, 72000, false),
+                      _receiptItem('Minyak Goreng 2L', 2, 38000, false),
+                      _receiptItem('Telur Ayam 10 butir', 1, 28000, false),
+                      _receiptItem('Gula Pasir 1kg', 1, 16000, false),
+                      const SizedBox(height: 2),
+                      _dashedLine(false),
+                      const SizedBox(height: 4),
+
+                      // ── Totals ──
+                      Row(children: [
+                        const Text('Subtotal', style: TextStyle(fontSize: 9, color: Color(0xFF6B7280))),
+                        const Spacer(),
+                        const Text('Rp  173.000', style: TextStyle(fontSize: 9, color: Color(0xFF374151))),
+                      ]),
+                      const SizedBox(height: 1),
+                      Row(children: [
+                        const Text('Diskon', style: TextStyle(fontSize: 9, color: Color(0xFF6B7280))),
+                        const Spacer(),
+                        const Text('Rp   -5.000', style: TextStyle(fontSize: 9, color: Color(0xFFE63946))),
+                      ]),
+                      const SizedBox(height: 1),
+                      Row(children: [
+                        const Text('TOTAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
+                        const Spacer(),
+                        const Text('Rp  168.000', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF111827))),
+                      ]),
+                      const SizedBox(height: 4),
+                      _dashedLine(true),
+                      const SizedBox(height: 4),
+
+                      // ── Payment info ──
+                      Row(children: [
+                        const Text('Tunai', style: TextStyle(fontSize: 9, color: Color(0xFF374151))),
+                        const Spacer(),
+                        const Text('Rp  200.000', style: TextStyle(fontSize: 9, color: Color(0xFF374151))),
+                      ]),
+                      const SizedBox(height: 1),
+                      Row(children: [
+                        const Text('Kembalian', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                        const Spacer(),
+                        const Text('Rp   32.000', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF059669))),
+                      ]),
+                      const SizedBox(height: 4),
+                      _dashedLine(false),
+                      const SizedBox(height: 4),
+
+                      // ── Barcode ──
+                      if (togs['showBarcode'] == true) ...[
+                        Container(
+                          width: double.infinity,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: List.generate(20, (i) => i.isEven ? const Color(0xFF111827) : Colors.white),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text('INV-001', style: TextStyle(fontSize: 8, color: Color(0xFF9CA3AF), fontFamily: 'monospace')),
+                        const SizedBox(height: 4),
+                        _dashedLine(false),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // ── Footer ──
+                      Text(
+                        footerCtrl.text.isNotEmpty ? footerCtrl.text : '🙏 Terima kasih, ditunggu pesanan selanjutnya!',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 9, color: Color(0xFF6B7280)),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text('•••',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 10, color: Color(0xFFD1D5DB)),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 20),
 
@@ -920,6 +982,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(text, style: const TextStyle(fontSize: 11, color: NusaConfig.primaryColor)),
+      ),
+    );
+  }
+
+  /// Dashed line separator for receipt preview.
+  Widget _dashedLine(bool thick) {
+    return CustomPaint(
+      painter: _DashPainter(thick ? 2.0 : 1.0),
+      size: const Size(double.infinity, 2),
+    );
+  }
+
+  /// Single receipt item row for preview.
+  Widget _receiptItem(String name, int qty, int price, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${qty}x', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(name, style: const TextStyle(fontSize: 9, color: Color(0xFF374151))),
+          ),
+          const SizedBox(width: 4),
+          Text('Rp  ${(qty * price).toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')}',
+              style: const TextStyle(fontSize: 9, color: Color(0xFF374151))),
+        ],
       ),
     );
   }
@@ -1336,4 +1426,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     );
   }
+}
+
+// ── Custom dash painter for receipt preview ──
+class _DashPainter extends CustomPainter {
+  final double strokeWidth;
+  _DashPainter(this.strokeWidth);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFD1D5DB)
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+    const dashWidth = 4.0;
+    const dashGap = 3.0;
+    double startX = 0;
+    while (startX < size.width) {
+      canvas.drawLine(
+        Offset(startX, 1),
+        Offset((startX + dashWidth).clamp(0, size.width), 1),
+        paint,
+      );
+      startX += dashWidth + dashGap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashPainter oldDelegate) => strokeWidth != oldDelegate.strokeWidth;
 }

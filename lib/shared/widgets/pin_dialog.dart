@@ -93,79 +93,85 @@ class PinDialog extends StatelessWidget {
 
         return StatefulBuilder(
           builder: (ctx, setSt) {
-            return AlertDialog(
+            // Use Dialog (not AlertDialog) so we control insetPadding.
+            // insetPadding: horizontal=24 matches login_screen.dart PinKeypad width.
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24)),
-              titlePadding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
-              contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              actionsPadding: EdgeInsets.zero,
-              title: Column(children: [
-                // Lock icon
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: NusaConfig.primaryColor.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.lock_outline,
-                      color: NusaConfig.primaryColor, size: 26),
-                ),
-                if (title != null) ...[
-                  const SizedBox(height: 14),
-                  Text(
-                    title!,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: isDark
-                          ? NusaConfig.darkTextPrimary
-                          : NusaConfig.textPrimary,
-                    ),
-                  ),
-                ],
-                if (employeeName != null && title == null) ...[
-                  const SizedBox(height: 14),
-                  Text(
-                    employeeName!,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: isDark
-                          ? NusaConfig.darkTextPrimary
-                          : NusaConfig.textPrimary,
-                    ),
-                  ),
-                ],
-                if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle!,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark
-                          ? NusaConfig.darkTextSecondary
-                          : NusaConfig.textSecondary,
-                    ),
-                  ),
-                ],
-                if (employeeRole != null && title == null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    employeeRole!,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark
-                          ? NusaConfig.darkTextSecondary
-                          : NusaConfig.textSecondary,
-                    ),
-                  ),
-                ],
-              ]),
-              content: Column(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // ── Title section ──
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                    child: Column(children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: NusaConfig.primaryColor.withValues(alpha: 0.08),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.lock_outline,
+                            color: NusaConfig.primaryColor, size: 26),
+                      ),
+                      if (title != null) ...[
+                        const SizedBox(height: 14),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? NusaConfig.darkTextPrimary
+                                : NusaConfig.textPrimary,
+                          ),
+                        ),
+                      ],
+                      if (employeeName != null && title == null) ...[
+                        const SizedBox(height: 14),
+                        Text(
+                          employeeName,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? NusaConfig.darkTextPrimary
+                                : NusaConfig.textPrimary,
+                          ),
+                        ),
+                      ],
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? NusaConfig.darkTextSecondary
+                                : NusaConfig.textSecondary,
+                          ),
+                        ),
+                      ],
+                      if (employeeRole != null && title == null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          employeeRole,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? NusaConfig.darkTextSecondary
+                                : NusaConfig.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ]),
+                  ),
+
+                  // ── Keypad (NO horizontal content padding → same width as login screen) ──
+                  const SizedBox(height: 12),
                   _PinDialogKeypad(
                     key: keypadKey,
                     pinLength: pinLength,
@@ -205,38 +211,38 @@ class PinDialog extends StatelessWidget {
                       }
                     },
                   ),
-                ],
-              ),
-              actions: [
-                if (showRemember)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16, bottom: 4),
-                    child: GestureDetector(
-                      onTap: () => setSt(() => remember = !remember),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 22, height: 22,
-                            child: Checkbox(
-                              value: remember,
-                              onChanged: (v) => setSt(() => remember = v ?? false),
-                              activeColor: NusaConfig.primaryColor,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+
+                  // ── Remember checkbox ──
+                  if (showRemember)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 24, top: 4, bottom: 12),
+                      child: GestureDetector(
+                        onTap: () => setSt(() => remember = !remember),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 22, height: 22,
+                              child: Checkbox(
+                                value: remember,
+                                onChanged: (v) => setSt(() => remember = v ?? false),
+                                activeColor: NusaConfig.primaryColor,
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text('Ingat PIN selama 8 jam',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: isDark
-                                    ? NusaConfig.darkTextSecondary
-                                    : NusaConfig.textSecondary,
-                              )),
-                        ],
+                            const SizedBox(width: 8),
+                            Text('Ingat PIN selama 8 jam',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark
+                                      ? NusaConfig.darkTextSecondary
+                                      : NusaConfig.textSecondary,
+                                )),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             );
           },
         );
