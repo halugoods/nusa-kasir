@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
+    <!-- Camera for product photo + barcode scanner -->
+    <uses-permission android:name="android.permission.CAMERA"/>
     <!-- Biometric (fingerprint) for Owner quick login -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <!-- Bluetooth for thermal printer -->
@@ -41,6 +43,16 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- FileProvider for image_cropper (UCrop) to share file URIs -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/services/image_storage_service.dart';
+import 'package:nusa_kasir/core/utils/bluetooth_utils.dart';
 import 'package:nusa_kasir/core/utils/receipt_printer.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
@@ -62,6 +63,7 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
   bool _testPrinting = false;
   String? _connectedAddr;
   String? _storedAddr;
+  bool _btEnabled = true; // assume true until checked
 
   // New settings
   bool _cashDrawerEnabled = false;
@@ -175,6 +177,44 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
   }
 
   Future<void> _scan() async {
+    // Check Bluetooth state first
+    final btOn = await BluetoothUtils.isBluetoothEnabled();
+    if (mounted) setState(() => _btEnabled = btOn);
+
+    if (!btOn) {
+      // Show dialog asking user to enable Bluetooth
+      if (mounted) {
+        final enable = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Bluetooth Diperlukan'),
+            content: const Text(
+              'Bluetooth belum aktif. Printer thermal membutuhkan Bluetooth untuk terhubung.\n\n'
+              'Aktifkan Bluetooth sekarang?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Nanti'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Aktifkan'),
+              ),
+            ],
+          ),
+        );
+        if (enable == true) {
+          await BluetoothUtils.requestBluetoothEnable();
+          // Wait a moment for BT to turn on, then check again
+          await Future.delayed(const Duration(seconds: 1));
+          final btOnAfter = await BluetoothUtils.isBluetoothEnabled();
+          if (mounted) setState(() => _btEnabled = btOnAfter);
+        }
+      }
+      if (!_btEnabled) return;
+    }
+
     setState(() => _scanning = true);
     final printer = ReceiptPrinter();
     try {
@@ -575,7 +615,7 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Device list
+                  // ── Empty state with BT guidance ──
                   if (_devices.isEmpty && !_scanning)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 24),
@@ -587,10 +627,45 @@ class _PrinterSettingsSheetState extends State<PrinterSettingsSheet> {
                               style: TextStyle(fontSize: 14, color: subColor)),
                           const SizedBox(height: 4),
                           Text(
-                            'Pastikan Bluetooth aktif dan printer dalam mode pairing',
+                            _btEnabled
+                                ? 'Pastikan printer dalam mode pairing dan berada dalam jangkauan'
+                                : 'Bluetooth saat ini mati. Nyalakan untuk memindai printer',
                             style: TextStyle(fontSize: 11, color: subColor),
                             textAlign: TextAlign.center,
                           ),
+                          const SizedBox(height: 16),
+                          if (!_btEnabled) ...[
+                            SizedBox(
+                              width: 200,
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  await BluetoothUtils.requestBluetoothEnable();
+                                  await Future.delayed(const Duration(seconds: 2));
+                                  _scan();
+                                },
+                                icon: const Icon(Icons.bluetooth, size: 16),
+                                label: const Text('Nyalakan Bluetooth'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: NusaConfig.primaryColor,
+                                  side: BorderSide(color: NusaConfig.primaryColor.withValues(alpha: 0.4)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: () => BluetoothUtils.openBluetoothSettings(),
+                              child: const Text('Buka Pengaturan Bluetooth',
+                                  style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                          if (_btEnabled) ...[
+                            TextButton(
+                              onPressed: () => BluetoothUtils.openAppSettings(),
+                              child: const Text('Periksa Izin Aplikasi',
+                                  style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
                         ],
                       ),
                     ),

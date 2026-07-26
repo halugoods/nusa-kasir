@@ -42,8 +42,6 @@ flutter {
 }
 
 dependencies {
-    // AndroidX Activity Result API (for registerForActivityResult)
-    implementation("androidx.activity:activity-ktx:1.9.3")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     // Firebase BoM — otomatis cocokkan versi semua Firebase SDK

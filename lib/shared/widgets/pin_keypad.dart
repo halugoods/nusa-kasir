@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
+import 'package:nusa_kasir/shared/services/biometric_service.dart';
 import 'package:nusa_kasir/shared/widgets/animated_builder.dart'
     show NusaAnimatedBuilder;
 
@@ -60,6 +61,7 @@ class _PinKeypadState extends State<PinKeypad>
     with SingleTickerProviderStateMixin {
   String _digits = '';
   bool _nfcScanning = false;
+  bool _biometricAvailable = false;
 
   late final AnimationController _shakeCtrl;
   late final Animation<double> _shakeAnim;
@@ -67,6 +69,7 @@ class _PinKeypadState extends State<PinKeypad>
   @override
   void initState() {
     super.initState();
+    _checkBiometric();
     _shakeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
@@ -97,6 +100,12 @@ class _PinKeypadState extends State<PinKeypad>
     setState(() => _digits = '');
   }
 
+  Future<void> _checkBiometric() async {
+    final available = await BiometricService.isHardwareAvailable();
+    final enabled = await BiometricService.isEnabled();
+    if (mounted) setState(() => _biometricAvailable = available && enabled);
+  }
+
   void _onDigit(String d) {
     if (_digits.length >= widget.length) return;
     setState(() => _digits += d);
@@ -118,6 +127,19 @@ class _PinKeypadState extends State<PinKeypad>
 
   Future<void> _onFingerprintTap() async {
     if (widget.onFingerprint == null) return;
+    // Check hardware availability before attempting
+    final available = await BiometricService.isHardwareAvailable();
+    if (!available) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sidik jari tidak tersedia di perangkat ini'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
     final ok = await widget.onFingerprint!();
     if (ok && mounted) {
       widget.onFingerprintSuccess?.call();
@@ -321,8 +343,8 @@ class _PinKeypadState extends State<PinKeypad>
   }
 
   Widget _bottomLeftCell() {
-    // FP takes priority — user wants fp/0/backspace layout
-    if (widget.showFingerprint) {
+    // FP takes priority but only when biometric hardware+enabled confirms it
+    if (widget.showFingerprint && _biometricAvailable) {
       return _keyButton(
         child: Icon(Icons.fingerprint,
             color: NusaConfig.primaryColor, size: 28),

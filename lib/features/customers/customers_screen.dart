@@ -176,6 +176,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                             if (phone.isNotEmpty) {
                               phoneCtrl.text = phone;
                             }
+                            setSt(() {}); // refresh UI after auto-fill
                           }
                         },
                         child: Container(

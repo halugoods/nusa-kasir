@@ -384,6 +384,8 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
                               promo: _filtered[i],
                               onTap: () => _showForm(existing: _filtered[i]),
                               onToggle: () => _toggle(_filtered[i]),
+                              onEdit: () => _showForm(existing: _filtered[i]),
+                              onDelete: () => _confirmDelete(_filtered[i]),
                             ),
                           ),
                         ),
@@ -624,8 +626,11 @@ class _PromoTile extends StatelessWidget {
   final Promo promo;
   final VoidCallback onTap;
   final VoidCallback onToggle;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
   const _PromoTile(
-      {required this.promo, required this.onTap, required this.onToggle});
+      {required this.promo, required this.onTap, required this.onToggle,
+      required this.onEdit, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -758,6 +763,30 @@ class _PromoTile extends StatelessWidget {
                   value: active,
                   activeColor: NusaConfig.primaryColor,
                   onChanged: (_) => onToggle(),
+                ),
+                // Edit & Delete action buttons
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: onEdit,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(Icons.edit_outlined, size: 18,
+                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: onDelete,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Icon(Icons.delete_outline, size: 18,
+                            color: Colors.red.withValues(alpha: isDark ? 0.8 : 0.6)),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

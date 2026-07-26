@@ -170,7 +170,13 @@ class AttendanceRepository {
         if (parts.length >= 2) {
           final h = int.tryParse(parts[0]) ?? 0;
           final m = int.tryParse(parts[1]) ?? 0;
-          if (h > 8 || (h == 8 && m > 15)) {
+          // Use per-employee workStart + 15 min grace
+          final ws = e.workStart ?? '08:00';
+          final wsParts = ws.split(':');
+          final wsH = int.tryParse(wsParts.isNotEmpty ? wsParts[0] : '8') ?? 8;
+          final wsM = wsParts.length >= 2 ? (int.tryParse(wsParts[1]) ?? 0) : 0;
+          final threshold = wsH * 60 + wsM + 15;
+          if ((h * 60 + m) > threshold) {
             terlambat++;
           } else {
             hadir++;
@@ -304,7 +310,13 @@ class AttendanceRepository {
         final parts = (a.checkIn ?? '').split(':');
         final h = int.tryParse(parts[0]) ?? 0;
         final m = int.tryParse(parts[1]) ?? 0;
-        if (h > 8 || (h == 8 && m > 15)) {
+        // Use per-employee workStart + 15 min grace
+        final ws = e.workStart ?? '08:00';
+        final wsParts = ws.split(':');
+        final wsH = int.tryParse(wsParts.isNotEmpty ? wsParts[0] : '8') ?? 8;
+        final wsM = wsParts.length >= 2 ? (int.tryParse(wsParts[1]) ?? 0) : 0;
+        final threshold = wsH * 60 + wsM + 15;
+        if ((h * 60 + m) > threshold) {
           terlambat++;
         } else {
           hadir++;
