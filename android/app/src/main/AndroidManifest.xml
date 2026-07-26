@@ -43,6 +43,11 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- UCropActivity — required by image_cropper plugin for photo cropping -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Ucrop.CropTheme"/>
         <!-- FileProvider for image_cropper (UCrop) to share file URIs -->
         <provider
             android:name="androidx.core.content.FileProvider"
