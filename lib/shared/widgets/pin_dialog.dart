@@ -309,7 +309,7 @@ class _PinDialogKeypadState extends State<_PinDialogKeypad> {
       error: widget.error,
       showFingerprint: widget.showFingerprint,
       showNfc: widget.showNfc,
-      showCancel: true,
+      showCancel: false,
       onFingerprint: widget.onFingerprint,
       onFingerprintSuccess: () => Navigator.of(context)
           .pop(const PinResult(success: true, remember: true)),

@@ -44,7 +44,7 @@ class PinKeypad extends StatefulWidget {
     this.error,
     this.showFingerprint = false,
     this.showNfc = false,
-    this.showCancel = true,
+    this.showCancel = false,
     this.onFingerprint,
     this.onFingerprintSuccess,
     this.onComplete,
@@ -274,11 +274,11 @@ class _PinKeypadState extends State<PinKeypad>
 
           // ── NFC tap card (below keypad) ────────────
           if (widget.showNfc && !_nfcScanning) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             GestureDetector(
               onTap: _onNfcTap,
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
@@ -298,8 +298,8 @@ class _PinKeypadState extends State<PinKeypad>
                       child: const Icon(Icons.nfc, size: 18, color: NusaConfig.accentPurple),
                     ),
                     const SizedBox(width: 10),
-                    Text('Tap Kartu NFC',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                    Text('Tap Kartu NFC untuk login otomatis',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
                             color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                   ],
                 ),
@@ -351,13 +351,8 @@ class _PinKeypadState extends State<PinKeypad>
         onTap: _onFingerprintTap,
       );
     }
-    if (widget.showNfc) {
-      return _keyButton(
-        child: Icon(Icons.nfc, color: NusaConfig.accentPurple, size: 28),
-        onTap: _nfcScanning ? null : _onNfcTap,
-      );
-    }
-    return _keyButton(child: const SizedBox.shrink());
+    // NFC icon removed from keypad grid — shown only below as "Tap Kartu NFC" card
+    return const SizedBox.shrink();
   }
 
   Widget _buildKeypadRow(List<String> digits, bool isDark) {

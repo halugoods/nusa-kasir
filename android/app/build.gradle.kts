@@ -49,4 +49,6 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     // Google Sign-In butuh Firebase Auth
     implementation("com.google.firebase:firebase-auth")
+    // Activity Result API — modern way to handle startActivityForResult
+    implementation("androidx.activity:activity-ktx:1.9.3")
 }

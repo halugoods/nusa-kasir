@@ -903,8 +903,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       ),
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // ── Row 1: Avatar ring + Name + Status badge ──
-        Row(children: [
+        // ── Row 1: Avatar ring + Name + Role info ──
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // Avatar with colored ring
           Container(
             width: 52, height: 52,
@@ -934,39 +934,45 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           const SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(e.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textPri)),
-              const SizedBox(height: 2),
               Row(children: [
+                Expanded(
+                  child: Text(e.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textPri)),
+                ),
+                // Status badge — right-aligned, next to name, won't overflow
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(statusLabel,
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor)),
+                ),
+              ]),
+              const SizedBox(height: 4),
+              Wrap(spacing: 6, runSpacing: 4, children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
                     color: NusaConfig.primaryColor.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(5),
                   ),
-                  child: Text(e.role, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
+                  child: Text(e.role, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
                 ),
-                const SizedBox(width: 6),
-                Icon(Icons.schedule, size: 11, color: textTer),
-                const SizedBox(width: 3),
-                Text('${e.workStart ?? '08:00'} - ${e.workEnd ?? '17:00'}',
-                    style: TextStyle(fontSize: 11, color: textTer)),
-                if (hasPhone) ...[
-                  const SizedBox(width: 6),
-                  Icon(Icons.phone_android, size: 11, color: const Color(0xFF10B981).withValues(alpha: 0.8)),
-                  const SizedBox(width: 3),
-                  Text(e.phone!, style: TextStyle(fontSize: 11, color: textTer)),
-                ],
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.schedule, size: 10, color: textTer),
+                  const SizedBox(width: 2),
+                  Text('${e.workStart ?? '08:00'} - ${e.workEnd ?? '17:00'}',
+                      style: TextStyle(fontSize: 10, color: textTer)),
+                ]),
+                if (hasPhone)
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.phone_android, size: 10, color: const Color(0xFF10B981).withValues(alpha: 0.8)),
+                    const SizedBox(width: 2),
+                    Flexible(child: Text(e.phone!, style: TextStyle(fontSize: 10, color: textTer), overflow: TextOverflow.ellipsis)),
+                  ]),
               ]),
             ]),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(statusLabel,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: statusColor)),
           ),
         ]),
         const SizedBox(height: 14),
@@ -1071,16 +1077,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
         const SizedBox(height: 14),
 
-        // ── Row 4: Action buttons ──
+        // ── Row 4: Action buttons (text-only, clean) ──
         Row(children: [
           Expanded(
-            child: _actionBtn(Icons.login_rounded, 'Masuk', NusaConfig.accentGreen,
+            child: _textBtn('Masuk', NusaConfig.accentGreen,
                 enabled: !isCheckedIn && !isIzin,
                 onTap: () => _showAbsenSheet(e, isCheckIn: true)),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _actionBtn(Icons.logout_rounded, 'Pulang', const Color(0xFFEF4444),
+            child: _textBtn('Pulang', const Color(0xFFEF4444),
                 enabled: isCheckedIn && !isCheckedOut && !isIzin,
                 onTap: () => _showAbsenSheet(e, isCheckIn: false)),
           ),
@@ -1631,13 +1637,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     );
   }
 
-  Widget _actionBtn(IconData icon, String label, Color color, {required bool enabled, required VoidCallback onTap}) {
+  Widget _textBtn(String label, Color color, {required bool enabled, required VoidCallback onTap}) {
     return SizedBox(
       height: 38,
-      child: ElevatedButton.icon(
+      child: ElevatedButton(
         onPressed: enabled ? onTap : null,
-        icon: Icon(icon, size: 16),
-        label: Text(label),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
@@ -1647,8 +1651,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           padding: const EdgeInsets.symmetric(horizontal: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           minimumSize: Size.zero,
-          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         ),
+        child: Text(label),
       ),
     );
   }
