@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/services/ai_service.dart';
+import 'package:drift/drift.dart' hide Column;
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/data/repositories/transaction_repository.dart';
@@ -27,7 +28,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   bool _loading = false;
   String? _storeName;
   int? _activeSessionId;
-  List<ChatSessionData> _sessions = [];
+  List<ChatSession> _sessions = [];
   bool _showSessions = false;
 
   final List<String> _hints = [
@@ -65,9 +66,10 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   Future<void> _loadSessions() async {
     try {
       final db = ref.read(databaseProvider);
-      final rows = await db.select(db.chatSessions)
-        ..orderBy([(t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc)]);
-      if (mounted) setState(() => _sessions = rows.toList());
+      final rows = await (db.select(db.chatSessions)
+        ..orderBy([(t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc)]))
+        .get();
+      if (mounted) setState(() => _sessions = rows);
     } catch (_) {}
   }
 
@@ -94,7 +96,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     } catch (_) {}
   }
 
-  Future<void> _loadSession(ChatSessionData session) async {
+  Future<void> _loadSession(ChatSession session) async {
     try {
       final msgs = (jsonDecode(session.messagesJson) as List)
           .map((j) => ChatMessage.fromJson(j as Map<String, dynamic>))
@@ -109,7 +111,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     } catch (_) {}
   }
 
-  Future<void> _deleteSession(ChatSessionData session) async {
+  Future<void> _deleteSession(ChatSession session) async {
     try {
       final db = ref.read(databaseProvider);
       await (db.delete(db.chatSessions)..where((t) => t.id.equals(session.id))).go();
