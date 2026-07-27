@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/shared/services/biometric_service.dart';
 import 'package:nusa_kasir/shared/widgets/animated_builder.dart'
@@ -89,6 +90,15 @@ class _PinKeypadState extends State<PinKeypad>
   void dispose() {
     _shakeCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant PinKeypad oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Haptic vibrate when error appears (null → non-null)
+    if (oldWidget.error == null && widget.error != null) {
+      HapticFeedback.heavyImpact();
+    }
   }
 
   /// Public API — read current digits (for manual submit flows).
@@ -342,6 +352,8 @@ class _PinKeypadState extends State<PinKeypad>
               ),
             ),
           ],
+          // Bottom padding so NFC / cancel card doesn't stick to edge
+          const SizedBox(height: 8),
         ],
       ),
     );

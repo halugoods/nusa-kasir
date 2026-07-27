@@ -52,9 +52,9 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
     super.initState();
     _pulseCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    _pulseAnim = Tween(begin: 0.94, end: 1.0).animate(
+    _pulseAnim = Tween(begin: 0.35, end: 1.0).animate(
       CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
     );
     _load();
@@ -348,77 +348,116 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
   // Status Card
   // ─────────────────────────────────────────────────────────
   Widget _buildStatusCard(bool isDark) {
-    return AnimatedBuilder(
-      animation: _pulseAnim,
-      builder: (context, child) => Transform.scale(
-        scale: _isActive ? _pulseAnim.value : 1.0,
-        child: child,
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: _isActive
-              ? const LinearGradient(
-                  colors: [Color(0xFF059669), Color(0xFF047857)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : LinearGradient(
-                  colors: isDark
-                      ? [const Color(0xFF374151), const Color(0xFF1F2937)]
-                      : [const Color(0xFF9CA3AF), const Color(0xFF6B7280)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: _isActive
+            ? const LinearGradient(
+                colors: [Color(0xFF059669), Color(0xFF047857)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF374151), const Color(0xFF1F2937)]
+                    : [const Color(0xFF9CA3AF), const Color(0xFF6B7280)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        boxShadow: _isActive
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF059669).withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
-          boxShadow: _isActive
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF059669).withValues(alpha: 0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+              ]
+            : null,
+      ),
+      child: Column(
+        children: [
+          // Icon with glowing dot
+          Stack(
+            alignment: Alignment.topRight,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _isActive ? Icons.store : Icons.store_outlined,
+                  size: 28,
+                  color: Colors.white,
+                ),
+              ),
+              if (_isActive)
+                AnimatedBuilder(
+                  animation: _pulseAnim,
+                  builder: (context, child) => Opacity(
+                    opacity: _pulseAnim.value,
+                    child: Container(
+                      width: 10, height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF4ADE80),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF4ADE80).withValues(alpha: 0.6),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ]
-              : null,
-        ),
-        child: Column(
-          children: [
-            // Icon
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_isActive)
+                AnimatedBuilder(
+                  animation: _pulseAnim,
+                  builder: (context, child) => Opacity(
+                    opacity: _pulseAnim.value,
+                    child: Container(
+                      width: 8, height: 8,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF4ADE80),
+                      ),
+                    ),
+                  ),
+                ),
+              Text(
+                _isActive ? 'Toko Online Kamu Aktif' : 'Toko Online Nonaktif',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              child: Icon(
-                _isActive ? Icons.store : Icons.store_outlined,
-                size: 28,
-                color: Colors.white,
-              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _isActive
+                ? 'Pelanggan bisa langsung order via web kamu! 🎉'
+                : 'Lengkapi info di bawah & aktifkan untuk mulai jualan online',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
             ),
-            const SizedBox(height: 12),
-            Text(
-              _isActive ? '🟢 Toko Online Kamu Aktif' : '⚪ Toko Online Nonaktif',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _isActive
-                  ? 'Pelanggan bisa langsung order via web kamu! 🎉'
-                  : 'Lengkapi info di bawah & aktifkan untuk mulai jualan online',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 13,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -430,9 +469,6 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
     bool isDark, Color textColor, Color subColor, Color cardBg, Color borderC,
   ) {
     final name = _nameCtrl.text.trim();
-    final desc = _descCtrl.text.trim();
-    final hours = _hoursCtrl.text.trim();
-    final addr = _addressCtrl.text.trim();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,219 +477,114 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
           Icon(Icons.preview, size: 18, color: textColor),
           const SizedBox(width: 8),
           Text('Tampilan Toko', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textColor)),
-          const Spacer(),
-          Text('Preview', style: TextStyle(fontSize: 10, color: subColor,
-              fontStyle: FontStyle.italic)),
+          if (_isActive && _storeUrl != null) ...[
+            const Spacer(),
+            GestureDetector(
+              onTap: () async {
+                try {
+                  await launchUrl(Uri.parse(_storeUrl!), mode: LaunchMode.externalApplication);
+                } catch (_) {}
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF059669).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.open_in_browser, size: 14, color: Color(0xFF059669)),
+                    SizedBox(width: 4),
+                    Text('Buka Website', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF059669))),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ]),
         const SizedBox(height: 10),
 
-        // Phone mockup frame
+        // Store info card (compact)
         Container(
-          width: 300,
-          padding: const EdgeInsets.all(3),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: LinearGradient(
-              colors: isDark
-                  ? [const Color(0xFF4B5563), const Color(0xFF1F2937)]
-                  : [const Color(0xFFD1D5DB), const Color(0xFF9CA3AF)],
-            ),
+            color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderC),
           ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                // Store header
-                if (_logoPath != null && _logoPath!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(File(_logoPath!), height: 44, fit: BoxFit.contain),
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Container(
-                      width: 44, height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.store, size: 24, color: Color(0xFF9CA3AF)),
-                    ),
+          child: Column(
+            children: [
+              if (_logoPath != null && _logoPath!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.file(File(_logoPath!), height: 56, fit: BoxFit.contain),
                   ),
-
-                Text(
-                  name.isNotEmpty ? name : 'Nama Toko Kamu',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
-                ),
-                if (desc.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(desc, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
-                      textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-                ],
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _isActive ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _isActive ? 'Buka' : 'Tutup',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: _isActive ? const Color(0xFF059669) : const Color(0xFFE63946),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    width: 56, height: 56,
+                    decoration: BoxDecoration(
+                      color: isDark ? NusaConfig.darkSurface : const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(14),
                     ),
+                    child: Icon(Icons.store, size: 28, color: isDark ? NusaConfig.darkTextSecondary : const Color(0xFF9CA3AF)),
                   ),
                 ),
+              Text(
+                name.isNotEmpty ? name : 'Nama Toko Kamu',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: textColor),
+                textAlign: TextAlign.center,
+              ),
+              if (_descCtrl.text.trim().isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(_descCtrl.text.trim(),
+                    style: TextStyle(fontSize: 12, color: subColor),
+                    textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+              ],
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _isActive ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  _isActive ? '🟢 Buka' : '🔴 Tutup',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: _isActive ? const Color(0xFF059669) : const Color(0xFFE63946),
+                  ),
+                ),
+              ),
+              if (_hoursCtrl.text.trim().isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.access_time, size: 10, color: Color(0xFF9CA3AF)),
+                  Icon(Icons.access_time, size: 13, color: subColor),
                   const SizedBox(width: 4),
-                  Text(hours.isNotEmpty ? hours : '08:00 - 21:00',
-                      style: const TextStyle(fontSize: 9, color: Color(0xFF9CA3AF))),
-                ]),
-                if (addr.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    const Icon(Icons.location_on, size: 10, color: Color(0xFF9CA3AF)),
-                    const SizedBox(width: 4),
-                    Flexible(child: Text(addr, style: const TextStyle(fontSize: 9, color: Color(0xFF9CA3AF)),
-                        overflow: TextOverflow.ellipsis)),
-                  ]),
-                ],
-                const SizedBox(height: 10),
-                // Dummy product grid
-                Row(children: [
-                  _miniProduct('Indomie Goreng', 'Rp 3.500', const Color(0xFFEFF6FF)),
-                  const SizedBox(width: 6),
-                  _miniProduct('Beras 5kg', 'Rp 72.000', const Color(0xFFF0FDF4)),
-                  const SizedBox(width: 6),
-                  _miniProduct('Minyak 2L', 'Rp 38.000', const Color(0xFFFFF7ED)),
+                  Text(_hoursCtrl.text.trim(), style: TextStyle(fontSize: 12, color: subColor)),
                 ]),
               ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        // URL & action buttons
-        if (_isActive && _storeUrl != null) ...[
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: borderC),
-            ),
-            child: Column(children: [
-              // URL row
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isDark ? NusaConfig.darkSurface2 : NusaConfig.surfaceColor,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.25)),
-                ),
-                child: Row(children: [
-                  Icon(Icons.link, size: 16, color: NusaConfig.primaryColor),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(_storeUrl!, style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: textColor),
-                        overflow: TextOverflow.ellipsis),
-                  ),
-                  const SizedBox(width: 8),
-                  _iconButton(Icons.copy, 'Salin', NusaConfig.primaryColor, _copyLink),
+              if (_addressCtrl.text.trim().isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.location_on, size: 13, color: subColor),
+                  const SizedBox(width: 4),
+                  Flexible(child: Text(_addressCtrl.text.trim(),
+                      style: TextStyle(fontSize: 12, color: subColor),
+                      overflow: TextOverflow.ellipsis)),
                 ]),
-              ),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _openPreview,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [NusaConfig.primaryColor, NusaConfig.primaryDark]),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.open_in_browser, size: 16, color: Colors.white),
-                        SizedBox(width: 6),
-                        Text('Buka Website', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                      ]),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _shareLink,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.4)),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.share, size: 18, color: NusaConfig.primaryColor),
-                  ),
-                ),
-              ]),
-            ]),
+              ],
+            ],
           ),
-        ],
+        ),
+        const SizedBox(height: 16),
       ],
-    );
-  }
-
-  Widget _miniProduct(String name, String price, Color bg) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Column(children: [
-          Container(
-            width: double.infinity, height: 24,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Icon(Icons.shopping_bag, size: 12, color: Color(0xFFD1D5DB)),
-          ),
-          const SizedBox(height: 4),
-          Text(name, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
-              overflow: TextOverflow.ellipsis),
-          Text(price, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Color(0xFFE63946))),
-        ]),
-      ),
-    );
-  }
-
-  Widget _iconButton(IconData icon, String tooltip, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Tooltip(
-        message: tooltip,
-        child: Container(
-          width: 34, height: 34,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 16, color: color),
-        ),
-      ),
     );
   }
 

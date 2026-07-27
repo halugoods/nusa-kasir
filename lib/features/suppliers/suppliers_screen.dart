@@ -116,7 +116,11 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                       )),
                 ]),
                 const SizedBox(height: 16),
-                NusaInput('Nama', controller: nameC, hint: 'Cth: PT Maju Jaya'),
+                NusaInput('Nama Supplier', controller: nameC, hint: 'Cth: PT Maju Jaya'),
+                const SizedBox(height: 12),
+                NusaInput('Kontak Person', controller: cpC, hint: 'Cth: Bapak Budi',
+                    prefixIcon: Icon(Icons.person_outline, size: 18,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                 const SizedBox(height: 12),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -133,15 +137,13 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                         if (contact != null) {
                           final name = contact['name'] ?? '';
                           final phone = contact['phone'] ?? '';
-                          if (name.isNotEmpty && nameC.text.trim().isEmpty) {
-                            nameC.text = name;
-                          }
-                          if (phone.isNotEmpty) {
-                            phoneC.text = phone;
-                          }
-                          // Auto-fill contact person field if still empty
+                          // Kontak Person ← nama kontak
                           if (name.isNotEmpty && cpC.text.trim().isEmpty) {
                             cpC.text = name;
+                          }
+                          // Telepon ← nomor kontak
+                          if (phone.isNotEmpty) {
+                            phoneC.text = phone;
                           }
                           setSt(() {}); // refresh UI
                         }
@@ -161,10 +163,6 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                 const SizedBox(height: 12),
                 NusaInput('Alamat', controller: addrC, hint: 'Cth: Jl. Merdeka No. 10',
                     prefixIcon: Icon(Icons.location_on_outlined, size: 18,
-                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                const SizedBox(height: 12),
-                NusaInput('Kontak Person', controller: cpC, hint: 'Cth: Bapak Budi',
-                    prefixIcon: Icon(Icons.person_outline, size: 18,
                         color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                 const SizedBox(height: 12),
                 NusaInput('Catatan', controller: noteC, hint: 'Cth: Supplier bahan baku',

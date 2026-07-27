@@ -47,11 +47,6 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
     }).toList();
   }
 
-  int get _activeCount => _promos.where((p) => p.status == 'Aktif' && (p.endDate == null || p.endDate!.isAfter(DateTime.now()))).length;
-  int get _inactiveCount => _promos.where((p) => p.status == 'Nonaktif').length;
-  int get _expiredCount => _promos.where((p) => p.endDate != null && p.endDate!.isBefore(DateTime.now())).length;
-  int get _totalClaims => _promos.fold<int>(0, (sum, p) => sum + p.usedCount);
-
   Future<void> _toggle(Promo p) async {
     final repo = PromoRepository(ref.read(databaseProvider));
     final next = p.status == 'Aktif' ? 'Nonaktif' : 'Aktif';
@@ -366,8 +361,6 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
           ? const SkeletonList()
           : Column(
               children: [
-                // ── Stats cards ──
-                if (_promos.isNotEmpty) _buildStatsBar(isDark),
                 // ── Filter tabs ──
                 _buildFilterTabs(isDark),
                 // ── Content ──
@@ -402,98 +395,73 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
     );
   }
 
-  Widget _buildStatsBar(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Row(
-        children: [
-          _statCard('Aktif', _activeCount, NusaConfig.accentGreen, isDark),
-          const SizedBox(width: 10),
-          _statCard('Nonaktif', _inactiveCount, Colors.orange, isDark),
-          const SizedBox(width: 10),
-          _statCard('Klaim', _totalClaims, NusaConfig.primaryColor, isDark),
-        ],
-      ),
-    );
-  }
-
-  Widget _statCard(String label, int value, Color color, bool isDark) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          children: [
-            Text('$value',
-                style: TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.w800, color: color)),
-            const SizedBox(height: 2),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildFilterTabs(bool isDark) {
     const tabs = [
-      ('Aktif', Icons.check_circle_outline),
-      ('Nonaktif', Icons.pause_circle_outline),
-      ('Kadaluarsa', Icons.event_busy_outlined),
+      ('Aktif', Icons.check_circle_outline, Colors.red),
+      ('Nonaktif', Icons.pause_circle_outline, Colors.orange),
+      ('Kadaluarsa', Icons.event_busy_outlined, Colors.grey),
     ];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Row(
-        children: tabs.map((t) {
-          final selected = _filter == t.$1;
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(right: t.$1 != 'Kadaluarsa' ? 8 : 0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface2 : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: tabs.map((t) {
+            final selected = _filter == t.$1;
+            return Expanded(
               child: GestureDetector(
                 onTap: () => setState(() => _filter = t.$1),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
                     color: selected
-                        ? NusaConfig.primaryColor.withValues(alpha: isDark ? 0.2 : 0.1)
-                        : (isDark ? NusaConfig.darkSurface2 : Colors.grey.shade100),
-                    borderRadius: BorderRadius.circular(12),
-                    border: selected
-                        ? Border.all(color: NusaConfig.primaryColor.withValues(alpha: 0.4))
+                        ? (isDark ? NusaConfig.darkSurface : Colors.white)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(11),
+                    boxShadow: selected
+                        ? [BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                            blurRadius: 4, offset: const Offset(0, 2),
+                          )]
                         : null,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(t.$2, size: 14,
-                          color: selected
-                              ? NusaConfig.primaryColor
-                              : (isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary)),
-                      const SizedBox(width: 5),
+                      if (selected)
+                        Container(
+                          width: 8, height: 8,
+                          margin: const EdgeInsets.only(right: 6),
+                          decoration: BoxDecoration(
+                            color: t.$3,
+                            shape: BoxShape.circle,
+                            boxShadow: [BoxShadow(
+                              color: t.$3.withValues(alpha: 0.5),
+                              blurRadius: 4,
+                            )],
+                          ),
+                        ),
                       Text(t.$1,
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
                             color: selected
-                                ? NusaConfig.primaryColor
+                                ? (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)
                                 : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
                           )),
                     ],
                   ),
                 ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -665,132 +633,163 @@ class _PromoTile extends StatelessWidget {
                     ),
                   )
                 : null,
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.local_offer,
-                              size: 18, color: NusaConfig.primaryColor),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(promo.name,
-                                style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(_discountLabel(promo),
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: NusaConfig.primaryColor)),
-                      const SizedBox(height: 4),
-                      Text(
-                          'Min. belanja ${formatRupiah(promo.minBelanja)} • Aktif: ${_fmtDate(promo.startDate)}–${_fmtDate(promo.endDate)}',
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                    'Kuota: ${_quotaLabel(promo)}',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                                if (quotaUsed >= 0) ...[
-                                  const SizedBox(height: 4),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(3),
-                                    child: LinearProgressIndicator(
-                                      value: quotaUsed.clamp(0.0, 1.0),
-                                      backgroundColor:
-                                          quotaColor.withValues(alpha: 0.15),
-                                      valueColor:
-                                          AlwaysStoppedAnimation(quotaColor),
-                                      minHeight: 4,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text('Kode: ${promo.code}',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                          ),
-                          InkWell(
-                            onTap: () {
-                              Clipboard.setData(ClipboardData(text: promo.code));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Kode disalin'),
-                                  behavior: SnackBarBehavior.floating,
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Padding(
-                              padding: EdgeInsets.all(4),
-                              child: Icon(Icons.copy,
-                                  size: 16, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: active,
-                  activeColor: NusaConfig.primaryColor,
-                  onChanged: (_) => onToggle(),
-                ),
-                // Edit & Delete action buttons
-                Column(
-                  mainAxisSize: MainAxisSize.min,
+                // ── Top row: name + switch ──
+                Row(
                   children: [
-                    InkWell(
-                      onTap: onEdit,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(Icons.edit_outlined, size: 18,
-                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                    Container(
+                      width: 36, height: 36,
+                      decoration: BoxDecoration(
+                        color: active && !expired
+                            ? NusaConfig.accentGreen.withValues(alpha: 0.12)
+                            : NusaConfig.primaryColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.local_offer,
+                        size: 18,
+                        color: active && !expired ? NusaConfig.accentGreen : NusaConfig.primaryColor,
                       ),
                     ),
-                    InkWell(
-                      onTap: onDelete,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(Icons.delete_outline, size: 18,
-                            color: Colors.red.withValues(alpha: isDark ? 0.8 : 0.6)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(promo.name,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary,
+                          )),
+                    ),
+                    Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: active,
+                        activeColor: NusaConfig.primaryColor,
+                        onChanged: (_) => onToggle(),
                       ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // ── Discount label ──
+                Text(_discountLabel(promo),
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: active && !expired
+                            ? NusaConfig.accentGreen
+                            : NusaConfig.primaryColor)),
+                const SizedBox(height: 4),
+                // ── Info row ──
+                Text(
+                    'Min. belanja ${formatRupiah(promo.minBelanja)} • Aktif: ${_fmtDate(promo.startDate)}–${_fmtDate(promo.endDate)}',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                const SizedBox(height: 4),
+                // ── Quota + progress bar ──
+                Row(
+                  children: [
+                    Text(
+                        'Kuota: ${_quotaLabel(promo)}',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+                    const SizedBox(width: 8),
+                    if (quotaUsed >= 0)
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: quotaUsed.clamp(0.0, 1.0),
+                            backgroundColor: quotaColor.withValues(alpha: 0.15),
+                            valueColor: AlwaysStoppedAnimation(quotaColor),
+                            minHeight: 4,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // ── Bottom row: code + edit/delete actions ──
+                Row(
+                  children: [
+                    // Code with copy
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: promo.code));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Kode disalin'),
+                              behavior: SnackBarBehavior.floating,
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.copy, size: 14,
+                                color: isDark ? NusaConfig.darkTextTertiary : NusaConfig.textTertiary),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text('Kode: ${promo.code}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: NusaConfig.primaryColor)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Edit button
+                    _ActionChip(
+                      icon: Icons.edit_outlined,
+                      color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                      onTap: onEdit,
+                    ),
+                    const SizedBox(width: 4),
+                    // Delete button
+                    _ActionChip(
+                      icon: Icons.delete_outline,
+                      color: NusaConfig.primaryColor.withValues(alpha: 0.7),
+                      onTap: onDelete,
                     ),
                   ],
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small icon chip for card actions (edit/delete).
+class _ActionChip extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  const _ActionChip({required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, size: 18, color: color),
         ),
       ),
     );

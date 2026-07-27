@@ -208,45 +208,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  /// Toggle fingerprint login for Owner. Requires PIN verification first.
-  /// When enabling, also validates the actual fingerprint via system dialog.
-  Future<void> _toggleFingerprint(bool isDark, EmployeeSession session) async {
-    // Only Owner
+  /// Toggle fingerprint login for Owner — direct, no PIN gate.
+  /// ON → langsung muncul dialog biometric OS, sukses = enable, gagal = balik OFF.
+  /// OFF → langsung disable.
+  Future<void> _toggleFingerprint(EmployeeSession session) async {
     if (session.role != 'Owner') {
       TopToast.info(context, 'Hanya Owner yang bisa mengatur fingerprint');
       return;
     }
 
-    // If enabling, check hardware first
-    if (!_fingerprintEnabled) {
+    final enable = !_fingerprintEnabled;
+
+    if (enable) {
+      // Check hardware first
       final hwOk = await BiometricService.isHardwareAvailable();
       if (!hwOk) {
-        if (mounted) {
-          TopToast.error(context, 'Device tidak mendukung fingerprint');
-        }
+        if (mounted) TopToast.error(context, 'Device tidak mendukung fingerprint');
         return;
       }
-    }
 
-    // Verify PIN before toggling
-    final ok = await _checkPin();
-    if (!ok) {
-      TopToast.error(context, 'Verifikasi PIN gagal');
-      return;
-    }
-
-    final newVal = !_fingerprintEnabled;
-
-    if (newVal) {
-      // Validate actual fingerprint via system dialog before enabling
+      // Validate actual fingerprint via system dialog
       final scanned = await BiometricService.authenticate(
         reason: 'Pindai sidik jari untuk mengaktifkan Login Fingerprint',
       );
       if (!scanned) {
-        if (mounted) {
-          TopToast.error(context, 'Pemindaian sidik jari gagal atau dibatalkan');
-        }
-        return; // Don't enable — fingerprint not verified
+        if (mounted) TopToast.error(context, 'Pemindaian sidik jari gagal atau dibatalkan');
+        return; // don't enable — fingerprint not verified
       }
 
       await BiometricService.enable();
@@ -255,8 +242,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
 
     if (mounted) {
-      setState(() => _fingerprintEnabled = newVal);
-      TopToast.success(context, newVal ? 'Fingerprint diaktifkan' : 'Fingerprint dinonaktifkan');
+      setState(() => _fingerprintEnabled = enable);
+      TopToast.success(context, enable ? 'Fingerprint diaktifkan' : 'Fingerprint dinonaktifkan');
     }
   }
 
@@ -1245,6 +1232,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: _showReceiptSettings,
           ),
 
+          // Fingerprint — Owner only, no PIN gate, direct toggle
+          if (session?.role == 'Owner') ...[
+            const SizedBox(height: 12),
+            _menuRow(
+              icon: Icons.fingerprint, iconColor: NusaConfig.accentPurple,
+              title: 'Login Fingerprint',
+              subtitle: !_fingerprintAvailable
+                  ? 'Device tidak mendukung sidik jari'
+                  : _fingerprintEnabled
+                      ? 'Aktif — akses cepat pakai sidik jari'
+                      : 'Aktifkan akses cepat Owner',
+              isDark: isDark,
+              onTap: _fingerprintAvailable
+                  ? () => _toggleFingerprint(session!)
+                  : null,
+              trailing: Switch(
+                value: _fingerprintEnabled,
+                activeColor: NusaConfig.accentPurple,
+                onChanged: _fingerprintAvailable
+                    ? (v) => _toggleFingerprint(session!)
+                    : null,
+              ),
+            ),
+          ],
+
           const SizedBox(height: 24),
 
           // ════════════════════════════════════════
@@ -1283,16 +1295,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
           ),
           const SizedBox(height: 12),
-          // Kelola Role
-          _menuRow(
-            icon: Icons.admin_panel_settings, iconColor: NusaConfig.accentPurple,
-            title: 'Kelola Role & Jabatan', subtitle: 'Tambah, edit, atau hapus role karyawan',
-            isDark: isDark,
-            onTap: () => _pinGate(_showManageRoles),
-            trailing: Icon(Icons.lock_outline, size: 16,
-                color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-          ),
-          const SizedBox(height: 12),
           // Lisensi
           _menuRow(
             icon: Icons.key, iconColor: NusaConfig.accentGreen,
@@ -1308,31 +1310,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ]),
           ),
 
-          // Fingerprint — Owner only
-          if (session?.role == 'Owner') ...[
-            const SizedBox(height: 12),
-            _menuRow(
-              icon: Icons.fingerprint, iconColor: NusaConfig.accentPurple,
-              title: 'Login Fingerprint',
-              subtitle: !_fingerprintAvailable
-                  ? 'Device tidak mendukung sidik jari'
-                  : _fingerprintEnabled
-                      ? 'Aktif — akses cepat pakai sidik jari'
-                      : 'Aktifkan akses cepat Owner',
-              isDark: isDark,
-              onTap: _fingerprintAvailable
-                  ? () => _toggleFingerprint(isDark, session!)
-                  : null,
-              trailing: Switch(
-                value: _fingerprintEnabled,
-                activeColor: NusaConfig.accentPurple,
-                onChanged: _fingerprintAvailable
-                    ? (v) => _toggleFingerprint(isDark, session!)
-                    : null,
-              ),
-            ),
-            // PIN length — fixed at 6 digits, not user-changeable
-          ],
+          // PIN length — fixed at 6 digits, not user-changeable
 
           const SizedBox(height: 24),
 

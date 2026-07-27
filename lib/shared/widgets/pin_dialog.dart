@@ -19,23 +19,6 @@ class PinResult {
 ///   with the entered PIN. Return `true` for success.
 ///
 /// Also supports fingerprint (`onFingerprint`) and NFC (`onNfc`).
-///
-/// Usage:
-/// ```dart
-/// // Direct match
-/// final r = await PinDialog.show(context: context, correctPin: '123456', employeeName: 'Budi');
-///
-/// // Verify callback (e.g. login)
-/// final r = await PinDialog.show(
-///   context: context,
-///   title: 'Masuk',
-///   subtitle: 'Masukkan PIN karyawan kamu',
-///   pinLength: 6,
-///   showNfc: true,
-///   onNfc: () async => await NfcTagService.readEmployeeTag(),
-///   onVerify: (pin) async => await authRepo.verifyPin(pin),
-/// );
-/// ```
 class PinDialog extends StatelessWidget {
   final String? title;
   final String? subtitle;
@@ -84,167 +67,173 @@ class PinDialog extends StatelessWidget {
   }) async {
     return showDialog<PinResult>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         String? error;
         bool remember = false;
         final keypadKey = GlobalKey<_PinDialogKeypadState>();
 
-        return StatefulBuilder(
-          builder: (ctx, setSt) {
-            // Use Dialog (not AlertDialog) so we control insetPadding.
-            // insetPadding: horizontal=24 matches login_screen.dart PinKeypad width.
-            return Dialog(
-              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24)),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // ── Title section ──
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
-                    child: Column(children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: NusaConfig.primaryColor.withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.lock_outline,
-                            color: NusaConfig.primaryColor, size: 26),
-                      ),
-                      if (title != null) ...[
-                        const SizedBox(height: 14),
-                        Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? NusaConfig.darkTextPrimary
-                                : NusaConfig.textPrimary,
-                          ),
-                        ),
-                      ],
-                      if (employeeName != null && title == null) ...[
-                        const SizedBox(height: 14),
-                        Text(
-                          employeeName,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? NusaConfig.darkTextPrimary
-                                : NusaConfig.textPrimary,
-                          ),
-                        ),
-                      ],
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark
-                                ? NusaConfig.darkTextSecondary
-                                : NusaConfig.textSecondary,
-                          ),
-                        ),
-                      ],
-                      if (employeeRole != null && title == null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          employeeRole,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark
-                                ? NusaConfig.darkTextSecondary
-                                : NusaConfig.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ]),
-                  ),
-
-                  // ── Keypad (NO horizontal content padding → same width as login screen) ──
-                  const SizedBox(height: 12),
-                  _PinDialogKeypad(
-                    key: keypadKey,
-                    pinLength: pinLength,
-                    error: error,
-                    showFingerprint: showFingerprint,
-                    showNfc: showNfc,
-                    onFingerprint: onFingerprint,
-                    onNfc: onNfc,
-                    onNfcSuccess: (employeeId) {
-                      Navigator.of(ctx).pop(PinResult(
-                          success: true, remember: remember, nfcEmployeeId: int.tryParse(employeeId)));
-                    },
-                    onComplete: (pin) async {
-                      if (pin.isEmpty) return;
-
-                      bool ok = false;
-
-                      // Mode 1: direct PIN match
-                      if (correctPin != null) {
-                        ok = pin == correctPin;
-                      }
-                      // Mode 2: verify callback
-                      else if (onVerify != null) {
-                        ok = await onVerify(pin);
-                      }
-
-                      if (ok) {
-                        if (ctx.mounted) {
-                          Navigator.of(ctx).pop(
-                              PinResult(success: true, remember: remember));
-                        }
-                      } else {
-                        setSt(() {
-                          error = 'PIN salah';
-                          keypadKey.currentState?.clear();
-                        });
-                      }
-                    },
-                  ),
-
-                  // ── Remember checkbox ──
-                  if (showRemember)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 24, top: 4, bottom: 12),
-                      child: GestureDetector(
-                        onTap: () => setSt(() => remember = !remember),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 22, height: 22,
-                              child: Checkbox(
-                                value: remember,
-                                onChanged: (v) => setSt(() => remember = v ?? false),
-                                activeColor: NusaConfig.primaryColor,
-                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text('Ingat PIN selama 8 jam',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isDark
-                                      ? NusaConfig.darkTextSecondary
-                                      : NusaConfig.textSecondary,
-                                )),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            );
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) {
+              Navigator.of(ctx).pop<PinResult>(null);
+            }
           },
+          child: StatefulBuilder(
+            builder: (ctx, setSt) {
+              return Dialog(
+                insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ── Title section ──
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                      child: Column(children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: NusaConfig.primaryColor.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.lock_outline,
+                              color: NusaConfig.primaryColor, size: 26),
+                        ),
+                        if (title != null) ...[
+                          const SizedBox(height: 14),
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? NusaConfig.darkTextPrimary
+                                  : NusaConfig.textPrimary,
+                            ),
+                          ),
+                        ],
+                        if (employeeName != null && title == null) ...[
+                          const SizedBox(height: 14),
+                          Text(
+                            employeeName,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? NusaConfig.darkTextPrimary
+                                  : NusaConfig.textPrimary,
+                            ),
+                          ),
+                        ],
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark
+                                  ? NusaConfig.darkTextSecondary
+                                  : NusaConfig.textSecondary,
+                            ),
+                          ),
+                        ],
+                        if (employeeRole != null && title == null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            employeeRole,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark
+                                  ? NusaConfig.darkTextSecondary
+                                  : NusaConfig.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ]),
+                    ),
+
+                    // ── Keypad ──
+                    const SizedBox(height: 12),
+                    _PinDialogKeypad(
+                      key: keypadKey,
+                      pinLength: pinLength,
+                      error: error,
+                      showFingerprint: showFingerprint,
+                      showNfc: showNfc,
+                      onFingerprint: onFingerprint,
+                      onNfc: onNfc,
+                      onNfcSuccess: (employeeId) {
+                        Navigator.of(ctx).pop(PinResult(
+                            success: true, remember: remember, nfcEmployeeId: int.tryParse(employeeId)));
+                      },
+                      onComplete: (pin) async {
+                        if (pin.isEmpty) return;
+
+                        bool ok = false;
+
+                        // Mode 1: direct PIN match
+                        if (correctPin != null) {
+                          ok = pin == correctPin;
+                        }
+                        // Mode 2: verify callback
+                        else if (onVerify != null) {
+                          ok = await onVerify(pin);
+                        }
+
+                        if (ok) {
+                          if (ctx.mounted) {
+                            Navigator.of(ctx).pop(
+                                PinResult(success: true, remember: remember));
+                          }
+                        } else {
+                          setSt(() {
+                            error = 'PIN salah';
+                            keypadKey.currentState?.clear();
+                          });
+                        }
+                      },
+                    ),
+
+                    // ── Remember checkbox ──
+                    if (showRemember)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 24, top: 4, bottom: 12),
+                        child: GestureDetector(
+                          onTap: () => setSt(() => remember = !remember),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 22, height: 22,
+                                child: Checkbox(
+                                  value: remember,
+                                  onChanged: (v) => setSt(() => remember = v ?? false),
+                                  activeColor: NusaConfig.primaryColor,
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('Ingat PIN selama 8 jam',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDark
+                                        ? NusaConfig.darkTextSecondary
+                                        : NusaConfig.textSecondary,
+                                  )),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
         );
       },
     );

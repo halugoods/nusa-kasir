@@ -9,55 +9,83 @@ import 'package:flutter/services.dart';
 /// 1. Dart → Native: `pickContact` → native opens contact picker, replies `true`
 /// 2. Native → Dart: `onContactResult` → native sends back {name, phone} (or null)
 ///
-/// This decouples from `MethodChannel.Result` lifecycle — the contact data is
-/// stored in a Kotlin `companion object` (static) which survives Android activity
-/// recreation. The native side calls `invokeMethod` to push the result to Dart.
-Future<Map<String, String>?> pickContact() async {
-  final completer = Completer<Map<String, String>?>();
-  final channel = const MethodChannel('com.nusa_kasir/contacts');
+/// The handler is registered ONCE (statically). Each call creates its own
+/// [Completer] so concurrent or back-to-back calls don't interfere.
+class ContactPicker {
+  static const _channel = MethodChannel('com.nusa_kasir/contacts');
+  static Completer<Map<String, String>?>? _completer;
+  static bool _initialized = false;
 
-  // Listen for the result pushed back from native
-  channel.setMethodCallHandler((call) async {
-    if (call.method == 'onContactResult') {
-      if (completer.isCompleted) return;
-      if (call.arguments == null) {
-        completer.complete(null);
-      } else {
-        final data = Map<String, dynamic>.from(call.arguments as Map);
-        completer.complete({
-          'name': (data['name'] as String?) ?? '',
-          'phone': (data['phone'] as String?) ?? '',
-        });
+  static void _init() {
+    if (_initialized) return;
+    _initialized = true;
+
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'onContactResult') {
+        final c = _completer;
+        if (c == null || c.isCompleted) {
+          debugPrint('[ContactPicker] onContactResult received but no active completer');
+          return;
+        }
+        if (call.arguments == null) {
+          debugPrint('[ContactPicker] onContactResult: null (user cancelled)');
+          c.complete(null);
+        } else {
+          final data = Map<String, dynamic>.from(call.arguments as Map);
+          final result = {
+            'name': (data['name'] as String?) ?? '',
+            'phone': (data['phone'] as String?) ?? '',
+          };
+          debugPrint('[ContactPicker] onContactResult: name="${result["name"]}" phone="${result["phone"]}"');
+          c.complete(result);
+        }
       }
-    }
-  });
+    });
+  }
 
-  try {
-    // Launch the picker — native replies true immediately
-    final launched = await channel
-        .invokeMethod<bool>('pickContact')
-        .timeout(const Duration(seconds: 10));
+  /// Opens the native contact picker. Returns the selected contact or null.
+  static Future<Map<String, String>?> pickContact() async {
+    _init(); // handler registered once
 
-    if (launched != true) {
+    // Create a fresh completer for this call
+    _completer = Completer<Map<String, String>?>();
+
+    try {
+      final launched = await _channel
+          .invokeMethod<bool>('pickContact')
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint('[ContactPicker] pickContact launched=$launched');
+
+      if (launched != true) {
+        _completer = null;
+        return null;
+      }
+
+      final result = await _completer!.future.timeout(
+        const Duration(seconds: 60),
+        onTimeout: () {
+          debugPrint('[ContactPicker] Timed out waiting for onContactResult');
+          return null;
+        },
+      );
+      debugPrint('[ContactPicker] returning: $result');
+      return result;
+    } on MissingPluginException {
+      debugPrint('[ContactPicker] MissingPluginException');
+      _completer = null;
+      return null;
+    } on PlatformException catch (e) {
+      debugPrint('[ContactPicker] PlatformException: ${e.code} — ${e.message}');
+      _completer = null;
+      return null;
+    } catch (e) {
+      debugPrint('[ContactPicker] Unexpected error: $e');
+      _completer = null;
       return null;
     }
-
-    // Wait for onContactResult from native (with timeout)
-    final result = await completer.future.timeout(
-      const Duration(seconds: 45),
-      onTimeout: () {
-        debugPrint('[ContactPicker] Timed out waiting for onContactResult');
-        return null;
-      },
-    );
-    return result;
-  } on MissingPluginException {
-    return null;
-  } on PlatformException catch (e) {
-    debugPrint('[ContactPicker] PlatformException: ${e.code} — ${e.message}');
-    return null;
-  } catch (e) {
-    debugPrint('[ContactPicker] Unexpected error: $e');
-    return null;
   }
 }
+
+/// Convenience wrapper for backwards compatibility.
+Future<Map<String, String>?> pickContact() => ContactPicker.pickContact();
