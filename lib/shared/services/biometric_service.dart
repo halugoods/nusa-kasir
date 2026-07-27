@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:nusa_kasir/core/utils/secure_storage.dart';
 
@@ -44,18 +45,24 @@ class BiometricService {
   /// Prompt the user to scan their fingerprint/face.
   ///
   /// Returns true if authenticated, false if cancelled or failed.
+  ///
+  /// biometricOnly is set to false to allow PIN/password fallback on devices
+  /// where the system biometric prompt behaves differently (e.g. Xiaomi/Redmi MIUI).
   static Future<bool> authenticate({String reason = 'Gunakan sidik jari untuk masuk'}) async {
     try {
       if (!await isHardwareAvailable()) return false;
 
-      return await _auth.authenticate(
+      final ok = await _auth.authenticate(
         localizedReason: reason,
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: true,
+          biometricOnly: false,
         ),
       );
-    } catch (_) {
+      debugPrint('[BiometricService] authenticate → $ok (biometricOnly=false)');
+      return ok;
+    } catch (e) {
+      debugPrint('[BiometricService] authenticate ERROR: $e');
       return false;
     }
   }

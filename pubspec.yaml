@@ -1,7 +1,7 @@
 name: nusa_kasir
 description: "NUSA - Aplikasi Kasir untuk Toko Kelontong"
 publish_to: 'none'
-version: 1.7.7+89
+version: 1.7.8+90
 
 environment:
   sdk: ^3.12.2
@@ -46,6 +46,7 @@ dependencies:
   local_auth: ^2.3.0
   flutter_svg: ^2.0.17
   image_cropper: ^8.1.0
+  webview_flutter: ^4.10.0
 
 dev_dependencies:
   flutter_test:

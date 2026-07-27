@@ -10,9 +10,29 @@ import 'package:flutter/services.dart';
 /// 2. Native → Dart: native calls `result.success({name, phone})` directly
 ///    (not invokeMethod), so the Dart `await invokeMethod` returns the data.
 ///
+/// Phone numbers are normalized to 08xxx format:
+/// - Strips all non-digit characters (dashes, spaces, parentheses)
+/// - Converts +628xx / 628xx → 08xx
+/// - Leaves 08xx unchanged
+///
 /// No completer, no handler registration — just plain async platform call.
 class ContactPicker {
   static const _channel = MethodChannel('com.nusa_kasir/contacts');
+
+  /// Normalize a raw phone number to 08xxx format.
+  /// - Strips all non-digit chars
+  /// - Converts 62xxx → 0xxx (Indonesian mobile prefix)
+  static String _normalizePhone(String raw) {
+    final digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return '';
+
+    // +62 prefix → strip to 62xxx then convert
+    if (digits.startsWith('62') && digits.length >= 10) {
+      return '0${digits.substring(2)}';
+    }
+    // Already 0-prefix → keep as-is
+    return digits;
+  }
 
   /// Opens the native contact picker. Returns the selected contact or null.
   static Future<Map<String, String>?> pickContact() async {
@@ -28,11 +48,13 @@ class ContactPicker {
         return null;
       }
 
+      final rawPhone = (data['phone'] as String?) ?? '';
+      final normalized = _normalizePhone(rawPhone);
       final result = {
         'name': (data['name'] as String?) ?? '',
-        'phone': (data['phone'] as String?) ?? '',
+        'phone': normalized,
       };
-      debugPrint('[ContactPicker] success: name="${result["name"]}" phone="${result["phone"]}"');
+      debugPrint('[ContactPicker] success: name="${result["name"]}" raw="$rawPhone" → normalized="${result["phone"]}"');
       return result;
     } on MissingPluginException {
       debugPrint('[ContactPicker] MissingPluginException');

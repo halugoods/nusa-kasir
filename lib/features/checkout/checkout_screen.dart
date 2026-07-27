@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -41,6 +42,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   bool _loading = false;
   int? _cashGiven;
   String? _qrisString;
+  String? _qrisImagePath;
   String? _bankName;
   String? _bankAccount;
   String? _bankHolder;
@@ -71,11 +73,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Future<void> _loadPaymentSettings() async {
     final repo = ref.read(settingsRepoProvider);
     final qris = await repo.getQris();
+    final qrisImg = await repo.getQrisImagePath();
     final bankName = await repo.getBankName();
     final bankAccount = await repo.getBankAccount();
     final bankHolder = await repo.getBankHolder();
     if (mounted) setState(() {
       _qrisString = qris;
+      _qrisImagePath = qrisImg;
       _bankName = bankName;
       _bankAccount = bankAccount;
       _bankHolder = bankHolder;
@@ -747,15 +751,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Widget _buildQrisCard(bool isDark) {
+    // Check if uploaded QRIS image exists
+    final hasQrisImage = _qrisImagePath != null &&
+        _qrisImagePath!.isNotEmpty &&
+        File(_qrisImagePath!).existsSync();
+    final hasQrisString = _qrisString != null && _qrisString!.isNotEmpty;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: isDark ? NusaConfig.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isDark ? NusaConfig.darkBorder : const Color(0xFFF1F5F9)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
+      decoration: _sectionCard(isDark),
       child: Column(children: [
         Container(
           width: 32, height: 32,
@@ -763,7 +768,30 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           child: const Icon(Icons.qr_code_2, color: Color(0xFF6366F1), size: 18),
         ),
         const SizedBox(height: 14),
-        if (_qrisString != null && _qrisString!.isNotEmpty) ...[
+        if (hasQrisImage) ...[
+          // ── Uploaded QRIS photo (priority 1) ──
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: NusaConfig.dividerColor),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                File(_qrisImagePath!),
+                width: 200,
+                height: 200,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text('Scan QRIS untuk membayar',
+              style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+        ] else if (hasQrisString) ...[
+          // ── Generated QR code from text (priority 2) ──
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
@@ -774,6 +802,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           Text('Scan QRIS untuk membayar',
               style: TextStyle(fontSize: 13, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
         ] else ...[
+          // ── No QRIS configured ──
           Icon(Icons.qr_code, size: 64, color: isDark ? NusaConfig.darkTextSecondary : Colors.grey),
           const SizedBox(height: 8),
               Text('Set QRIS di Pengaturan',

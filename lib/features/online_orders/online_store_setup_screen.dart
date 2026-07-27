@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:nusa_kasir/core/providers.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/services/image_storage_service.dart';
@@ -37,6 +38,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
   bool _isActive = false;
   String? _logoPath;
   int _onlineProductCount = 0;
+  WebViewController? _webViewCtrl;
 
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
@@ -242,6 +244,25 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
     } catch (_) {
       if (mounted) TopToast.error(context, 'Gagal membuka website');
     }
+  }
+
+  void _initWebView() {
+    if (_storeUrl == null || _storeUrl!.isEmpty) return;
+    if (_webViewCtrl != null) return; // already initialized
+
+    _webViewCtrl = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (_) {
+            if (mounted) setState(() {}); // trigger rebuild for spinner
+          },
+          onPageFinished: (_) {
+            if (mounted) setState(() {}); // hide spinner
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse(_storeUrl!));
   }
 
   void _copyLink() {
@@ -531,7 +552,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
   }
 
   // ─────────────────────────────────────────────────────────
-  // Store Preview Mockup
+  // Store Preview (WebView or fallback)
   // ─────────────────────────────────────────────────────────
   Widget _buildStorePreview(
     bool isDark, Color textColor, Color subColor, Color cardBg, Color borderC,
@@ -545,112 +566,114 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
           Icon(Icons.preview, size: 18, color: textColor),
           const SizedBox(width: 8),
           Text('Tampilan Toko', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textColor)),
-          if (_isActive && _storeUrl != null) ...[
-            const Spacer(),
-            GestureDetector(
-              onTap: () async {
-                try {
-                  await launchUrl(Uri.parse(_storeUrl!), mode: LaunchMode.externalApplication);
-                } catch (_) {}
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF059669).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.open_in_browser, size: 14, color: Color(0xFF059669)),
-                    SizedBox(width: 4),
-                    Text('Buka Website', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF059669))),
-                  ],
-                ),
-              ),
-            ),
-          ],
         ]),
         const SizedBox(height: 10),
 
-        // Store info card (compact)
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+        if (_isActive && _storeUrl != null) ...[
+          // ── Live WebView preview ──
+          ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderC),
+            child: Container(
+              height: 400,
+              decoration: BoxDecoration(
+                border: Border.all(color: borderC),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Builder(
+                builder: (context) {
+                  // Init WebView on first build
+                  _initWebView();
+                  if (_webViewCtrl == null) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  return WebViewWidget(controller: _webViewCtrl!);
+                },
+              ),
+            ),
           ),
-          child: Column(
-            children: [
-              if (_logoPath != null && _logoPath!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.file(File(_logoPath!), height: 56, fit: BoxFit.contain),
-                  ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    width: 56, height: 56,
-                    decoration: BoxDecoration(
-                      color: isDark ? NusaConfig.darkSurface : const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(14),
+          const SizedBox(height: 8),
+          Text('Ini adalah tampilan live toko online kamu.',
+              style: TextStyle(fontSize: 11, color: subColor)),
+        ] else ...[
+          // ── Fallback: static store info card ──
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderC),
+            ),
+            child: Column(
+              children: [
+                if (_logoPath != null && _logoPath!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.file(File(_logoPath!), height: 56, fit: BoxFit.contain),
                     ),
-                    child: Icon(Icons.store, size: 28, color: isDark ? NusaConfig.darkTextSecondary : const Color(0xFF9CA3AF)),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Container(
+                      width: 56, height: 56,
+                      decoration: BoxDecoration(
+                        color: isDark ? NusaConfig.darkSurface : const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(Icons.store, size: 28, color: isDark ? NusaConfig.darkTextSecondary : const Color(0xFF9CA3AF)),
+                    ),
                   ),
+                Text(
+                  name.isNotEmpty ? name : 'Nama Toko Kamu',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: textColor),
+                  textAlign: TextAlign.center,
                 ),
-              Text(
-                name.isNotEmpty ? name : 'Nama Toko Kamu',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: textColor),
-                textAlign: TextAlign.center,
-              ),
-              if (_descCtrl.text.trim().isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(_descCtrl.text.trim(),
-                    style: TextStyle(fontSize: 12, color: subColor),
-                    textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-              ],
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: _isActive ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  _isActive ? '🟢 Buka' : '🔴 Tutup',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: _isActive ? const Color(0xFF059669) : const Color(0xFFE63946),
-                  ),
-                ),
-              ),
-              if (_hoursCtrl.text.trim().isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.access_time, size: 13, color: subColor),
-                  const SizedBox(width: 4),
-                  Text(_hoursCtrl.text.trim(), style: TextStyle(fontSize: 12, color: subColor)),
-                ]),
-              ],
-              if (_addressCtrl.text.trim().isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.location_on, size: 13, color: subColor),
-                  const SizedBox(width: 4),
-                  Flexible(child: Text(_addressCtrl.text.trim(),
+                if (_descCtrl.text.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(_descCtrl.text.trim(),
                       style: TextStyle(fontSize: 12, color: subColor),
-                      overflow: TextOverflow.ellipsis)),
-                ]),
+                      textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                ],
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _isActive ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    _isActive ? '🟢 Buka' : '🔴 Tutup',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _isActive ? const Color(0xFF059669) : const Color(0xFFE63946),
+                    ),
+                  ),
+                ),
+                if (_hoursCtrl.text.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.access_time, size: 13, color: subColor),
+                    const SizedBox(width: 4),
+                    Text(_hoursCtrl.text.trim(), style: TextStyle(fontSize: 12, color: subColor)),
+                  ]),
+                ],
+                if (_addressCtrl.text.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.location_on, size: 13, color: subColor),
+                    const SizedBox(width: 4),
+                    Flexible(child: Text(_addressCtrl.text.trim(),
+                        style: TextStyle(fontSize: 12, color: subColor),
+                        overflow: TextOverflow.ellipsis)),
+                  ]),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
+        ],
         const SizedBox(height: 16),
       ],
     );

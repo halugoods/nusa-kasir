@@ -396,62 +396,39 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
   }
 
   Widget _buildFilterTabs(bool isDark) {
-    const tabs = [
-      ('Aktif', Icons.check_circle_outline, Colors.red),
-      ('Nonaktif', Icons.pause_circle_outline, Colors.orange),
-      ('Kadaluarsa', Icons.event_busy_outlined, Colors.grey),
-    ];
+    const tabs = ['Aktif', 'Nonaktif', 'Kadaluarsa'];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: Container(
-        padding: const EdgeInsets.all(4),
+        height: 36,
         decoration: BoxDecoration(
-          color: isDark ? NusaConfig.darkSurface2 : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(14),
+          color: isDark ? NusaConfig.darkSurface : NusaConfig.backgroundColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+              color: isDark ? NusaConfig.darkBorder : NusaConfig.dividerColor),
         ),
         child: Row(
-          children: tabs.map((t) {
-            final selected = _filter == t.$1;
+          children: tabs.map((tab) {
+            final selected = _filter == tab;
             return Expanded(
               child: GestureDetector(
-                onTap: () => setState(() => _filter = t.$1),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOut,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+                onTap: () => setState(() => _filter = tab),
+                child: Container(
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: selected
-                        ? (isDark ? NusaConfig.darkSurface : Colors.white)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(11),
-                    boxShadow: selected
-                        ? [BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-                            blurRadius: 4, offset: const Offset(0, 2),
-                          )]
-                        : null,
+                    color: selected ? NusaConfig.primaryColor : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (selected)
-                        Container(
-                          width: 8, height: 8,
-                          margin: const EdgeInsets.only(right: 6),
-                          decoration: BoxDecoration(
-                            color: t.$3,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      Text(t.$1,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: selected
-                                ? (isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)
-                                : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
-                          )),
-                    ],
+                  child: Text(
+                    tab,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: selected
+                          ? Colors.white
+                          : (isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+                    ),
                   ),
                 ),
               ),
