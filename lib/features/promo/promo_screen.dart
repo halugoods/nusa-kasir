@@ -441,10 +441,6 @@ class _PromoScreenState extends ConsumerState<PromoScreen> {
                           decoration: BoxDecoration(
                             color: t.$3,
                             shape: BoxShape.circle,
-                            boxShadow: [BoxShadow(
-                              color: t.$3.withValues(alpha: 0.5),
-                              blurRadius: 4,
-                            )],
                           ),
                         ),
                       Text(t.$1,
@@ -623,17 +619,7 @@ class _PromoTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: NusaCard(
           Container(
-            decoration: active && !expired
-                ? const BoxDecoration(
-                    border: Border(
-                      left: BorderSide(
-                        color: NusaConfig.accentGreen,
-                        width: 4,
-                      ),
-                    ),
-                  )
-                : null,
-            padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+            padding: const EdgeInsets.fromLTRB(12, 12, 10, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -673,23 +659,23 @@ class _PromoTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 // ── Discount label ──
                 Text(_discountLabel(promo),
                     style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: active && !expired
                             ? NusaConfig.accentGreen
                             : NusaConfig.primaryColor)),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 // ── Info row ──
                 Text(
                     'Min. belanja ${formatRupiah(promo.minBelanja)} • Aktif: ${_fmtDate(promo.startDate)}–${_fmtDate(promo.endDate)}',
                     style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 // ── Quota + progress bar ──
                 Row(
                   children: [

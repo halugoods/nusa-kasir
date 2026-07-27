@@ -288,6 +288,14 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
             // ═══════════════════════════════════════════════
             _buildStatusCard(isDark),
 
+            // ═══════════════════════════════════════════════
+            // LINK CARD — copy link + Buka Website
+            // ═══════════════════════════════════════════════
+            if (_isActive && _storeUrl != null) ...[
+              const SizedBox(height: 12),
+              _buildLinkCard(isDark, cardBg, borderC),
+            ],
+
             const SizedBox(height: 16),
 
             // ═══════════════════════════════════════════════
@@ -345,13 +353,13 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
   }
 
   // ─────────────────────────────────────────────────────────
-  // Status Card
+  // Status Card — Slim / pipih
   // ─────────────────────────────────────────────────────────
   Widget _buildStatusCard(bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         gradient: _isActive
             ? const LinearGradient(
                 colors: [Color(0xFF059669), Color(0xFF047857)],
@@ -368,94 +376,154 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
         boxShadow: _isActive
             ? [
                 BoxShadow(
-                  color: const Color(0xFF059669).withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+                  color: const Color(0xFF059669).withValues(alpha: 0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ]
             : null,
       ),
-      child: Column(
+      child: Row(
         children: [
-          // Icon with glowing dot
-          Stack(
-            alignment: Alignment.topRight,
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _isActive ? Icons.store : Icons.store_outlined,
-                  size: 28,
-                  color: Colors.white,
-                ),
-              ),
-              if (_isActive)
-                AnimatedBuilder(
-                  animation: _pulseAnim,
-                  builder: (context, child) => Opacity(
-                    opacity: _pulseAnim.value,
-                    child: Container(
-                      width: 10, height: 10,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF4ADE80),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF4ADE80).withValues(alpha: 0.6),
-                            blurRadius: 6,
-                            spreadRadius: 1,
-                          ),
-                        ],
+          // Dot glow (pulsing when active)
+          if (_isActive)
+            AnimatedBuilder(
+              animation: _pulseAnim,
+              builder: (context, child) => Opacity(
+                opacity: _pulseAnim.value,
+                child: Container(
+                  width: 10, height: 10,
+                  margin: const EdgeInsets.only(right: 10),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF4ADE80),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF4ADE80).withValues(alpha: 0.6),
+                        blurRadius: 6,
+                        spreadRadius: 1,
                       ),
-                    ),
+                    ],
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_isActive)
-                AnimatedBuilder(
-                  animation: _pulseAnim,
-                  builder: (context, child) => Opacity(
-                    opacity: _pulseAnim.value,
-                    child: Container(
-                      width: 8, height: 8,
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF4ADE80),
-                      ),
-                    ),
-                  ),
-                ),
-              Text(
-                _isActive ? 'Toko Online Kamu Aktif' : 'Toko Online Nonaktif',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _isActive
-                ? 'Pelanggan bisa langsung order via web kamu! 🎉'
-                : 'Lengkapi info di bawah & aktifkan untuk mulai jualan online',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
+            )
+          else
+            Container(
+              width: 10, height: 10,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white38,
+              ),
             ),
-            textAlign: TextAlign.center,
+          // Text
+          Expanded(
+            child: Text(
+              _isActive ? 'Toko Online Kamu Aktif 🎉' : 'Toko Online Nonaktif',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          // Status badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              _isActive ? 'ON' : 'OFF',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Link Card — copy link + Buka Website
+  // ─────────────────────────────────────────────────────────
+  Widget _buildLinkCard(bool isDark, Color cardBg, Color borderC) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderC),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.link, size: 16, color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary),
+            const SizedBox(width: 8),
+            Text('Link Toko',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                    color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
+          ]),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark ? NusaConfig.darkSurface2 : const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(children: [
+              Expanded(
+                child: Text(
+                  _storeUrl!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: NusaConfig.primaryColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _copyLink,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: NusaConfig.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.copy, size: 14, color: NusaConfig.primaryColor),
+                    const SizedBox(width: 4),
+                    Text('Salin', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
+                  ]),
+                ),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _openPreview,
+              icon: const Icon(Icons.open_in_browser, size: 16),
+              label: const Text('Buka Website', style: TextStyle(fontWeight: FontWeight.w600)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF059669),
+                side: const BorderSide(color: Color(0xFF059669)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
           ),
         ],
       ),
