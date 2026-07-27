@@ -2,6 +2,7 @@ package com.example.nusa_kasir
 
 import android.bluetooth.BluetoothAdapter
 import android.content.Intent
+import android.os.Bundle
 import android.provider.ContactsContract
 import android.provider.Settings
 import android.util.Log
@@ -13,37 +14,42 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.nusa_kasir/contacts"
     private val BT_CHANNEL = "com.nusa_kasir/bluetooth"
 
-    // ── Static (companion) pending results — survives activity recreation ──
+    // ── Static (companion) data — survives activity recreation ──
     companion object {
         private const val TAG = "NUSA"
-        private var contactPendingResult: MethodChannel.Result? = null
+        // Store contact DATA (not MethodChannel.Result!) so it survives
+        // even when the activity is destroyed & recreated while the picker is open.
+        private var pendingContact: MutableMap<String, String>? = null
     }
 
+    private var contactChannel: MethodChannel? = null
     private var btPendingResult: MethodChannel.Result? = null
 
-    @Deprecated("Deprecated in Java — required for both contact picker and BT enable")
+    // ── Send any pending contact back to Dart ──
+    private fun flushPendingContact() {
+        val data = pendingContact ?: return
+        pendingContact = null
+        contactChannel?.invokeMethod("onContactResult", data)
+        Log.d(TAG, "flushPendingContact: sending name='${data["name"]}' phone='${data["phone"]}'")
+    }
+
+    @Deprecated("Required for Bluetooth enable — contact picker uses two-way MethodChannel")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         Log.d(TAG, "onActivityResult req=$requestCode res=$resultCode hasData=${data != null}")
 
         when (requestCode) {
             1001 -> { // Contact picker
-                val res = contactPendingResult ?: run {
-                    Log.w(TAG, "Contact picker result dropped — no pending result (activity recreated?)")
-                    return
-                }
-                contactPendingResult = null
-
                 try {
                     if (resultCode != RESULT_OK || data == null) {
                         Log.d(TAG, "Contact picker: user cancelled")
-                        res.success(null)
+                        pendingContact = null
+                        flushPendingContact() // send null signal — Dart times out gracefully
                         return
                     }
                     val uri = data.data
                     if (uri == null) {
                         Log.w(TAG, "Contact picker: data.data is null")
-                        res.success(null)
                         return
                     }
                     Log.d(TAG, "Contact picker: reading URI $uri")
@@ -57,20 +63,18 @@ class MainActivity : FlutterActivity() {
                             if (it.moveToFirst()) {
                                 val name = it.getString(0) ?: ""
                                 val phone = it.getString(1) ?: ""
-                                Log.d(TAG, "Contact picker: found name='$name' phone='$phone'")
-                                res.success(mapOf("name" to name, "phone" to phone))
+                                Log.d(TAG, "Contact picker: SUCCESS name='$name' phone='$phone'")
+                                pendingContact = mutableMapOf("name" to name, "phone" to phone)
+                                flushPendingContact()
                             } else {
                                 Log.w(TAG, "Contact picker: cursor is empty")
-                                res.success(null)
                             }
                         }
                     } else {
                         Log.w(TAG, "Contact picker: contentResolver.query returned null cursor")
-                        res.success(null)
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Contact picker: read failed", e)
-                    res.error("READ_FAILED", e.message, null)
                 }
             }
             2001 -> { // Bluetooth enable
@@ -124,24 +128,36 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        // ── Contact picker channel ──
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-            if (call.method == "pickContact") {
-                try {
+        // ── Contact picker channel (two-way: Dart↔Native) ──
+        contactChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        contactChannel!!.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "pickContact" -> {
                     Log.d(TAG, "pickContact: launching contact picker")
-                    contactPendingResult = result
-                    val intent = Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI).apply {
-                        type = ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE
+                    try {
+                        val intent = Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI).apply {
+                            type = ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE
+                        }
+                        startActivityForResult(intent, 1001)
+                        // Acknowledge immediately — result will be sent via onContactResult invoke
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "pickContact: launch failed", e)
+                        result.error("PICK_FAILED", e.message, null)
                     }
-                    startActivityForResult(intent, 1001)
-                } catch (e: Exception) {
-                    Log.e(TAG, "pickContact: launch failed", e)
-                    contactPendingResult = null
-                    result.error("PICK_FAILED", e.message, null)
                 }
-            } else {
-                result.notImplemented()
+                else -> result.notImplemented()
             }
+        }
+
+        // ── Flush any pending contact from a previous activity instance ──
+        Log.d(TAG, "configureFlutterEngine: checking for pending contact (recreation?)")
+        if (pendingContact != null) {
+            // Post to next frame so Dart side has time to register its listener
+            flutterEngine.dartExecutor.binaryMessenger.send(CHANNEL, null)
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                flushPendingContact()
+            }, 200)
         }
     }
 }

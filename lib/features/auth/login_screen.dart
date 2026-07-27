@@ -193,24 +193,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ),
                       const SizedBox(height: 8),
-                      Text(
-                        _nfcScanning ? 'Mendeteksi...' : 'Tempelkan Kartu NFC',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: _nfcScanning
-                              ? NusaConfig.accentPurple
-                              : isDark
-                                  ? NusaConfig.darkTextPrimary
-                                  : NusaConfig.textPrimary,
+                      Flexible(
+                        child: Text(
+                          _nfcScanning ? 'Mendeteksi...' : 'Tempelkan Kartu NFC',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _nfcScanning
+                                ? NusaConfig.accentPurple
+                                : isDark
+                                    ? NusaConfig.darkTextPrimary
+                                    : NusaConfig.textPrimary,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        _nfcScanning ? 'Dekatkan kartu ke belakang HP' : 'Login cepat tanpa PIN',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                      Flexible(
+                        child: Text(
+                          _nfcScanning ? 'Dekatkan kartu ke belakang HP' : 'Login cepat tanpa PIN',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary,
+                          ),
                         ),
                       ),
                     ],

@@ -299,9 +299,10 @@ class _PinKeypadState extends State<PinKeypad>
                     ),
                     const SizedBox(width: 10),
                     Flexible(
-                      child: Text('Tap Kartu NFC untuk login otomatis',
-                          maxLines: 2,
+                      child: Text('Tap Kartu NFC untuk login',
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                          softWrap: false,
                           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
                               color: isDark ? NusaConfig.darkTextSecondary : NusaConfig.textSecondary)),
                     ),
