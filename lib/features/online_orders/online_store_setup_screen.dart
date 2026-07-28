@@ -176,26 +176,64 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
   }
 
   Future<void> _syncProducts() async {
+    if (!_isActive) return;
     try {
       final db = ref.read(databaseProvider);
       final products = await ProductRepository(db).getProducts();
-      final onlineProducts = products
-          .where((p) => p.isOnline)
-          .map((p) => {
+      final client = Supabase.instance.client;
+      final uid = client.auth.currentUser?.id;
+      final svc = OnlineOrderService(client);
+      final storeId = await svc.storeId;
+      if (storeId == null) return;
+
+      for (final p in products.where((p) => p.isOnline)) {
+        String? imageUrl = '';
+
+        // If product has a local image, upload to Supabase Storage
+        if (p.imagePath != null && p.imagePath!.isNotEmpty) {
+          try {
+            final file = File(p.imagePath!);
+            if (await file.exists() && uid != null) {
+              final filename = p.basename(p.imagePath!);
+              // Upload to nusa-images/products/
+              final imgSvc = ImageStorageService(client, uid);
+              await imgSvc.uploadImage('products', p.imagePath!);
+              // Get public URL
+              imageUrl = client.storage
+                  .from('nusa-images')
+                  .getPublicUrl('$uid/products/$filename');
+              debugPrint('[OnlineStoreSetup] Uploaded product image: $imageUrl');
+            }
+          } catch (e) {
+            debugPrint('[OnlineStoreSetup] Image upload skipped for ${p.name}: $e');
+          }
+        }
+
+        // Upsert individual product via edge function
+        try {
+          await client.functions.invoke('online-store', body: {
+            'action': 'sync_products',
+            'store_id': storeId,
+            'products': [
+              {
                 'product_id': p.id,
                 'name': p.name,
                 'category': p.category,
                 'price': p.sellPrice,
                 'stock': p.stock,
-                'image': p.imagePath ?? '',
+                'image': imageUrl ?? '',
                 'description': '',
                 'is_published': true,
-              })
-          .toList();
+              }
+            ],
+          });
+        } catch (e) {
+          debugPrint('[OnlineStoreSetup] Sync failed for ${p.name}: $e');
+        }
+      }
 
-      if (onlineProducts.isNotEmpty) {
-        final svc = OnlineOrderService(Supabase.instance.client);
-        await svc.syncProducts(onlineProducts);
+      if (mounted) {
+        TopToast.success(context, '$_onlineProductCount produk + gambar disinkronkan!');
       }
     } catch (e) {
       debugPrint('[OnlineStoreSetup] Gagal sinkronisasi produk: $e');
@@ -570,24 +608,26 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
         const SizedBox(height: 10),
 
         if (_isActive && _storeUrl != null) ...[
-          // ── Live WebView preview ──
+          // ── Live WebView preview (9:16 phone ratio) ──
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: Container(
-              height: 400,
-              decoration: BoxDecoration(
-                border: Border.all(color: borderC),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Builder(
-                builder: (context) {
-                  // Init WebView on first build
-                  _initWebView();
-                  if (_webViewCtrl == null) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  return WebViewWidget(controller: _webViewCtrl!);
-                },
+            child: AspectRatio(
+              aspectRatio: 9 / 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: borderC),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Builder(
+                  builder: (context) {
+                    // Init WebView on first build
+                    _initWebView();
+                    if (_webViewCtrl == null) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    return WebViewWidget(controller: _webViewCtrl!);
+                  },
+                ),
               ),
             ),
           ),

@@ -14,10 +14,22 @@ class BiometricService {
   static const _keyEnabled = 'nusa_fingerprint_enabled';
 
   /// Check if the device has biometric hardware configured.
+  /// Uses multiple checks for max compatibility (MIUI, Samsung, stock Android).
   static Future<bool> isHardwareAvailable() async {
     try {
-      return await _auth.canCheckBiometrics;
-    } catch (_) {
+      final canCheck = await _auth.canCheckBiometrics;
+      if (canCheck) return true;
+
+      // Fallback: some devices return false on canCheckBiometrics but do have hardware
+      final isSupported = await _auth.isDeviceSupported();
+      if (isSupported) return true;
+
+      // Last resort: check if any biometric type is enrolled
+      final types = await _auth.getAvailableBiometrics();
+      debugPrint('[BiometricService] available types: $types');
+      return types.isNotEmpty;
+    } catch (e) {
+      debugPrint('[BiometricService] isHardwareAvailable ERROR: $e');
       return false;
     }
   }
@@ -46,18 +58,28 @@ class BiometricService {
   ///
   /// Returns true if authenticated, false if cancelled or failed.
   ///
-  /// biometricOnly is set to false to allow PIN/password fallback on devices
-  /// where the system biometric prompt behaves differently (e.g. Xiaomi/Redmi MIUI).
+  /// Uses biometricOnly: false to allow device PIN/pattern/password as fallback.
+  /// This is critical for Xiaomi/Redmi MIUI, Samsung OneUI, and some stock Android
+  /// firmwares where the STRONG biometric prompt silently fails.
   static Future<bool> authenticate({String reason = 'Gunakan sidik jari untuk masuk'}) async {
     try {
-      if (!await isHardwareAvailable()) return false;
+      if (!await isHardwareAvailable()) {
+        debugPrint('[BiometricService] ⚠ no hardware available, skipping prompt');
+        return false;
+      }
+
+      // Log device capabilities for debugging
+      try {
+        final types = await _auth.getAvailableBiometrics();
+        debugPrint('[BiometricService] device biometric types: $types');
+      } catch (_) {}
 
       final ok = await _auth.authenticate(
         localizedReason: reason,
         biometricOnly: false,
         persistAcrossBackgrounding: false,
       );
-      debugPrint('[BiometricService] authenticate → $ok (v3.0.2, biometricOnly=false)');
+      debugPrint('[BiometricService] authenticate → $ok');
       return ok;
     } catch (e) {
       debugPrint('[BiometricService] authenticate ERROR: $e');
