@@ -177,67 +177,70 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
 
   Future<void> _syncProducts() async {
     if (!_isActive) return;
+    setState(() => _saving = true);
     try {
       final db = ref.read(databaseProvider);
       final products = await ProductRepository(db).getProducts();
+      final online = products.where((p) => p.isOnline).toList();
       final client = Supabase.instance.client;
       final uid = client.auth.currentUser?.id;
-      final svc = OnlineOrderService(client);
-      final storeId = await svc.storeId;
-      if (storeId == null) return;
+      final storeId = await OnlineOrderService(client).storeId;
+      if (storeId == null) {
+        if (mounted) setState(() => _saving = false);
+        return;
+      }
 
-      for (final p in products.where((p) => p.isOnline)) {
+      // Phase 1: Upload all images + collect product data
+      final rows = <Map<String, dynamic>>[];
+      for (final p in online) {
         String? imageUrl = '';
 
-        // If product has a local image, upload to Supabase Storage
-        if (p.imagePath != null && p.imagePath!.isNotEmpty) {
+        if (p.imagePath != null && p.imagePath!.isNotEmpty && uid != null) {
           try {
             final file = File(p.imagePath!);
-            if (await file.exists() && uid != null) {
+            if (await file.exists()) {
               final filename = p.basename(p.imagePath!);
-              // Upload to nusa-images/products/
-              final imgSvc = ImageStorageService(client, uid);
-              await imgSvc.uploadImage('products', p.imagePath!);
-              // Get public URL
+              await ImageStorageService(client, uid).uploadImage('products', p.imagePath!);
               imageUrl = client.storage
                   .from('nusa-images')
                   .getPublicUrl('$uid/products/$filename');
-              debugPrint('[OnlineStoreSetup] Uploaded product image: $imageUrl');
+              debugPrint('[OnlineStoreSetup] 📸 Uploaded: ${p.name} → $imageUrl');
             }
           } catch (e) {
-            debugPrint('[OnlineStoreSetup] Image upload skipped for ${p.name}: $e');
+            debugPrint('[OnlineStoreSetup] ⚠ Image skipped for ${p.name}: $e');
           }
         }
 
-        // Upsert individual product via edge function
-        try {
-          await client.functions.invoke('online-store', body: {
-            'action': 'sync_products',
-            'store_id': storeId,
-            'products': [
-              {
-                'product_id': p.id,
-                'name': p.name,
-                'category': p.category,
-                'price': p.sellPrice,
-                'stock': p.stock,
-                'image': imageUrl ?? '',
-                'description': '',
-                'is_published': true,
-              }
-            ],
-          });
-        } catch (e) {
-          debugPrint('[OnlineStoreSetup] Sync failed for ${p.name}: $e');
-        }
+        rows.add({
+          'product_id': p.id,
+          'name': p.name,
+          'category': p.category,
+          'price': p.sellPrice,
+          'stock': p.stock,
+          'image': imageUrl ?? '',
+          'description': '',
+          'is_published': true,
+        });
+      }
+
+      // Phase 2: Send ALL products in ONE batch to edge function
+      if (rows.isNotEmpty) {
+        await client.functions.invoke('online-store', body: {
+          'action': 'sync_products',
+          'store_id': storeId,
+          'products': rows,
+        });
       }
 
       if (mounted) {
-        TopToast.success(context, '$_onlineProductCount produk + gambar disinkronkan!');
+        setState(() => _onlineProductCount = online.length);
+        TopToast.success(context, '${online.length} produk + gambar disinkronkan!');
       }
     } catch (e) {
       debugPrint('[OnlineStoreSetup] Gagal sinkronisasi produk: $e');
+      if (mounted) TopToast.error(context, 'Gagal sinkron: $e');
     }
+    if (mounted) setState(() => _saving = false);
   }
 
   Future<void> _pickLogo() async {
@@ -873,21 +876,7 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
       // Sync button
       if (_isActive)
         TextButton(
-          onPressed: _saving ? null : () async {
-            setState(() => _saving = true);
-            await _syncProducts();
-            try {
-              final db = ref.read(databaseProvider);
-              final products = await ProductRepository(db).getProducts();
-              if (mounted) setState(() {
-                _onlineProductCount = products.where((p) => p.isOnline).length;
-              });
-            } catch (_) {}
-            if (mounted) {
-              TopToast.success(context, '$_onlineProductCount produk disinkronkan!');
-              setState(() => _saving = false);
-            }
-          },
+          onPressed: _saving ? null : _syncProducts,
           style: TextButton.styleFrom(
             foregroundColor: const Color(0xFFF59E0B),
             padding: const EdgeInsets.symmetric(horizontal: 12),

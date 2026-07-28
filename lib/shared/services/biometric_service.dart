@@ -13,26 +13,7 @@ class BiometricService {
   static final _auth = LocalAuthentication();
   static const _keyEnabled = 'nusa_fingerprint_enabled';
 
-  /// Check if the device has biometric hardware configured.
-  /// Uses multiple checks for max compatibility (MIUI, Samsung, stock Android).
-  static Future<bool> isHardwareAvailable() async {
-    try {
-      final canCheck = await _auth.canCheckBiometrics;
-      if (canCheck) return true;
-
-      // Fallback: some devices return false on canCheckBiometrics but do have hardware
-      final isSupported = await _auth.isDeviceSupported();
-      if (isSupported) return true;
-
-      // Last resort: check if any biometric type is enrolled
-      final types = await _auth.getAvailableBiometrics();
-      debugPrint('[BiometricService] available types: $types');
-      return types.isNotEmpty;
-    } catch (e) {
-      debugPrint('[BiometricService] isHardwareAvailable ERROR: $e');
-      return false;
-    }
-  }
+  // ── Settings ────────────────────────────────────────────────────
 
   /// Check if biometric is enabled in NUSA settings (Owner toggle).
   static Future<bool> isEnabled() async {
@@ -54,26 +35,27 @@ class BiometricService {
     await SecureStore.write(key: _keyEnabled, value: 'false');
   }
 
+  // ── Authentication ──────────────────────────────────────────────
+
   /// Prompt the user to scan their fingerprint/face.
   ///
   /// Returns true if authenticated, false if cancelled or failed.
   ///
-  /// Uses biometricOnly: false to allow device PIN/pattern/password as fallback.
-  /// This is critical for Xiaomi/Redmi MIUI, Samsung OneUI, and some stock Android
-  /// firmwares where the STRONG biometric prompt silently fails.
+  /// NO hardware pre-check — we let the OS prompt handle it directly.
+  /// Pre-checks (canCheckBiometrics, isDeviceSupported) return false
+  /// on many Xiaomi/Redmi MIUI and Samsung OneUI devices even when
+  /// biometric hardware works perfectly. We just try it.
   static Future<bool> authenticate({String reason = 'Gunakan sidik jari untuk masuk'}) async {
     try {
-      if (!await isHardwareAvailable()) {
-        debugPrint('[BiometricService] ⚠ no hardware available, skipping prompt');
-        return false;
-      }
-
-      // Log device capabilities for debugging
+      // Log device info for debugging
       try {
         final types = await _auth.getAvailableBiometrics();
-        debugPrint('[BiometricService] device biometric types: $types');
-      } catch (_) {}
+        debugPrint('[BiometricService] device types: $types');
+      } catch (e) {
+        debugPrint('[BiometricService] could not get biometric types: $e');
+      }
 
+      // Try biometric + PIN/pattern/password fallback
       final ok = await _auth.authenticate(
         localizedReason: reason,
         biometricOnly: false,

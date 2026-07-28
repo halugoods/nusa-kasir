@@ -48,7 +48,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   // Fingerprint
   bool _fingerprintEnabled = false;
-  bool _fingerprintAvailable = false;  // hardware check
 
   // Feature toggles — all true by default
   Map<String, bool> _featureToggles = {};
@@ -120,7 +119,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
       // Load fingerprint state
       _fingerprintEnabled = await BiometricService.isEnabled();
-      _fingerprintAvailable = await BiometricService.isHardwareAvailable();
 
       setState(() {});
     }
@@ -209,20 +207,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final enable = !_fingerprintEnabled;
 
     if (enable) {
-      // Check hardware first
-      final hwOk = await BiometricService.isHardwareAvailable();
-      if (!hwOk) {
-        if (mounted) TopToast.error(context, 'Device tidak mendukung fingerprint');
-        return;
-      }
-
-      // Validate actual fingerprint via system dialog
+      // Validate via system biometric dialog directly
       final scanned = await BiometricService.authenticate(
         reason: 'Pindai sidik jari untuk mengaktifkan Login Fingerprint',
       );
       if (!scanned) {
         if (mounted) TopToast.error(context, 'Pemindaian sidik jari gagal atau dibatalkan');
-        return; // don't enable — fingerprint not verified
+        return;
       }
 
       await BiometricService.enable();
@@ -1227,21 +1218,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _menuRow(
               icon: Icons.fingerprint, iconColor: NusaConfig.accentPurple,
               title: 'Login Fingerprint',
-              subtitle: !_fingerprintAvailable
-                  ? 'Device tidak mendukung sidik jari'
-                  : _fingerprintEnabled
-                      ? 'Aktif — akses cepat pakai sidik jari'
-                      : 'Aktifkan akses cepat Owner',
+              subtitle: _fingerprintEnabled
+                  ? 'Aktif — akses cepat pakai sidik jari'
+                  : 'Aktifkan akses cepat Owner',
               isDark: isDark,
-              onTap: _fingerprintAvailable
-                  ? () => _toggleFingerprint(session!)
-                  : null,
+              onTap: () => _toggleFingerprint(session!),
               trailing: Switch(
                 value: _fingerprintEnabled,
                 activeColor: NusaConfig.accentPurple,
-                onChanged: _fingerprintAvailable
-                    ? (v) => _toggleFingerprint(session!)
-                    : null,
+                onChanged: (v) => _toggleFingerprint(session!),
               ),
             ),
           ],
