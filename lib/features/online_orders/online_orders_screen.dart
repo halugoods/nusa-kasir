@@ -243,8 +243,17 @@ class _OnlineOrdersScreenState extends ConsumerState<OnlineOrdersScreen> with Si
         );
 
         // Add loyalty points for customer (if phone exists)
+        // Auto-register customer if they don't exist yet
         if (order.customerPhone.isNotEmpty) {
-          final customer = await customerRepo.byPhone(order.customerPhone);
+          var customer = await customerRepo.byPhone(order.customerPhone);
+          if (customer == null) {
+            // Auto-register: setiap orang yg order online langsung masuk daftar pelanggan
+            final newId = await customerRepo.addCustomer(
+              name: order.customerName.isNotEmpty ? order.customerName : 'Pelanggan Online',
+              phone: order.customerPhone,
+            );
+            customer = await customerRepo.byId(newId);
+          }
           if (customer != null) {
             await customerRepo.addSpent(customer.id, order.total);
           }

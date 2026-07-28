@@ -54,12 +54,10 @@ class BiometricService {
 
       final ok = await _auth.authenticate(
         localizedReason: reason,
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: false,
-        ),
+        biometricOnly: false,
+        persistAcrossBackgrounding: false,
       );
-      debugPrint('[BiometricService] authenticate → $ok (biometricOnly=false)');
+      debugPrint('[BiometricService] authenticate → $ok (v3.0.2, biometricOnly=false)');
       return ok;
     } catch (e) {
       debugPrint('[BiometricService] authenticate ERROR: $e');
