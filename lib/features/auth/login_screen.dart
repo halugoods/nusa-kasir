@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:local_auth/local_auth.dart';
+import 'package:nusa_kasir/shared/services/biometric_service.dart';
 import 'package:nusa_kasir/core/auth/employee_session.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/providers.dart';
@@ -81,19 +81,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<bool> _authFingerprint() async {
-    try {
-      final localAuth = LocalAuthentication();
-      final authenticated = await localAuth.authenticate(
-        localizedReason: 'Verifikasi sidik jari untuk melanjutkan',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: true,
-        ),
-      );
-      return authenticated;
-    } catch (_) {
-      return false;
-    }
+    return BiometricService.authenticate(
+      reason: 'Verifikasi sidik jari untuk melanjutkan',
+    );
   }
 
   /// Verify PIN directly (used by PinKeypad on login screen).

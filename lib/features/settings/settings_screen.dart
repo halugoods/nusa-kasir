@@ -20,7 +20,6 @@ import 'package:nusa_kasir/shared/widgets/nusa_button.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
-import 'package:local_auth/local_auth.dart';
 import 'package:nusa_kasir/features/settings/backup_sheet.dart';
 import 'package:nusa_kasir/features/settings/printer_settings_sheet.dart';
 import 'package:nusa_kasir/core/services/update_service.dart';
@@ -185,19 +184,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<bool> _authFingerprint() async {
-    try {
-      final localAuth = LocalAuthentication();
-      final authenticated = await localAuth.authenticate(
-        localizedReason: 'Verifikasi sidik jari untuk melanjutkan',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: true,
-        ),
-      );
-      return authenticated;
-    } catch (_) {
-      return false;
-    }
+    return BiometricService.authenticate(
+      reason: 'Verifikasi sidik jari untuk melanjutkan',
+    );
   }
 
   Future<void> _pinGate(VoidCallback action) async {

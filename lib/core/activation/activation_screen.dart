@@ -13,7 +13,7 @@ import 'package:nusa_kasir/data/repositories/settings_repository.dart';
 import 'package:nusa_kasir/features/auth/employee_session_provider.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/pin_keypad.dart';
-import 'package:local_auth/local_auth.dart';
+import 'package:nusa_kasir/shared/services/biometric_service.dart';
 import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:nfc_manager/nfc_manager.dart';
@@ -774,19 +774,9 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   }
 
   Future<bool> _authFingerprint() async {
-    try {
-      final localAuth = LocalAuthentication();
-      final authenticated = await localAuth.authenticate(
-        localizedReason: 'Verifikasi sidik jari untuk melanjutkan',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: true,
-        ),
-      );
-      return authenticated;
-    } catch (_) {
-      return false;
-    }
+    return BiometricService.authenticate(
+      reason: 'Verifikasi sidik jari untuk melanjutkan',
+    );
   }
 
   // ── Key Activation Screen (new user) ───────────────────────────────

@@ -13,7 +13,7 @@ import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/empty_state.dart';
 import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 import 'package:nusa_kasir/shared/widgets/pin_dialog.dart';
-import 'package:local_auth/local_auth.dart';
+import 'package:nusa_kasir/shared/services/biometric_service.dart';
 import 'package:nusa_kasir/shared/services/nfc_tag_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -347,19 +347,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   }
 
   Future<bool> _authFingerprint() async {
-    try {
-      final localAuth = LocalAuthentication();
-      final authenticated = await localAuth.authenticate(
-        localizedReason: 'Verifikasi sidik jari untuk melanjutkan',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: true,
-        ),
-      );
-      return authenticated;
-    } catch (_) {
-      return false;
-    }
+    return BiometricService.authenticate(
+      reason: 'Verifikasi sidik jari untuk melanjutkan',
+    );
   }
 
   // ── Bottom sheet: Izin ──────────────────────────────────────────
