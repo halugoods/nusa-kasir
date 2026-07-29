@@ -192,31 +192,31 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
 
       // Phase 1: Upload all images + collect product data
       final rows = <Map<String, dynamic>>[];
-      for (final p in online) {
+      for (final prod in online) {
         String? imageUrl = '';
 
-        if (p.imagePath != null && p.imagePath!.isNotEmpty && uid != null) {
+        if (prod.imagePath != null && prod.imagePath!.isNotEmpty && uid != null) {
           try {
-            final file = File(p.imagePath!);
+            final file = File(prod.imagePath!);
             if (await file.exists()) {
-              final filename = p.basename(p.imagePath!);
-              await ImageStorageService(client, uid).uploadImage('products', p.imagePath!);
+              final filename = p.basename(prod.imagePath!);
+              await ImageStorageService(client, uid).uploadImage('products', prod.imagePath!);
               imageUrl = client.storage
                   .from('nusa-images')
                   .getPublicUrl('$uid/products/$filename');
-              debugPrint('[OnlineStoreSetup] 📸 Uploaded: ${p.name} → $imageUrl');
+              debugPrint('[OnlineStoreSetup] 📸 Uploaded: ${prod.name} → $imageUrl');
             }
           } catch (e) {
-            debugPrint('[OnlineStoreSetup] ⚠ Image skipped for ${p.name}: $e');
+            debugPrint('[OnlineStoreSetup] ⚠ Image skipped for ${prod.name}: $e');
           }
         }
 
         rows.add({
-          'product_id': p.id,
-          'name': p.name,
-          'category': p.category,
-          'price': p.sellPrice,
-          'stock': p.stock,
+          'product_id': prod.id,
+          'name': prod.name,
+          'category': prod.category,
+          'price': prod.sellPrice,
+          'stock': prod.stock,
           'image': imageUrl ?? '',
           'description': '',
           'is_published': true,

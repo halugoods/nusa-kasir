@@ -111,9 +111,8 @@ class _PinKeypadState extends State<PinKeypad>
   }
 
   Future<void> _checkBiometric() async {
-    final available = await BiometricService.isHardwareAvailable();
     final enabled = await BiometricService.isEnabled();
-    if (mounted) setState(() => _biometricAvailable = available && enabled);
+    if (mounted) setState(() => _biometricAvailable = enabled);
   }
 
   void _onDigit(String d) {
@@ -137,19 +136,6 @@ class _PinKeypadState extends State<PinKeypad>
 
   Future<void> _onFingerprintTap() async {
     if (widget.onFingerprint == null) return;
-    // Check hardware availability before attempting
-    final available = await BiometricService.isHardwareAvailable();
-    if (!available) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sidik jari tidak tersedia di perangkat ini'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-      return;
-    }
     final ok = await widget.onFingerprint!();
     if (ok && mounted) {
       widget.onFingerprintSuccess?.call();
