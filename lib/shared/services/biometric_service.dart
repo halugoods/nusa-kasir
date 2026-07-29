@@ -81,13 +81,19 @@ class BiometricService {
       }
       return ok;
     } on Exception catch (e) {
-      final msg = 'Error: ${e.runtimeType}';
-      debugPrint('[BiometricService] authenticate ERROR: $e');
-      lastResult = (ok: false, message: msg);
+      // Extract actual error message — LocalAuthException has .message
+      String msg;
+      try {
+        msg = (e as dynamic).message as String? ?? '$e';
+      } catch (_) {
+        msg = '$e';
+      }
+      debugPrint('[BiometricService] authenticate ERROR (${e.runtimeType}): $msg');
+      lastResult = (ok: false, message: 'Gagal: $msg');
       return false;
     } catch (e) {
       debugPrint('[BiometricService] authenticate UNKNOWN ERROR: $e');
-      lastResult = (ok: false, message: 'Gagal — perangkat mungkin tidak mendukung fingerprint');
+      lastResult = (ok: false, message: 'Gagal — $e');
       return false;
     }
   }

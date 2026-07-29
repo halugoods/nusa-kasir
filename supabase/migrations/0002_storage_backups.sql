@@ -17,8 +17,7 @@ on conflict (id) do update
       file_size_limit = 52428800,
       allowed_mime_types = array['application/octet-stream'];
 
--- 2. Enable RLS on objects
-alter table storage.objects enable row level security;
+-- 2. RLS is already enabled by default on Supabase storage.objects — skip DDL
 
 -- 3. Drop any previous versions (idempotent)
 drop policy if exists "nusa_backups_insert" on storage.objects;

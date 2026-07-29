@@ -9,6 +9,7 @@ ON CONFLICT (id) DO NOTHING;
 -- RLS Policies: users can only access their own folder (uid/{category}/*)
 
 -- Allow SELECT: users can read their own images
+DROP POLICY IF EXISTS "Users can read own images" ON storage.objects;
 CREATE POLICY "Users can read own images"
 ON storage.objects FOR SELECT
 USING (
@@ -17,6 +18,7 @@ USING (
 );
 
 -- Allow INSERT: users can upload to their own folder
+DROP POLICY IF EXISTS "Users can upload own images" ON storage.objects;
 CREATE POLICY "Users can upload own images"
 ON storage.objects FOR INSERT
 WITH CHECK (
@@ -25,6 +27,7 @@ WITH CHECK (
 );
 
 -- Allow UPDATE: users can update their own images
+DROP POLICY IF EXISTS "Users can update own images" ON storage.objects;
 CREATE POLICY "Users can update own images"
 ON storage.objects FOR UPDATE
 USING (
@@ -37,6 +40,7 @@ WITH CHECK (
 );
 
 -- Allow DELETE: users can delete their own images
+DROP POLICY IF EXISTS "Users can delete own images" ON storage.objects;
 CREATE POLICY "Users can delete own images"
 ON storage.objects FOR DELETE
 USING (
