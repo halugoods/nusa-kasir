@@ -37,6 +37,11 @@ class BiometricService {
 
   // ── Authentication ──────────────────────────────────────────────
 
+  /// Result of an authentication attempt.
+  /// [ok] — true if biometric/pin accepted.
+  /// [message] — user-facing message (only set when [ok] is false).
+  static ({bool ok, String? message}) lastResult = (ok: false, message: null);
+
   /// Prompt the user to scan their fingerprint/face.
   ///
   /// Returns true if authenticated, false if cancelled or failed.
@@ -45,12 +50,18 @@ class BiometricService {
   /// Pre-checks (canCheckBiometrics, isDeviceSupported) return false
   /// on many Xiaomi/Redmi MIUI and Samsung OneUI devices even when
   /// biometric hardware works perfectly. We just try it.
+  ///
+  /// After calling this, read [lastResult] for a user-facing error message.
   static Future<bool> authenticate({String reason = 'Gunakan sidik jari untuk masuk'}) async {
     try {
-      // Log device info for debugging
+      // Diagnostic: log device capabilities (does NOT block auth)
       try {
         final types = await _auth.getAvailableBiometrics();
-        debugPrint('[BiometricService] device types: $types');
+        debugPrint('[BiometricService] device biometric types: $types');
+        if (types.isEmpty) {
+          debugPrint('[BiometricService] ⚠ getAvailableBiometrics() returned EMPTY list — device may not report types even though hardware works');
+          debugPrint('[BiometricService] Proceeding anyway — OS dialog will handle it');
+        }
       } catch (e) {
         debugPrint('[BiometricService] could not get biometric types: $e');
       }
@@ -62,9 +73,21 @@ class BiometricService {
         persistAcrossBackgrounding: false,
       );
       debugPrint('[BiometricService] authenticate → $ok');
+
+      if (!ok) {
+        lastResult = (ok: false, message: 'Pemindaian dibatalkan atau gagal — coba lagi');
+      } else {
+        lastResult = (ok: true, message: null);
+      }
       return ok;
-    } catch (e) {
+    } on Exception catch (e) {
+      final msg = 'Error: ${e.runtimeType}';
       debugPrint('[BiometricService] authenticate ERROR: $e');
+      lastResult = (ok: false, message: msg);
+      return false;
+    } catch (e) {
+      debugPrint('[BiometricService] authenticate UNKNOWN ERROR: $e');
+      lastResult = (ok: false, message: 'Gagal — perangkat mungkin tidak mendukung fingerprint');
       return false;
     }
   }

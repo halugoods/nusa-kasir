@@ -212,7 +212,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         reason: 'Pindai sidik jari untuk mengaktifkan Login Fingerprint',
       );
       if (!scanned) {
-        if (mounted) TopToast.error(context, 'Pemindaian sidik jari gagal atau dibatalkan');
+        if (mounted) {
+          final msg = BiometricService.lastResult.message ?? 'Pemindaian sidik jari gagal atau dibatalkan';
+          TopToast.error(context, msg);
+        }
         return;
       }
 
