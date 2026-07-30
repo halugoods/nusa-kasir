@@ -1,13 +1,17 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:drift/drift.dart' hide Column;
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 import 'package:nusa_kasir/core/providers.dart';
+import 'package:nusa_kasir/data/database/app_database.dart';
+import 'package:nusa_kasir/data/repositories/category_repository.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 import 'package:nusa_kasir/shared/widgets/skeleton_list.dart';
+import 'package:nusa_kasir/shared/widgets/top_toast.dart';
 
-/// Kategori grid screen — navigated to from ProductsScreen "Kategori" segment.
+/// Kategori grid screen — CRUD utama untuk kelola kategori.
 /// Route: /produk/kategori
 class KategoriListScreen extends ConsumerStatefulWidget {
   const KategoriListScreen({super.key});
@@ -40,6 +44,137 @@ class _KategoriListScreenState extends ConsumerState<KategoriListScreen> {
       entries.sort((a, b) => a.key.compareTo(b.key));
     }
     return entries;
+  }
+
+  // ── CRUD: Add Category ──
+  Future<void> _addCategory() async {
+    final ctrl = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tambah Kategori'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Nama kategori',
+            border: OutlineInputBorder(),
+          ),
+          textCapitalization: TextCapitalization.words,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    if (result != null && result.isNotEmpty) {
+      await CategoryRepository(ref.read(databaseProvider)).add(result);
+      TopToast.success(context, 'Kategori "$result" ditambahkan');
+      _load();
+    }
+  }
+
+  // ── CRUD: Rename Category ──
+  Future<void> _renameCategory(String oldName) async {
+    final ctrl = TextEditingController(text: oldName);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ubah Nama Kategori'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Nama baru',
+            border: OutlineInputBorder(),
+          ),
+          textCapitalization: TextCapitalization.words,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.primaryColor, foregroundColor: Colors.white),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    if (result != null && result.isNotEmpty && result != oldName) {
+      final db = ref.read(databaseProvider);
+      await CategoryRepository(db).rename(oldName, result);
+      // Update product category references
+      await (db.update(db.products)..where((t) => t.category.equals(oldName)))
+          .write(ProductsCompanion(category: Value(result)));
+      TopToast.success(context, 'Kategori diubah ke "$result"');
+      _load();
+    }
+  }
+
+  // ── CRUD: Delete Category ──
+  Future<void> _deleteCategory(String name) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Kategori'),
+        content: Text('Hapus kategori "$name"? Produk dengan kategori ini akan dipindah ke "Lainnya".'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: NusaConfig.error, foregroundColor: Colors.white),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      final db = ref.read(databaseProvider);
+      // Move products to "Lainnya"
+      await (db.update(db.products)..where((t) => t.category.equals(name)))
+          .write(ProductsCompanion(category: const Value('Lainnya')));
+      await CategoryRepository(db).delete(name);
+      TopToast.success(context, 'Kategori "$name" dihapus');
+      _load();
+    }
+  }
+
+  // ── Context menu for long-press ──
+  void _showCategoryMenu(String cat) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? NusaConfig.darkSurface : NusaConfig.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(margin: const EdgeInsets.only(bottom: 16), width: 40, height: 4,
+            decoration: BoxDecoration(color: NusaConfig.dividerColor, borderRadius: BorderRadius.circular(2))),
+          Text(cat, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
+            color: isDark ? NusaConfig.darkTextPrimary : NusaConfig.textPrimary)),
+          const SizedBox(height: 16),
+          ListTile(
+            leading: const Icon(Icons.edit_rounded, color: NusaConfig.primaryColor),
+            title: const Text('Ubah Nama'),
+            onTap: () { Navigator.pop(ctx); _renameCategory(cat); },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_rounded, color: NusaConfig.error),
+            title: const Text('Hapus Kategori', style: TextStyle(color: NusaConfig.error)),
+            onTap: () { Navigator.pop(ctx); _deleteCategory(cat); },
+          ),
+        ]),
+      ),
+    );
   }
 
   @override
@@ -96,6 +231,7 @@ class _KategoriListScreenState extends ConsumerState<KategoriListScreen> {
 
                       return GestureDetector(
                         onTap: () => context.push('/produk/kategori/$cat'),
+                        onLongPress: () => _showCategoryMenu(cat),
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(NusaConfig.radiusXL),
@@ -148,6 +284,16 @@ class _KategoriListScreenState extends ConsumerState<KategoriListScreen> {
                 ),
               ),
             ]),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: FloatingActionButton.extended(
+          backgroundColor: NusaConfig.primaryColor,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.create_new_folder),
+          label: const Text('Tambah Kategori'),
+          onPressed: _addCategory,
+        ),
+      ),
     );
   }
 }

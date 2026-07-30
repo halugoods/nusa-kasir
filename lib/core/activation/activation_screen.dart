@@ -696,6 +696,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
                       showNfc: true,
                       showCancel: false,
                       onFingerprint: () async => await _authFingerprint(),
+                      onFingerprintSuccess: () => _fingerprintLogin(),
                       onNfc: () async {
                         final id = await NfcTagService.readEmployeeTag();
                         if (id == null || !mounted) return null;
@@ -777,6 +778,36 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     return BiometricService.authenticate(
       reason: 'Verifikasi sidik jari untuk melanjutkan',
     );
+  }
+
+  /// Login as Owner via fingerprint — bypass PIN.
+  Future<void> _fingerprintLogin() async {
+    try {
+      final db = ref.read(databaseProvider);
+      final repo = AttendanceRepository(db);
+      final emps = await repo.getEmployees();
+      final owner = emps.cast<Employee?>().firstWhere(
+            (e) => e!.role == 'Owner',
+            orElse: () => null,
+          );
+      if (owner == null || !mounted) return;
+
+      final session = EmployeeSession(
+        employeeId: owner.id,
+        name: owner.name,
+        role: owner.role,
+        remember: false,
+      );
+      ref.read(employeeSessionProvider.notifier).login(session, remember: false);
+      ref.read(authProvider.notifier).state = owner.role;
+
+      try { await AttendanceRepository(db).checkIn(owner.id); } catch (_) {}
+
+      final storeName = await SettingsRepository(db).getStoreName();
+      if (mounted) context.go(storeName.isEmpty ? '/setup' : '/home');
+    } catch (_) {
+      // Fingerprint succeeded but employee lookup failed — fall through
+    }
   }
 
   // ── Key Activation Screen (new user) ───────────────────────────────

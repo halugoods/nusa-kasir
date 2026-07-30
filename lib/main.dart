@@ -16,6 +16,7 @@ import 'package:nusa_kasir/core/services/stok_alert_worker.dart';
 import 'package:nusa_kasir/core/services/image_storage_service.dart';
 import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/settings_repository.dart';
+import 'package:nusa_kasir/core/activation/activation_repository.dart';
 import 'package:nusa_kasir/core/services/backup_crypto.dart';
 import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:drift/drift.dart';
@@ -163,6 +164,16 @@ void main() async {
 
     // Apply pending device-migration backup BEFORE opening the database.
     try { await _applyPendingRestore(); } catch (_) {}
+
+    // Auto-sync: check if another device uploaded newer data to cloud.
+    // If cloud backup is fresher, restore it so all devices share the same state.
+    try {
+      if (NusaConfig.supabaseUrl.isNotEmpty) {
+        final repo = ActivationRepository(Supabase.instance.client);
+        final synced = await repo.syncIfNewer();
+        if (synced) debugPrint('[Main] Multi-device sync completed');
+      }
+    } catch (_) {}
 
     // Register background tasks
     try { registerStokCheck(); } catch (_) {}

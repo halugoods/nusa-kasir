@@ -4,8 +4,8 @@ abstract class NusaConfig {
   static const String appName = "NUSA";
   static const String brandName = "NUSA";
   static const String appSubtitle = "Aplikasi Kasir untuk Toko Kelontong";
-	static const String appVersion = "1.7.16";
-	static const int appBuildNumber = 98;
+	static const String appVersion = "1.7.17";
+	static const int appBuildNumber = 99;
   static const String githubRepo = "halugoods/nusa-kasir";
   static const String landingPageUrl = "https://nusa-online.vercel.app";
   static const String whatsappOrder = "https://wa.me/6281234567890?text=Halo%2C%20saya%20mau%20beli%20NUSA%20Kasir";
@@ -99,6 +99,18 @@ abstract class NusaConfig {
   static const double bpTablet = 900;
   static bool isWide(BuildContext context) => MediaQuery.of(context).size.width > 720;
   static bool isTablet(BuildContext context) => MediaQuery.of(context).size.width >= 600;
+
+  /// Scale animation durations for high-refresh-rate displays.
+  /// 120 Hz panels render twice as many frames, making animations feel perceptually
+  /// faster. This returns a multiplier to stretch short durations back to normal.
+  static double get animationScale {
+    try {
+      final rate = WidgetsBinding.instance.platformDispatcher.displays.first.refreshRate;
+      if (rate >= 120) return 1.5;
+      if (rate >= 90) return 1.3;
+    } catch (_) {}
+    return 1.0;
+  }
 
   // ── Category maps (single source across all screens) ──
   static const Map<String, String> catEmoji = {

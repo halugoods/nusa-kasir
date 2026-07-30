@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nusa_kasir/core/config/nusa_config.dart';
 
 /// Wraps a single list item with staggered fade-in + slide-up animation.
 /// Add this around each item in a ListView's itemBuilder.
@@ -29,7 +30,12 @@ class _StaggeredItemState extends State<StaggeredItem>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: widget.duration);
+    // Stretch durations on high-refresh-rate (>90 Hz) devices so
+    // animations don't feel unnaturally fast (e.g. Samsung Galaxy A25 at 120 Hz).
+    final scale = NusaConfig.animationScale;
+    final dur = widget.duration * scale;
+    final delay = widget.itemDelay * widget.index * scale;
+    _controller = AnimationController(vsync: this, duration: dur);
     _opacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
@@ -40,7 +46,7 @@ class _StaggeredItemState extends State<StaggeredItem>
       parent: _controller,
       curve: Curves.easeOutCubic,
     ));
-    Future.delayed(widget.itemDelay * widget.index, () {
+    Future.delayed(delay, () {
       if (mounted) _controller.forward();
     });
   }

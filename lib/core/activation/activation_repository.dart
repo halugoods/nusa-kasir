@@ -166,6 +166,58 @@ class ActivationRepository {
     }
   }
 
+  /// Auto-sync: check if cloud backup is newer than local state.
+  /// If so, download and replace the local database directly (no restart needed).
+  /// Returns true if sync was performed.
+  Future<bool> syncIfNewer() async {
+    if (client == null) return false;
+    try {
+      final uid = await _googleUserId();
+      if (uid == null) return false;
+
+      // Check if cloud backup exists and get its timestamp
+      final cp = '$uid/backup.sqlite.enc';
+      final files = await client!.storage.from('nusa-backups').list(path: uid);
+      final backup = files.cast<FileObject?>().firstWhere(
+        (f) => f?.name == 'backup.sqlite.enc',
+        orElse: () => null,
+      );
+      if (backup?.updatedAt == null) return false;
+
+      final cloudTime = DateTime.tryParse(backup!.updatedAt!);
+      if (cloudTime == null) return false;
+
+      // Compare with local last-sync timestamp
+      final localTime = await SecureStore.getLastBackupTime();
+      if (localTime != null && !cloudTime.isAfter(localTime)) return false;
+
+      debugPrint('[Sync] Cloud backup newer ($cloudTime), downloading...');
+
+      // Download & decrypt
+      final bytes = await client!.storage.from('nusa-backups').download(cp);
+      if (bytes.isEmpty) return false;
+
+      final decrypted = await BackupCrypto.decrypt(bytes, uid);
+      final dir = await getApplicationDocumentsDirectory();
+
+      // Unpack archive (DB + images) directly — no restart needed
+      final packedFiles = BackupCrypto.unpackFiles(Uint8List.fromList(decrypted));
+      var imageCount = 0;
+      for (final entry in packedFiles.entries) {
+        final dest = File(p.join(dir.path, entry.key));
+        await dest.writeAsBytes(entry.value, flush: true);
+        if (entry.key != 'nusa_kasir.sqlite') imageCount++;
+      }
+
+      await SecureStore.saveLastBackupTime(cloudTime);
+      debugPrint('[Sync] Restored DB${imageCount > 0 ? " + $imageCount images" : ""} from cloud');
+      return true;
+    } catch (e) {
+      debugPrint('[Sync] syncIfNewer error: $e');
+      return false;
+    }
+  }
+
   // ── Legacy methods (kept for backward compatibility with old activation-key based backups) ──
 
   /// Upload using old activation-key encryption. Used for migration.

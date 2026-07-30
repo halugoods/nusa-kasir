@@ -448,7 +448,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         foregroundColor: Colors.white,
         icon: Icon(_showKategori ? Icons.create_new_folder : Icons.add),
         label: Text(_showKategori ? 'Tambah Kategori' : 'Tambah Produk'),
-        onPressed: () => context.push(_showKategori ? '/produk/kategori/tambah' : '/produk/tambah'),
+        onPressed: () => context.push(_showKategori ? '/produk/kategori' : '/produk/tambah'),
       ),
     );
   }
