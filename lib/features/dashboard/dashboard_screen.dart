@@ -1112,26 +1112,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Menu grid with lock indicators
-                      GridView.count(
-                        crossAxisCount: 3,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                        crossAxisSpacing: 24,
-                        mainAxisSpacing: 24,
-                        childAspectRatio: 0.72,
-                        children: menuItems.map((item) {
-                          return _MenuItem(
-                            label: item['label'] as String,
-                            icon: item['icon'] as String,
-                            access: item['access'] as String,
-                            onTap: () => _handleMenuTap(item['id'] as String),
-                            badgeCount: item['id'] == 'pesanan_online' ? _onlinePending : (item['id'] == 'stok' ? _lowStockCount : null),
-                            badgeColor: item['id'] == 'stok' ? NusaConfig.warning : null,
-                          );
-                        }).toList(),
-                      ),
+                      // Menu grid with lock indicators (responsive columns)
+                      LayoutBuilder(builder: (_, constraints) {
+                        final w = constraints.maxWidth;
+                        final cols = w > 900 ? 5 : (w > 600 ? 4 : 3);
+                        final spacing = w > 900 ? 24.0 : 20.0;
+                        final pad = w > 900 ? 32.0 : 24.0;
+                        return GridView.count(
+                          crossAxisCount: cols,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(pad, 0, pad, 12),
+                          crossAxisSpacing: spacing,
+                          mainAxisSpacing: spacing,
+                          childAspectRatio: 0.72,
+                          children: menuItems.map((item) {
+                            return _MenuItem(
+                              label: item['label'] as String,
+                              icon: item['icon'] as String,
+                              access: item['access'] as String,
+                              onTap: () => _handleMenuTap(item['id'] as String),
+                              badgeCount: item['id'] == 'pesanan_online' ? _onlinePending : (item['id'] == 'stok' ? _lowStockCount : null),
+                              badgeColor: item['id'] == 'stok' ? NusaConfig.warning : null,
+                            );
+                          }).toList(),
+                        );
+                      }),
 
                       const SizedBox(height: 76), // space for FAB
                     ],

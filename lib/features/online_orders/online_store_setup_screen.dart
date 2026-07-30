@@ -178,6 +178,8 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
   Future<void> _syncProducts() async {
     if (!_isActive) return;
     setState(() => _saving = true);
+    int imgSuccess = 0;
+    int imgFailed = 0;
     try {
       final db = ref.read(databaseProvider);
       final products = await ProductRepository(db).getProducts();
@@ -187,28 +189,58 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
       final storeId = await OnlineOrderService(client).storeId;
       if (storeId == null) {
         if (mounted) setState(() => _saving = false);
+        debugPrint('[OnlineStoreSetup] ⚠ No storeId (activation key)');
         return;
       }
+
+      debugPrint('[OnlineStoreSetup] Syncing ${online.length} products for store $storeId, uid=$uid');
 
       // Phase 1: Upload all images + collect product data
       final rows = <Map<String, dynamic>>[];
       for (final prod in online) {
-        String? imageUrl = '';
+        String? imageUrl;
 
         if (prod.imagePath != null && prod.imagePath!.isNotEmpty && uid != null) {
           try {
             final file = File(prod.imagePath!);
             if (await file.exists()) {
               final filename = p.basename(prod.imagePath!);
-              await ImageStorageService(client, uid).uploadImage('products', prod.imagePath!);
-              imageUrl = client.storage
-                  .from('nusa-images')
-                  .getPublicUrl('$uid/products/$filename');
-              debugPrint('[OnlineStoreSetup] 📸 Uploaded: ${prod.name} → $imageUrl');
+              // Try upload with retry
+              bool uploaded = false;
+              for (int attempt = 0; attempt < 3; attempt++) {
+                try {
+                  if (attempt > 0) {
+                    debugPrint('[OnlineStoreSetup] Retry upload ${prod.name} attempt $attempt');
+                    await Future.delayed(Duration(seconds: attempt));
+                  }
+                  final svc = ImageStorageService(client, uid);
+                  uploaded = await svc.uploadImage('products', prod.imagePath!);
+                  if (uploaded) break;
+                } catch (e) {
+                  debugPrint('[OnlineStoreSetup] Upload attempt $attempt failed: $e');
+                }
+              }
+
+              if (uploaded) {
+                imageUrl = client.storage
+                    .from('nusa-images')
+                    .getPublicUrl('$uid/products/$filename');
+                imgSuccess++;
+                debugPrint('[OnlineStoreSetup] 📸 Uploaded: ${prod.name} → $imageUrl');
+              } else {
+                imgFailed++;
+                debugPrint('[OnlineStoreSetup] ⚠ All upload attempts failed for ${prod.name}');
+              }
+            } else {
+              debugPrint('[OnlineStoreSetup] ⚠ File not found: ${prod.imagePath}');
+              imgFailed++;
             }
           } catch (e) {
+            imgFailed++;
             debugPrint('[OnlineStoreSetup] ⚠ Image skipped for ${prod.name}: $e');
           }
+        } else if (prod.imagePath != null && uid == null) {
+          debugPrint('[OnlineStoreSetup] ⚠ No user ID — cannot upload images');
         }
 
         rows.add({
@@ -225,16 +257,24 @@ class _OnlineStoreSetupScreenState extends ConsumerState<OnlineStoreSetupScreen>
 
       // Phase 2: Send ALL products in ONE batch to edge function
       if (rows.isNotEmpty) {
-        await client.functions.invoke('online-store', body: {
+        debugPrint('[OnlineStoreSetup] Sending ${rows.length} products to edge function');
+        final res = await client.functions.invoke('online-store', body: {
           'action': 'sync_products',
           'store_id': storeId,
           'products': rows,
         });
+        debugPrint('[OnlineStoreSetup] Edge function response: status=${res.status}');
+        if (res.status >= 400) {
+          debugPrint('[OnlineStoreSetup] Edge function error: ${res.data}');
+        }
       }
 
       if (mounted) {
         setState(() => _onlineProductCount = online.length);
-        TopToast.success(context, '${online.length} produk + gambar disinkronkan!');
+        final msg = '${online.length} produk disinkronkan'
+            '${imgSuccess > 0 ? " ($imgSuccess gambar)" : ""}'
+            '${imgFailed > 0 ? " — $imgFailed gambar gagal" : ""}';
+        TopToast.success(context, msg);
       }
     } catch (e) {
       debugPrint('[OnlineStoreSetup] Gagal sinkronisasi produk: $e');

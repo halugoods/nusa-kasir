@@ -11,6 +11,8 @@ import 'package:nusa_kasir/data/database/app_database.dart';
 import 'package:nusa_kasir/data/repositories/product_repository.dart';
 import 'package:nusa_kasir/data/repositories/transaction_repository.dart';
 import 'package:nusa_kasir/data/repositories/promo_repository.dart';
+import 'package:nusa_kasir/data/repositories/customer_repository.dart';
+import 'package:nusa_kasir/data/repositories/attendance_repository.dart';
 import 'package:nusa_kasir/shared/widgets/screen_scaffold.dart';
 
 const int _maxContextChars = 260000; // ~65K tokens
@@ -32,10 +34,12 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   bool _showSessions = false;
 
   final List<String> _hints = [
-    "Analisis penjualan",
-    "Stok habis",
-    "Laporan mingguan",
-    "Top produk",
+    "Siapa pelanggan saya?",
+    "Produk hampir habis",
+    "Analisis penjualan bulan ini",
+    "Top produk terlaris",
+    "Karyawan siapa aja?",
+    "Promo yang aktif",
     "Tips bisnis",
   ];
 
@@ -142,63 +146,94 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     return words.take(6).join(' ') + (words.length > 6 ? '...' : '');
   }
 
-  // ── Database context ────────────────────────────────────────────────
+  // ── Database context (EXPANDED — full store data) ──────────────────
 
   Future<String> _buildDbContext() async {
     final sb = StringBuffer();
     sb.writeln('=== DATA TOKO REAL-TIME ===');
     try {
       final db = ref.read(databaseProvider);
-      // Products summary
-      final products = await ProductRepository(db).getProducts();
-      final totalProducts = products.length;
-      final outOfStock = products.where((p) => p.stock == 0).length;
-      final lowStock = products.where((p) => p.stock > 0 && p.stock <= p.minStock).length;
-      sb.writeln('Produk: $totalProducts total, $outOfStock habis, $lowStock menipis');
-
-      // Top 5 products by stock value
-      final top5 = List.from(products)
-        ..sort((a, b) => (b.stock * b.sellPrice).compareTo(a.stock * a.sellPrice));
-      if (top5.isNotEmpty) {
-        sb.writeln('Top produk:');
-        for (final p in top5.take(5)) {
-          sb.writeln('  - ${p.name}: stok ${p.stock}, harga jual Rp${p.sellPrice}');
-        }
-      }
-
-      // Transactions today
-      final transactions = await ref.read(transactionRepoProvider).getTransactions();
       final today = DateTime.now();
-      final todayTrx = transactions.where((t) {
-        final d = t.date;
-        return d.year == today.year && d.month == today.month && d.day == today.day;
-      }).toList();
-      final todayTotal = todayTrx.fold<int>(0, (s, t) => s + t.total);
-      final todayCount = todayTrx.length;
-      sb.writeln('Transaksi hari ini: $todayCount transaksi, total Rp$todayTotal');
 
-      // This month
-      final monthTrx = transactions.where((t) {
-        final d = t.date;
-        return d.year == today.year && d.month == today.month;
-      }).toList();
-      final monthTotal = monthTrx.fold<int>(0, (s, t) => s + t.total);
-      sb.writeln('Transaksi bulan ini: ${monthTrx.length} transaksi, total Rp$monthTotal');
+      // ── Store Info ──
+      if (_storeName != null) sb.writeln('NAMA TOKO: $_storeName');
 
-      // Active promos
-      final promos = await PromoRepository(db).getPromos();
-      final activePromos = promos.where((p) => p.status == 'Aktif').toList();
-      if (activePromos.isNotEmpty) {
-        sb.writeln('Promo aktif:');
-        for (final p in activePromos) {
-          sb.writeln('  - ${p.name} (${p.code}): ${p.type == "persen" ? "${p.value}%" : "Rp${p.value}"} off, terpakai ${p.usedCount}x');
+      // ── Products (ALL — for "siapa" queries) ──
+      final products = await ProductRepository(db).getProducts();
+      final total = products.length;
+      final habis = products.where((p) => p.stock == 0).length;
+      final menipis = products.where((p) => p.stock > 0 && p.stock <= p.minStock).length;
+      sb.writeln('\nPRODUK: $total total, $habis habis, $menipis menipis');
+      if (products.isNotEmpty) {
+        sb.writeln('Daftar produk:');
+        for (final p in products) {
+          sb.writeln('  - ${p.name} (${p.category}) | Rp${p.sellPrice} | Stok: ${p.stock}'
+              '${p.stock == 0 ? " [HABIS]" : p.stock <= p.minStock ? " [MENIPIS]" : ""}');
         }
-      }
+      } else { sb.writeln('Belum ada produk.'); }
 
-      // Store name
-      if (_storeName != null) {
-        sb.writeln('Nama toko: $_storeName');
-      }
+      // ── Transactions ──
+      final transactions = await ref.read(transactionRepoProvider).getTransactions();
+      final todayTrx = transactions.where((t) => t.date.year == today.year && t.date.month == today.month && t.date.day == today.day).toList();
+      sb.writeln('\nTRANSAKSI HARI INI: ${todayTrx.length} transaksi, total Rp${todayTrx.fold<int>(0, (s,t) => s+t.total)}');
+      final monthTrx = transactions.where((t) => t.date.year == today.year && t.date.month == today.month).toList();
+      sb.writeln('TRANSAKSI BULAN INI: ${monthTrx.length} transaksi, total Rp${monthTrx.fold<int>(0, (s,t) => s+t.total)}');
+
+      // ── Customers ──
+      try {
+        final customers = await CustomerRepository(db).getCustomers();
+        if (customers.isNotEmpty) {
+          sb.writeln('\nPELANGGAN (${customers.length} orang):');
+          for (final c in customers) {
+            sb.writeln('  - ${c.name} | ${c.phone} | Level: ${c.level} | Poin: ${c.points}');
+          }
+        } else { sb.writeln('\nPELANGGAN: Belum ada.'); }
+      } catch (_) { sb.writeln('\nPELANGGAN: (error)'); }
+
+      // ── Employees ──
+      try {
+        final employees = await (db.select(db.employees)).get();
+        if (employees.isNotEmpty) {
+          sb.writeln('\nKARYAWAN (${employees.length} orang):');
+          for (final e in employees) {
+            sb.writeln('  - ${e.name} | Role: ${e.role} | ${e.phone}');
+          }
+        } else { sb.writeln('\nKARYAWAN: Belum ada.'); }
+      } catch (_) { sb.writeln('\nKARYAWAN: (error)'); }
+
+      // ── Suppliers ──
+      try {
+        final suppliers = await (db.select(db.suppliers)).get();
+        if (suppliers.isNotEmpty) {
+          sb.writeln('\nSUPPLIER (${suppliers.length}):');
+          for (final s in suppliers) sb.writeln('  - ${s.name} | ${s.phone}');
+        } else { sb.writeln('\nSUPPLIER: Belum ada.'); }
+      } catch (_) { sb.writeln('\nSUPPLIER: (error)'); }
+
+      // ── Promos ──
+      try {
+        final promos = await PromoRepository(db).getPromos();
+        if (promos.isNotEmpty) {
+          sb.writeln('\nPROMO:');
+          for (final p in promos) {
+            sb.writeln('  - ${p.name} (${p.code}) | ${p.type == "persen" ? "${p.value}%" : "Rp${p.value}"} off | ${p.status} | Terpakai: ${p.usedCount}x');
+          }
+        } else { sb.writeln('\nPROMO: Belum ada.'); }
+      } catch (_) { sb.writeln('\nPROMO: (error)'); }
+
+      // ── Attendance ──
+      try {
+        final att = await (db.select(db.attendance)).get();
+        final todayAtt = att.where((a) => a.date.year == today.year && a.date.month == today.month && a.date.day == today.day).toList();
+        sb.writeln('\nPRESENSI HARI INI: ${todayAtt.length} hadir');
+      } catch (_) { sb.writeln('\nPRESENSI: (error)'); }
+
+      // ── System prompt hint ──
+      sb.writeln('\n[INSTRUKSI AI: Kamu punya akses ke SEMUA data di atas. '
+          'Kalau user tanya "siapa pelanggan saya" atau "karyawan siapa aja", '
+          'JAWAB dengan daftar nama dari data. JANGAN bilang "saya tidak tahu" '
+          'atau "saya tidak punya akses" — kamu PUNYA akses.]');
+
     } catch (_) {
       sb.writeln('(Data toko tidak tersedia)');
     }

@@ -157,12 +157,18 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     final totalPrice = cart.fold(0, (s, e) => s + e.subtotal);
     final isWide = MediaQuery.of(context).size.width > 720;
 
-    return Scaffold(
-      backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
-      body: SafeArea(
-        child: isWide
-            ? _buildWideLayout(isDark, cart, totalItems, totalPrice)
-            : _buildNarrowLayout(isDark, cart, totalItems, totalPrice),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _closeKasir();
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? NusaConfig.darkBackground : NusaConfig.backgroundColor,
+        body: SafeArea(
+          child: isWide
+              ? _buildWideLayout(isDark, cart, totalItems, totalPrice)
+              : _buildNarrowLayout(isDark, cart, totalItems, totalPrice),
+        ),
       ),
     );
   }
@@ -212,7 +218,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         const SizedBox(width: 4),
         _gridToggle(3, Icons.apps_rounded, isDark),
         const Spacer(),
-        if (_cashierName.isNotEmpty) ...[
+        if (_cashierName.isNotEmpty)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(color: NusaConfig.primarySoft, borderRadius: BorderRadius.circular(NusaConfig.radiusFull)),
@@ -222,20 +228,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               Text(_cashierName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
             ]),
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: _closeKasir,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: NusaConfig.errorSoft, borderRadius: BorderRadius.circular(NusaConfig.radiusFull)),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.close, size: 14, color: NusaConfig.primaryColor),
-                SizedBox(width: 4),
-                Text('Tutup', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NusaConfig.primaryColor)),
-              ]),
-            ),
-          ),
-        ],
+
       ]),
     );
   }

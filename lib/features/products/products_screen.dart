@@ -325,6 +325,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   _GridToggleBtn(icon: Icons.view_agenda_rounded, active: _gridColumns == 1, onTap: () => _setGridColumns(1)),
                   _GridToggleBtn(icon: Icons.grid_view_rounded, active: _gridColumns == 2, onTap: () => _setGridColumns(2)),
+                  _GridToggleBtn(icon: Icons.apps_rounded, active: _gridColumns == 3, onTap: () => _setGridColumns(3)),
                 ]),
               ),
               const SizedBox(width: 8),
@@ -435,7 +436,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                         onRefresh: _load,
                         child: _gridColumns == 1
                             ? _buildListView()
-                            : _buildGridView(),
+                            : _gridColumns == 2
+                                ? _buildGridView()
+                                : _buildMultiGridView(_gridColumns),
                       ),
           ),
         ],
@@ -443,9 +446,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: NusaConfig.primaryColor,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah Produk'),
-        onPressed: () => context.push('/produk/tambah'),
+        icon: Icon(_showKategori ? Icons.create_new_folder : Icons.add),
+        label: Text(_showKategori ? 'Tambah Kategori' : 'Tambah Produk'),
+        onPressed: () => context.push(_showKategori ? '/produk/kategori/tambah' : '/produk/tambah'),
       ),
     );
   }
@@ -472,6 +475,23 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: ratio),
+      itemCount: _products.length,
+      itemBuilder: (_, i) => _ProductGridCard(
+        product: _products[i],
+        onEdit: () => context.push('/produk/edit/${_products[i].id}'),
+        onDelete: () => _deleteProduct(_products[i]),
+      ),
+    );
+  }
+
+  // N-column grid view (3+)
+  Widget _buildMultiGridView(int columns) {
+    final colW = (MediaQuery.of(context).size.width - 32 - 10 * (columns - 1)) / columns;
+    final ratio = (colW / (colW + 110)).clamp(0.4, 0.85);
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: ratio),
       itemCount: _products.length,
       itemBuilder: (_, i) => _ProductGridCard(
         product: _products[i],

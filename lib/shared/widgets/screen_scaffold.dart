@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:nusa_kasir/core/config/nusa_config.dart';
 
 /// Clean screen shell — custom header + body, dark/light adaptive.
+/// Responsive: tablet/landscape gets wider layout with max-width constraint.
 class ScreenScaffold extends StatelessWidget {
   final String title;
   final Widget body;
@@ -25,6 +26,8 @@ class ScreenScaffold extends StatelessWidget {
     final surface = theme.colorScheme.surface;
     final borderColor = isDark ? NusaConfig.darkBorder : const Color(0xFFF3F4F6);
     final dividerColor = isDark ? NusaConfig.darkDivider : const Color(0xFFE5E7EB);
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width > 900;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -33,7 +36,7 @@ class ScreenScaffold extends StatelessWidget {
           children: [
             // Header
             Padding(
-              padding: EdgeInsets.fromLTRB(canPop ? 4 : 20, 8, 16, 8),
+              padding: EdgeInsets.fromLTRB(canPop ? 4 : (isWide ? 24 : 20), 8, isWide ? 24 : 16, 8),
               child: SizedBox(
                 height: 48,
                 child: Row(
@@ -73,7 +76,17 @@ class ScreenScaffold extends StatelessWidget {
               ),
             ),
             Container(height: 1, color: dividerColor),
-            Expanded(child: body),
+            // Body — centered + max-width on wide screens
+            Expanded(
+              child: isWide
+                  ? Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1200),
+                        child: body,
+                      ),
+                    )
+                  : body,
+            ),
           ],
         ),
       ),
