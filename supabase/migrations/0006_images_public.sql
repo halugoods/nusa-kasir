@@ -6,7 +6,9 @@ UPDATE storage.buckets
 SET public = true
 WHERE id = 'nusa-images';
 
--- 2. Drop the old SELECT policy that required auth.uid() match
+-- 2. Drop ALL old SELECT policies that required auth.uid() match
+-- (0005 created "Users can read own images", so we must drop that exact name too)
+DROP POLICY IF EXISTS "Users can read own images" ON storage.objects;
 DROP POLICY IF EXISTS "Users can view own images" ON storage.objects;
 
 -- 3. Create public read policy — anyone can view images

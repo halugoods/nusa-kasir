@@ -10,11 +10,15 @@ import android.provider.Settings
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+// MUST use FlutterFragmentActivity for local_auth biometric prompt
+// on Xiaomi/Redmi MIUI and Samsung OneUI devices.
+// FlutterActivity does NOT provide the FragmentManager that
+// BiometricPrompt (AndroidX) requires on these devices.
+class MainActivity : FlutterFragmentActivity() {
     private val CHANNEL = "com.nusa_kasir/contacts"
     private val BT_CHANNEL = "com.nusa_kasir/bluetooth"
 

@@ -51,6 +51,41 @@ class BiometricService {
   /// on many Xiaomi/Redmi MIUI and Samsung OneUI devices even when
   /// biometric hardware works perfectly. We just try it.
   ///
+  /// Check if the device can authenticate at all.
+  /// Returns (ok, message). Does NOT show any dialog.
+  static Future<({bool ok, String message})> checkCapabilities() async {
+    try {
+      final supported = await _auth.isDeviceSupported();
+      debugPrint('[BiometricService] isDeviceSupported: $supported');
+      if (!supported) {
+        return (ok: false, message: 'Perangkat tidak mendukung biometric');
+      }
+
+      final canCheck = await _auth.canCheckBiometrics;
+      debugPrint('[BiometricService] canCheckBiometrics: $canCheck');
+
+      final types = await _auth.getAvailableBiometrics();
+      debugPrint('[BiometricService] available biometrics: $types');
+
+      if (types.isEmpty && !canCheck) {
+        return (ok: false, message: 'Tidak ada sidik jari terdaftar di perangkat');
+      }
+
+      // Check if device has any secure lock screen
+      try {
+        // On some devices (Xiaomi), even with fingerprint enrolled,
+        // canCheckBiometrics returns false. We still try — the OS dialog
+        // will show the correct error if no biometrics are enrolled.
+      } catch (_) {}
+
+      return (ok: true, message: 'OK — ${types.map((t) => t.name).join(', ')}');
+    } catch (e) {
+      debugPrint('[BiometricService] checkCapabilities error: $e');
+      // On error, let the authenticate() call decide — don't block
+      return (ok: true, message: 'Unknown (will try anyway)');
+    }
+  }
+
   /// After calling this, read [lastResult] for a user-facing error message.
   static Future<bool> authenticate({String reason = 'Gunakan sidik jari untuk masuk'}) async {
     try {
